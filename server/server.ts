@@ -1,7 +1,7 @@
 import express from "express"
 import path from "path"
 import { fileURLToPath } from "url"
-import usersrouter from "./users/userroutes"
+import usersRouter from "./users/userroutes"
 
 const app = express()
 const port = 3000
@@ -29,3 +29,5 @@ app.use(
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname.replace('/server', ''), 'client/dist/index.html'))
 })
+
+app.use('/users', usersRouter)

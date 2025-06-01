@@ -1,15 +1,14 @@
 //APIのエンドポイントのみ定義。ロジックはcontrollersに委任
+import express, { Request, Response, Router } from "express";
 import Express from "express";
-import * as usercontrollers from "./controllers";
+import {userLoginController, userRegisterController} from "./usercontrollers";
 
-const usersrouter = Express.Router();
+const usersRouter = express.Router();
 
 //ユーザー新規登録処理
-//usersrouter.post("/register", usercontrollers.userregister);
+usersRouter.post("/register", userRegisterController);
 
 //ユーザーログイン処理
-//usersrouter.post("/login", usercontrollers.userlogin);
+usersRouter.post("/login", userLoginController);
 
-
-
-export default usersrouter;
+export default usersRouter;

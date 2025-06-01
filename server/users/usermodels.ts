@@ -26,21 +26,33 @@ export function userDBGetConnect(): Promise<PoolClient> {
 };
 
 //新規登録
-export function userDBNewDataRecord(userId: string, username: string, hashedpassword: string): Promise<QueryResult> {
+export function userDBNewDataRecord(client: PoolClient, userDTO: UserDTO): Promise<QueryResult> {
+    const userId = userDTO.userId;
+    const username = userDTO.username;
+    const hashedpassword = userDTO.hashedpassword;
     const sql = "INSERT INTO Users (UserId, UserName, HashedPassword) VALUES ($1, $2, $3)";
     const values = [userId, username, hashedpassword];
-    return pool.query(sql, values);
+    return client.query(sql, values);
 };
 
 //ログイン用のデータ取得
-export function userDBLoginDataExtract(username: string, hashedpassword: string): Promise<QueryResult> {
-    const sql ="SELECT * FROM users WHERE UserName = $1 AND HashedPassword = $2";
+export function userDBLoginDataExtract(client: PoolClient, userDTO: UserDTO): Promise<QueryResult> { 
+    const username = userDTO.username;
+    const hashedpassword = userDTO.hashedpassword;
+    const sql ="SELECT UserId FROM users WHERE UserName = $1 AND HashedPassword = $2";
     const values = [username, hashedpassword];
-    return pool.query(sql, values);
+    return client.query(sql, values);
+};
+
+//コネクション返却
+//軽量で時間がかからないので同期処理
+export function userDBRelease(client: PoolClient): void {
+    client.release();
+    return;
 };
 
 //DB切断
-export function userDBDisconnect() {
-    pool.end();
+export function userDBDisconnect(): Promise<void> {
+    return pool.end(); //pool.end()はPromise<void>を返す
 };
 
