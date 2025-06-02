@@ -5,10 +5,7 @@ usermodels.tsの機能: ビジネス処理におけるDBの操作のみを提供
 
 *********************************************/
 
-import pg, { Client, Pool, PoolClient, Query, QueryResult } from "pg";
-import { randomUUID } from "crypto";
-import dotenv from "dotenv";
-import { promiseHooks } from "v8";
+import { Pool, PoolClient, QueryResult } from "pg";
 import { UserDTO } from "./userdto";
 
 //データベース接続用インスタンス
@@ -21,38 +18,61 @@ const pool = new Pool({
 });
 
 //DB接続
-export function userDBGetConnect(): Promise<PoolClient> {
-    return pool.connect();
+export async function userDBGetConnect(): Promise<PoolClient> {
+    try {
+        return await pool.connect();
+    } catch (error) {
+        console.log('DB接続エラー:', error);
+        throw new Error("DB接続に失敗しました: ${error.message}");
+    }
 };
 
 //新規登録
-export function userDBNewDataRecord(client: PoolClient, userDTO: UserDTO): Promise<QueryResult> {
-    const userId = userDTO.userId;
-    const username = userDTO.username;
-    const hashedpassword = userDTO.hashedpassword;
-    const sql = "INSERT INTO Users (UserId, UserName, HashedPassword) VALUES ($1, $2, $3)";
-    const values = [userId, username, hashedpassword];
-    return client.query(sql, values);
+export async function userDBNewDataRecord(client: PoolClient, userDTO: UserDTO): Promise<QueryResult> {
+    try{
+        const userId = userDTO.userId;
+        const username = userDTO.username;
+        const hashedpassword = userDTO.hashedpassword;
+        const sql = "INSERT INTO Users (UserId, UserName, HashedPassword) VALUES ($1, $2, $3)";
+        const values = [userId, username, hashedpassword];
+        return await client.query(sql, values);
+    } catch (error) {
+        console.log('DB接続エラー:', error);
+        throw new Error("DB登録に失敗しました: ${error.message}");
+    }
 };
 
 //ログイン用のデータ取得
-export function userDBLoginDataExtract(client: PoolClient, userDTO: UserDTO): Promise<QueryResult> { 
-    const username = userDTO.username;
-    const hashedpassword = userDTO.hashedpassword;
-    const sql ="SELECT UserId FROM users WHERE UserName = $1 AND HashedPassword = $2";
-    const values = [username, hashedpassword];
-    return client.query(sql, values);
+export async function userDBLoginDataExtract(client: PoolClient, userDTO: UserDTO): Promise<QueryResult> { 
+    try{
+        const username = userDTO.username;
+        const hashedpassword = userDTO.hashedpassword;
+        const sql ="SELECT UserId FROM users WHERE UserName = $1 AND HashedPassword = $2";
+        const values = [username, hashedpassword];
+        return await client.query(sql, values);
+    } catch (error) {
+        console.log('DB接続エラー:', error);
+        throw new Error("DB接続に失敗しました: ${error.message}");
+    }
 };
 
 //コネクション返却
-//軽量で時間がかからないので同期処理
-export function userDBRelease(client: PoolClient): void {
-    client.release();
-    return;
+export async function userDBRelease(client: PoolClient): Promise<void> {
+    try{
+        client.release();
+    } catch (error) {
+        console.log('DB接続エラー:', error);
+        throw new Error("DBコネクション返却に失敗しました: ${error.message}");
+    }
 };
 
 //DB切断
-export function userDBDisconnect(): Promise<void> {
-    return pool.end(); //pool.end()はPromise<void>を返す
+export async function userDBDisconnect(): Promise<void> {
+    try{
+        return await pool.end(); //pool.end()はPromise<void>を返す
+    } catch (error) {
+        console.log('DB接続エラー:', error);
+        throw new Error("DB切断に失敗しました: ${error.message}");
+    }
 };
 

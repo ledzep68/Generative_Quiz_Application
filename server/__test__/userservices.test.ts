@@ -1,43 +1,29 @@
-
- //usermodelsのモジュールをモック
-/*jest.mock("../users/usermodels", () => ({
-  userDBGetConnect: jest.fn().mockImplementation(() => {return MockedPool.connect()}),
-  userDBNewDataRecord: jest.fn().mockImplementation(() => Promise.resolve(MockedQueryResultToNewRecord)),
-  userDBLoginDataExtract: jest.fn().mockImplementation(() => Promise.resolve(MockedQueryResultToLogin)),
-  userDBRelease: jest.fn().mockImplementation(() => {}),
-  userDBDisconnect: jest.fn().mockImplementation(() => Promise.resolve())
-}));*/
-
-import * as supertest from "supertest";
+import pgmock, {getPool} from "pgmock2";
 //import {Client, Pool, PoolClient, Query, QueryResult} from "pg";
 import * as userServices from "../users/userservice";
-import {UserDTO} from "../users/userdto"
-import {newDb} from "pg-mem"
+import * as usermodels from "../users/usermodels";
+import {UserDTO} from "../users/userdto";
 
-const MockedDB = newDb();
-const { Pool, Client } = MockedDB.adapters.createPg();
+const MockedPG = new pgmock();
 
-const MockedPool = new Pool();
-/*const MockedPool = new Pool({
-    database: "test",
-    host: "test",
-    port: 12345,
-    user: "test",
-    password: "test"
-}) as jest.Mocked<Pool>;
-console.log(MockedPool);*/
+MockedPG.add("INSERT INTO Users (UserId, UserName, HashedPassword) VALUES ($1, $2, $3)", ["string", "string", "string"], {
+    rowCount: 0,
+    rows: []
+});
+
+MockedPG.add("SELECT UserId FROM users WHERE UserName = $1 AND HashedPassword = $2", ["string", "string"], {
+    rowCount: 1,
+    rows: [
+        { UserId: "test" }
+    ]
+}); //一致するレコードあり
+
+const MockedPool = getPool();
 
 const MockedUserDTO = new UserDTO(
     "test",
     "test",
     "test",
-    "test"
- ) as jest.Mocked<UserDTO>;
-
- const MockedUserDTOtoFail = new UserDTO(
-    undefined,
-    "test",
-    undefined,
     "test"
  ) as jest.Mocked<UserDTO>;
 
@@ -54,12 +40,14 @@ const MockedUserDTO = new UserDTO(
  } as jest.Mocked<QueryResult>;*/
 
 test("userIDGenerate", () => {
+    expect.assertions(2);
     const GeneratedId = userServices.userIdGenerate();
     expect(typeof GeneratedId).toBe("string");
     expect(GeneratedId.length).toBeGreaterThan(0);
 });
 
 test("userPasswordEncrypt", () => {
+    expect.assertions(2);
     const password = 'test';
     const Hash = userServices.userPasswordEncrypt(password);
     expect(typeof Hash).toBe("string");

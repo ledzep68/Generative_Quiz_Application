@@ -1,7 +1,6 @@
-import Express from "express";
 import crypto, {randomUUID} from "crypto";
 import { userDBGetConnect, userDBNewDataRecord, userDBLoginDataExtract, userDBRelease, userDBDisconnect } from "./usermodels";
-import { PoolClient, QueryResult } from "pg";
+import { Client, PoolClient } from "pg";
 import { UserDTO } from "./userdto";
 
 //ユーザーIDの生成
@@ -17,52 +16,52 @@ export function userPasswordEncrypt(password: string) {
 };
 
 //データベースへの接続　？
-export function userDBConnect(): Promise<PoolClient> {
-    return userDBGetConnect()
-    .then((client) => {
-        return client
-    })
-    .catch((error) => {
-        console.log(error);
-        return Promise.reject(new Error("DB接続に失敗しました"));
-    });
+export async function userDBConnect(): Promise<PoolClient> {
+    try{
+        return await userDBGetConnect()
+    } catch (error) {
+        console.log("DB接続エラー", error);
+        throw new Error("DB接続に失敗しました: ${error.message}");
+    };
 };
 
 
 //ユーザー新規登録
-export function userDataRegister(client: PoolClient, userDTO: UserDTO): Promise<void> {
+export async function userDataRegister(client: PoolClient, userDTO: UserDTO): Promise<void> {
     const userId = userDTO.userId;
     const username = userDTO.username;
     const hashedpassword = userDTO.hashedpassword;
     if(userId !== undefined && username !== undefined && hashedpassword !== undefined){
-        return userDBNewDataRecord(client, userDTO)
-            .then(() => {
-                userDBRelease(client);
-                //.then()の戻り値はPromise<void>
-            })
-            .catch(() =>{
-                userDBRelease(client);
-                throw new Error("DB登録に失敗しました");
-            })
-        } else {
-        return Promise.reject(new Error("不明なエラー"));
+        try{
+            await userDBNewDataRecord(client, userDTO);
+        } catch (error) {
+            console.log("DB登録エラー", error);
+            throw new Error("DB登録に失敗しました: ${error.message}");
+        } finally {
+            await userDBRelease(client);
         }
+    } else {
+        await userDBRelease(client);
+        throw new Error("不明なエラー: ${error.message}");
+    }
 };
 
 //ログイン処理
-export function userLogin(client: PoolClient, userDTO: UserDTO): Promise<boolean> {
+export async function userLogin(client: PoolClient, userDTO: UserDTO): Promise<boolean> {
     const username = userDTO.username;
     const hashedpassword = userDTO.hashedpassword;
     if(username !== undefined && hashedpassword !== undefined) {
-        return userDBLoginDataExtract(client, userDTO)
-            .then((result) => { //正しくDBからデータ取得が行われた場合の処理
-                return result.rows.length !== 0 ? true : false; //trueならログイン成功, falseならログイン失敗
-            })
-            .catch(() => {
-                throw new Error("DB接続に失敗しました");
-            });
+        try{
+            const Result = await userDBLoginDataExtract(client, userDTO)
+            return Result.rows.length !== 0 ? true : false; //trueならログイン成功, falseならログイン失敗
+        } catch (error) {
+            console.log("DB接続エラー", error);
+            await userDBRelease(client);
+            throw new Error("DB接続に失敗しました: ${error.message}");
+        }
     } else {
-        return Promise.reject(new Error("不明なエラー")); //ユーザデータがundifinedの場合
+        await userDBRelease(client);
+        throw new Error("不明なエラー: ${error.message}"); //ユーザデータがundifinedの場合
     }
             
 };
