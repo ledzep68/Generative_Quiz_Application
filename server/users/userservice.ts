@@ -1,7 +1,8 @@
 import crypto, {randomUUID} from "crypto";
 import { userDBGetConnect, userDBNewDataRecord, userDBLoginDataExtract, userDBRelease, userDBDisconnect } from "./usermodels";
-import { Client, PoolClient } from "pg";
+import { PoolClient } from "pg";
 import { UserDTO } from "./userdto";
+import { error } from "console";
 
 //ユーザーIDの生成
 export function userIdGenerate(){
@@ -21,7 +22,7 @@ export async function userDBConnect(): Promise<PoolClient> {
         return await userDBGetConnect()
     } catch (error) {
         console.log("DB接続エラー", error);
-        throw new Error("DB接続に失敗しました: ${error.message}");
+        throw new Error(`DB接続に失敗しました`);
     };
 };
 
@@ -36,13 +37,13 @@ export async function userDataRegister(client: PoolClient, userDTO: UserDTO): Pr
             await userDBNewDataRecord(client, userDTO);
         } catch (error) {
             console.log("DB登録エラー", error);
-            throw new Error("DB登録に失敗しました: ${error.message}");
+            throw new Error(`DB登録に失敗しました`);
         } finally {
             await userDBRelease(client);
         }
     } else {
         await userDBRelease(client);
-        throw new Error("不明なエラー: ${error.message}");
+        throw new Error(`不明なエラー`);
     }
 };
 
@@ -57,11 +58,11 @@ export async function userLogin(client: PoolClient, userDTO: UserDTO): Promise<b
         } catch (error) {
             console.log("DB接続エラー", error);
             await userDBRelease(client);
-            throw new Error("DB接続に失敗しました: ${error.message}");
+            throw new Error(`DB接続に失敗しました`);
         }
     } else {
         await userDBRelease(client);
-        throw new Error("不明なエラー: ${error.message}"); //ユーザデータがundifinedの場合
+        throw new Error(`不明なエラー`); //ユーザデータがundifinedの場合
     }
             
 };

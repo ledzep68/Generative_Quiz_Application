@@ -9,5 +9,5 @@ export default {
     ...tsJestTransformCfg,
   },
   collectCoverage: true,
-  collectCoverageFrom: ["./users/userservice.ts", "./users/usermodels.ts"],
+  collectCoverageFrom: ["./users/usercontrollers.ts","./users/userservice.ts", "./users/usermodels.ts"],
 };

@@ -23,7 +23,7 @@ export async function userDBGetConnect(): Promise<PoolClient> {
         return await pool.connect();
     } catch (error) {
         console.log('DB接続エラー:', error);
-        throw new Error("DB接続に失敗しました: ${error.message}");
+        throw new Error("DB接続に失敗しました");
     }
 };
 
@@ -38,7 +38,7 @@ export async function userDBNewDataRecord(client: PoolClient, userDTO: UserDTO):
         return await client.query(sql, values);
     } catch (error) {
         console.log('DB接続エラー:', error);
-        throw new Error("DB登録に失敗しました: ${error.message}");
+        throw new Error("DB登録に失敗しました");
     }
 };
 
@@ -52,7 +52,7 @@ export async function userDBLoginDataExtract(client: PoolClient, userDTO: UserDT
         return await client.query(sql, values);
     } catch (error) {
         console.log('DB接続エラー:', error);
-        throw new Error("DB接続に失敗しました: ${error.message}");
+        throw new Error("DB接続に失敗しました");
     }
 };
 
@@ -62,7 +62,7 @@ export async function userDBRelease(client: PoolClient): Promise<void> {
         client.release();
     } catch (error) {
         console.log('DB接続エラー:', error);
-        throw new Error("DBコネクション返却に失敗しました: ${error.message}");
+        throw new Error("DBコネクション返却に失敗しました");
     }
 };
 
@@ -72,7 +72,7 @@ export async function userDBDisconnect(): Promise<void> {
         return await pool.end(); //pool.end()はPromise<void>を返す
     } catch (error) {
         console.log('DB接続エラー:', error);
-        throw new Error("DB切断に失敗しました: ${error.message}");
+        throw new Error("DB切断に失敗しました");
     }
 };
 

@@ -5,7 +5,7 @@ userdto.tsの機能: コントローラ、ビジネスロジック、モデル�
 *********************************************/
 
 export class UserDTO {
-    constructor(userId: string, username?: string, password?: string, hashedpassword?: string) {
+    constructor(userId?: string, username?: string, password?: string, hashedpassword?: string) {
         this.userId = userId;
         this.username = username;
         this.password = password;
