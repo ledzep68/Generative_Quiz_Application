@@ -7,6 +7,7 @@ usermodels.tsの機能: ビジネス処理におけるDBの操作のみを提供
 
 import { Pool, PoolClient, QueryResult } from "pg";
 import { UserDTO } from "./userdto";
+import * as userdberrors from "../errors/userdberrors";
 
 //データベース接続用インスタンス
 const pool = new Pool({
@@ -22,8 +23,8 @@ export async function userDBGetConnect(): Promise<PoolClient> {
     try {
         return await pool.connect();
     } catch (error) {
-        console.log('DB接続エラー:', error);
-        throw new Error("DB接続に失敗しました");
+        console.log('DB接続エラー (プール取得失敗):', error);
+        throw new userdberrors.DBConnectError("プールの取得に失敗しました");
     }
 };
 
@@ -37,8 +38,8 @@ export async function userDBNewDataRecord(client: PoolClient, userDTO: UserDTO):
         const values = [userId, username, hashedpassword];
         return await client.query(sql, values);
     } catch (error) {
-        console.log('DB接続エラー:', error);
-        throw new Error("DB登録に失敗しました");
+        console.log('DB操作エラー (INSERT):', error);
+        throw new userdberrors.DBOperationError("ユーザーデータの挿入に失敗しました");
     }
 };
 
@@ -51,8 +52,8 @@ export async function userDBLoginDataExtract(client: PoolClient, userDTO: UserDT
         const values = [username, hashedpassword];
         return await client.query(sql, values);
     } catch (error) {
-        console.log('DB接続エラー:', error);
-        throw new Error("DB接続に失敗しました");
+        console.log('DB操作エラー (SELECT):', error);
+        throw new userdberrors.DBOperationError("ユーザーデータの検索に失敗しました");
     }
 };
 
@@ -61,8 +62,8 @@ export async function userDBRelease(client: PoolClient): Promise<void> {
     try{
         client.release();
     } catch (error) {
-        console.log('DB接続エラー:', error);
-        throw new Error("DBコネクション返却に失敗しました");
+        console.log('DB接続エラー (プール返却失敗):', error);
+        throw new userdberrors.DBConnectError("プールの返却に失敗しました");
     }
 };
 
@@ -71,8 +72,8 @@ export async function userDBDisconnect(): Promise<void> {
     try{
         return await pool.end(); //pool.end()はPromise<void>を返す
     } catch (error) {
-        console.log('DB接続エラー:', error);
-        throw new Error("DB切断に失敗しました");
+        console.log('DB接続エラー (プール終了失敗):', error);
+        throw new userdberrors.DBConnectError("DBプールの終了に失敗しました");
     }
 };
 

@@ -25,7 +25,7 @@
             <div class='fl pad1y space-right2'>
                 <span class="strong">0% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>0/36</span>
+                <span class='fraction'>0/37</span>
             </div>
         
             
@@ -46,7 +46,7 @@
             <div class='fl pad1y space-right2'>
                 <span class="strong">0% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>0/36</span>
+                <span class='fraction'>0/37</span>
             </div>
         
             
@@ -141,7 +141,8 @@
 <a name='L76'></a><a href='#L76'>76</a>
 <a name='L77'></a><a href='#L77'>77</a>
 <a name='L78'></a><a href='#L78'>78</a>
-<a name='L79'></a><a href='#L79'>79</a></td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
+<a name='L79'></a><a href='#L79'>79</a>
+<a name='L80'></a><a href='#L80'>80</a></td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -150,6 +151,7 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
@@ -228,6 +230,7 @@ usermodels.tsの機能: ビジネス処理におけるDBの操作のみを提供
 &nbsp;
 <span class="cstat-no" title="statement not covered" >import { Pool, PoolClient, QueryResult } from "pg";</span>
 import { UserDTO } from "./userdto";
+<span class="cstat-no" title="statement not covered" >import * as userdberrors from "../errors/userdberrors";</span>
 &nbsp;
 //データベース接続用インスタンス
 const pool = <span class="cstat-no" title="statement not covered" >new Pool({</span>
@@ -243,8 +246,8 @@ const pool = <span class="cstat-no" title="statement not covered" >new Pool({</s
 <span class="cstat-no" title="statement not covered" >    try {</span>
 <span class="cstat-no" title="statement not covered" >        return await pool.connect();</span>
     } catch (error) {
-<span class="cstat-no" title="statement not covered" >        console.log('DB接続エラー:', error);</span>
-<span class="cstat-no" title="statement not covered" >        throw new Error("DB接続に失敗しました");</span>
+<span class="cstat-no" title="statement not covered" >        console.log('DB接続エラー (プール取得失敗):', error);</span>
+<span class="cstat-no" title="statement not covered" >        throw new userdberrors.DBConnectError("プールの取得に失敗しました");</span>
     }
 };
 &nbsp;
@@ -258,8 +261,8 @@ const pool = <span class="cstat-no" title="statement not covered" >new Pool({</s
         const values = <span class="cstat-no" title="statement not covered" >[userId, username, hashedpassword];</span>
 <span class="cstat-no" title="statement not covered" >        return await client.query(sql, values);</span>
     } catch (error) {
-<span class="cstat-no" title="statement not covered" >        console.log('DB接続エラー:', error);</span>
-<span class="cstat-no" title="statement not covered" >        throw new Error("DB登録に失敗しました");</span>
+<span class="cstat-no" title="statement not covered" >        console.log('DB操作エラー (INSERT):', error);</span>
+<span class="cstat-no" title="statement not covered" >        throw new userdberrors.DBOperationError("ユーザーデータの挿入に失敗しました");</span>
     }
 };
 &nbsp;
@@ -272,8 +275,8 @@ const pool = <span class="cstat-no" title="statement not covered" >new Pool({</s
         const values = <span class="cstat-no" title="statement not covered" >[username, hashedpassword];</span>
 <span class="cstat-no" title="statement not covered" >        return await client.query(sql, values);</span>
     } catch (error) {
-<span class="cstat-no" title="statement not covered" >        console.log('DB接続エラー:', error);</span>
-<span class="cstat-no" title="statement not covered" >        throw new Error("DB接続に失敗しました");</span>
+<span class="cstat-no" title="statement not covered" >        console.log('DB操作エラー (SELECT):', error);</span>
+<span class="cstat-no" title="statement not covered" >        throw new userdberrors.DBOperationError("ユーザーデータの検索に失敗しました");</span>
     }
 };
 &nbsp;
@@ -282,8 +285,8 @@ const pool = <span class="cstat-no" title="statement not covered" >new Pool({</s
 <span class="cstat-no" title="statement not covered" >    try{</span>
 <span class="cstat-no" title="statement not covered" >        client.release();</span>
     } catch (error) {
-<span class="cstat-no" title="statement not covered" >        console.log('DB接続エラー:', error);</span>
-<span class="cstat-no" title="statement not covered" >        throw new Error("DBコネクション返却に失敗しました");</span>
+<span class="cstat-no" title="statement not covered" >        console.log('DB接続エラー (プール返却失敗):', error);</span>
+<span class="cstat-no" title="statement not covered" >        throw new userdberrors.DBConnectError("プールの返却に失敗しました");</span>
     }
 };
 &nbsp;
@@ -292,8 +295,8 @@ const pool = <span class="cstat-no" title="statement not covered" >new Pool({</s
 <span class="cstat-no" title="statement not covered" >    try{</span>
 <span class="cstat-no" title="statement not covered" >        return await pool.end(); </span>//pool.end()はPromise&lt;void&gt;を返す
     } catch (error) {
-<span class="cstat-no" title="statement not covered" >        console.log('DB接続エラー:', error);</span>
-<span class="cstat-no" title="statement not covered" >        throw new Error("DB切断に失敗しました");</span>
+<span class="cstat-no" title="statement not covered" >        console.log('DB接続エラー (プール終了失敗):', error);</span>
+<span class="cstat-no" title="statement not covered" >        throw new userdberrors.DBConnectError("DBプールの終了に失敗しました");</span>
     }
 };
 &nbsp;
@@ -304,7 +307,7 @@ const pool = <span class="cstat-no" title="statement not covered" >new Pool({</s
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2025-06-04T12:08:05.379Z
+                at 2025-06-09T12:40:53.781Z
             </div>
         <script src="prettify.js"></script>
         <script>

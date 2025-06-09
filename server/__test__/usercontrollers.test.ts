@@ -1,33 +1,247 @@
-import * as supertest from "supertest";
-import * as express from "express";
 import {userLoginController, userRegisterController} from "../users/usercontrollers";
-import usersRouter from "../users/userroutes";
+import pgmock, {getPool} from "pgmock2";
+import { PoolClient } from "pg";
+import { userIdGenerate, userPasswordEncrypt, userDataRegister, userLogin, userDBConnect } from "../users/userservice";
+import { UserDTO } from "../users/userdto";
+import * as UserResponse from "../users/usersjson";
+import { Request, Response } from 'express';
+import * as userdberrors from "../errors/userdberrors";
 
 jest.mock('../users/userservice', () => ({
-  userPasswordEncrypt: jest.fn(() => 'hashed'),
-  userIdGenerate: jest.fn(() => '12345'),
-  userDBConnect: jest.fn(),
-  userDataRegister: jest.fn(() => Promise.resolve()),
-  userLogin: jest.fn(() => Promise.resolve(true))
+  userPasswordEncrypt: jest.fn().mockImplementation((password: string) => {return "hashedtest"}),
+  userIdGenerate: jest.fn().mockImplementation(() => {return "0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11"}),
+  userDBConnect: jest.fn().mockImplementation(() => {return MockedPool.connect()}),
+  userDataRegister: jest.fn().mockImplementation((MockedClient: PoolClient, MockedUserDTO: jest.Mocked<UserDTO>) => {return true}),
+  userLogin: jest.fn().mockImplementation((MockedClient: PoolClient, MockedUserDTO: jest.Mocked<UserDTO>) => {return true})
 }));
 
+const MockedPG = new pgmock();
+const MockedPool = getPool(MockedPG);
 
-test("test1", () => {
-    const req = {
-        body: {
-            username: "test",
-            password: "test"
-        }
-    } as express.Request;
-    userLoginController(req, {} as express.Response);
+const MockedReq = {
+    body: {
+        username: "testusername",
+        password: "12345UserTest"
+    }
+} as Request;
+
+const MockedReqToFail = {
+    body: {
+        username: 12345,
+        password: "12345UserTest"
+    }
+} as Request;
+
+const MockedRes = {
+    status: jest.fn().mockReturnThis(),
+    json: jest.fn().mockReturnThis(),
+    send: jest.fn().mockReturnThis(),
+} as unknown as Response; //「どのメソッドが、どの引数で呼ばれたか」を記録するだけ　実際のレスポンスは返さない
+
+test("userRegisterController_resolve", async () => {
+    expect.assertions(3);
+    const MockedHashedPassword = userPasswordEncrypt("test");
+    const MockedUserID = userIdGenerate();
+    const MockedUserDTO = new UserDTO(
+        MockedUserID,
+        MockedReq.body.username,
+        MockedReq.body.password,
+        MockedHashedPassword
+    ) as jest.Mocked<UserDTO>;
+    const MockedClient = await userDBConnect();
+    await userDataRegister(MockedClient, MockedUserDTO);
+    const userDataRegisterContTest = await userRegisterController(MockedReq, MockedRes);
+    expect(userDataRegisterContTest).toBe(void 0);
+    expect(MockedRes.status).toHaveBeenCalledWith(200); //MockedRes.statusが引数200で呼ばれたか
+    expect(MockedRes.json).toHaveBeenCalledWith(
+        expect.objectContaining(UserResponse.UserResponses.USER_REGISTER_SUCCESS)
+    ); //MockedRes.jsonがUserResponse.UserResponses.USER_REGISTER_SUCCESSを含むオブジェクトを引数として呼ばれたか
 });
 
-test("test2", () => {
-    const req = {
-        body: {
-            username: "test",
-            password: "test"
-        }
-    } as express.Request;
-    userRegisterController(req, {} as express.Response);
+test("userRegisterController_reject_ValidationErr", async () => {
+    expect.assertions(3);
+    const MockedHashedPassword = userPasswordEncrypt("test");
+    const MockedUserID = userIdGenerate();
+    const MockedUserDTO = new UserDTO(
+        MockedUserID,
+        MockedReqToFail.body.username,
+        MockedReqToFail.body.password,
+        MockedHashedPassword
+    ) as jest.Mocked<UserDTO>;
+    
+    const userDataRegisterContTest = await userRegisterController(MockedReqToFail, MockedRes);
+    expect(userDataRegisterContTest).toBe(void 0);
+    expect(MockedRes.status).toHaveBeenCalledWith(400); 
+    expect(MockedRes.json).toHaveBeenCalledWith(
+        expect.objectContaining(UserResponse.UserResponses.VALIDATION_FAILED)
+    ); 
+});
+
+test("userRegisterController_reject_DBOpeErr", async () => {
+    expect.assertions(3);
+    const MockedHashedPassword = userPasswordEncrypt("test");
+    const MockedUserID = userIdGenerate();
+    const MockedUserDTO = new UserDTO(
+        MockedUserID,
+        MockedReq.body.username,
+        MockedReq.body.password,
+        MockedHashedPassword
+    ) as jest.Mocked<UserDTO>;
+    const MockedClient = await userDBConnect();
+    (userDataRegister as jest.Mock).mockImplementation((MockedClient: PoolClient, MockedUserDTO: jest.Mocked<UserDTO>)=>{throw new userdberrors.DBOperationError("test")});
+    const userDataRegisterContTest = await userRegisterController(MockedReq, MockedRes);
+    expect(userDataRegisterContTest).toBe(void 0);
+    expect(MockedRes.status).toHaveBeenCalledWith(500); 
+    expect(MockedRes.json).toHaveBeenCalledWith(
+        expect.objectContaining(UserResponse.UserResponses.DB_OPERATION_ERROR)
+    );
+});
+
+test("userRegisterController_reject_DBConErr", async () => {
+    expect.assertions(3);
+    const MockedHashedPassword = userPasswordEncrypt("test");
+    const MockedUserID = userIdGenerate();
+    const MockedUserDTO = new UserDTO(
+        MockedUserID,
+        MockedReq.body.username,
+        MockedReq.body.password,
+        MockedHashedPassword
+    ) as jest.Mocked<UserDTO>;
+    (userDBConnect as jest.Mock).mockImplementation(() => {throw new userdberrors.DBConnectError("test")}); //userDBConnectの戻り値Errorに再定義⇨PoolClient返すようにするには後で再定義し直す必要あり
+    const userDataRegisterContTest = await userRegisterController(MockedReq, MockedRes);
+    expect(userDataRegisterContTest).toBe(void 0);
+    expect(MockedRes.status).toHaveBeenCalledWith(503); 
+    expect(MockedRes.json).toHaveBeenCalledWith(
+        expect.objectContaining(UserResponse.UserResponses.DB_CONNECT_ERROR)
+    );
+});
+
+test("userRegisterController_reject_unknownErr", async () => {
+    expect.assertions(3);
+    const MockedHashedPassword = userPasswordEncrypt("test");
+    const MockedUserID = userIdGenerate();
+    const MockedUserDTO = new UserDTO(
+        MockedUserID,
+        MockedReq.body.username,
+        MockedReq.body.password,
+        MockedHashedPassword
+    ) as jest.Mocked<UserDTO>;
+    (userDBConnect as jest.Mock).mockImplementation(() => {return MockedPool.connect();});
+    const MockedClient = await userDBConnect();
+    (userDataRegister as jest.Mock).mockImplementation((MockedClient: PoolClient, MockedUserDTO: jest.Mocked<UserDTO>)=>{throw new Error("test")}); 
+    const userDataRegisterContTest = await userRegisterController(MockedReq, MockedRes);
+    expect(userDataRegisterContTest).toBe(void 0);
+    expect(MockedRes.status).toHaveBeenCalledWith(500); 
+    expect(MockedRes.json).toHaveBeenCalledWith(
+        expect.objectContaining(UserResponse.UserResponses.UNKNOWN_SERVER_ERROR)
+    );
+});
+
+test("userLoginController_resolve_LoginSuccess", async () => {
+    expect.assertions(3);
+    const MockedHashedPassword = userPasswordEncrypt("test");
+    (userDBConnect as jest.Mock).mockImplementation(() => {return MockedPool.connect();});
+    const MockedClient = await userDBConnect();
+    const MockedUserDTO = new UserDTO(
+        undefined,
+        MockedReq.body.username,
+        MockedReq.body.password,
+        MockedHashedPassword
+    ) as jest.Mocked<UserDTO>;
+    await userLogin(MockedClient, MockedUserDTO);
+    const userLoginContTest = await userLoginController(MockedReq, MockedRes);
+    expect(userLoginContTest).toBe(void 0);
+    expect(MockedRes.status).toHaveBeenCalledWith(200); //MockedRes.statusが引数200で呼ばれたか
+    expect(MockedRes.json).toHaveBeenCalledWith(
+        expect.objectContaining(UserResponse.UserResponses.LOGIN_SUCCESS)
+    );
+});
+
+test("userLoginController_resolve_LoginFailed", async () => {
+    expect.assertions(3);
+    const MockedHashedPassword = userPasswordEncrypt("test");
+    const MockedClient = await userDBConnect();
+    const MockedUserDTO = new UserDTO(
+        undefined,
+        MockedReq.body.username,
+        MockedReq.body.password,
+        MockedHashedPassword
+    ) as jest.Mocked<UserDTO>;
+    (userLogin as jest.Mock).mockImplementation((MockedClient: PoolClient, MockedUserDTO: jest.Mocked<UserDTO>) => {return false});
+    const userLoginContTest = await userLoginController(MockedReq, MockedRes);
+    expect(userLoginContTest).toBe(void 0);
+    expect(MockedRes.status).toHaveBeenCalledWith(401); //MockedRes.statusが引数200で呼ばれたか
+    expect(MockedRes.json).toHaveBeenCalledWith(
+        expect.objectContaining(UserResponse.UserResponses.LOGIN_FAILED)
+    );
+});
+
+test("userLoginController_reject_ValidationErr", async () => {
+    expect.assertions(3);
+    const MockedHashedPassword = userPasswordEncrypt("test");
+    const userLoginContTest = await userLoginController(MockedReqToFail, MockedRes);
+    expect(userLoginContTest).toBe(void 0);
+    expect(MockedRes.status).toHaveBeenCalledWith(400); 
+    expect(MockedRes.json).toHaveBeenCalledWith(
+        expect.objectContaining(UserResponse.UserResponses.VALIDATION_FAILED)
+    );
+});
+
+test("userLoginController_reject_DBConErr", async () => {
+    expect.assertions(3);
+    const MockedHashedPassword = userPasswordEncrypt("test");
+    (userDBConnect as jest.Mock).mockImplementation(() => {throw new userdberrors.DBConnectError("test");});
+    //const MockedClient = await userDBConnect();
+    const MockedUserDTO = new UserDTO(
+        undefined,
+        MockedReq.body.username,
+        MockedReq.body.password,
+        MockedHashedPassword
+    ) as jest.Mocked<UserDTO>;
+    const userLoginContTest = await userLoginController(MockedReq, MockedRes);
+    expect(userLoginContTest).toBe(void 0);
+    expect(MockedRes.status).toHaveBeenCalledWith(503); 
+    expect(MockedRes.json).toHaveBeenCalledWith(
+        expect.objectContaining(UserResponse.UserResponses.DB_CONNECT_ERROR)
+    );
+});
+
+test("userLoginController_reject_DBOpeErr", async () => {
+    expect.assertions(3);
+    const MockedHashedPassword = userPasswordEncrypt("test");
+    (userDBConnect as jest.Mock).mockImplementation(() => {return MockedPool.connect();});
+    const MockedClient = await userDBConnect();
+    const MockedUserDTO = new UserDTO(
+        undefined,
+        MockedReq.body.username,
+        MockedReq.body.password,
+        MockedHashedPassword
+    ) as jest.Mocked<UserDTO>;
+    (userLogin as jest.Mock).mockImplementation((MockedClient: PoolClient, MockedUserDTO: jest.Mocked<UserDTO>) => {throw new userdberrors.DBOperationError("test")});
+    const userLoginContTest = await userLoginController(MockedReq, MockedRes);
+    expect(userLoginContTest).toBe(void 0);
+    expect(MockedRes.status).toHaveBeenCalledWith(500); 
+    expect(MockedRes.json).toHaveBeenCalledWith(
+        expect.objectContaining(UserResponse.UserResponses.DB_OPERATION_ERROR)
+    );
+});
+
+test("userLoginController_reject_unknownErr", async () => {
+    expect.assertions(3);
+    const MockedHashedPassword = userPasswordEncrypt("test");
+    (userDBConnect as jest.Mock).mockImplementation(() => {return MockedPool.connect();});
+    const MockedClient = await userDBConnect();
+    const MockedUserDTO = new UserDTO(
+        undefined,
+        MockedReq.body.username,
+        MockedReq.body.password,
+        MockedHashedPassword
+    ) as jest.Mocked<UserDTO>;
+    (userLogin as jest.Mock).mockImplementation((MockedClient: PoolClient, MockedUserDTO: jest.Mocked<UserDTO>) => {throw new Error("test")});
+    const userLoginContTest = await userLoginController(MockedReq, MockedRes);
+    expect(userLoginContTest).toBe(void 0);
+    expect(MockedRes.status).toHaveBeenCalledWith(500); 
+    expect(MockedRes.json).toHaveBeenCalledWith(
+        expect.objectContaining(UserResponse.UserResponses.UNKNOWN_SERVER_ERROR)
+    );
 });

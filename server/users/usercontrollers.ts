@@ -1,53 +1,61 @@
+/*********************************************
+
+usercontrollers.tsの機能:
+    ・ユーザーの新規登録とログイン処理の実行（ビジネスロジックのオーケストレーション）
+    ・入力されたHTTPリクエストのバリデーション（zod）
+
+*********************************************/
+
 import { Request, Response } from "express";
 import { userPasswordEncrypt, userIdGenerate, userDataRegister, userDBConnect, userLogin } from "./userservice";
 import { UserDTO } from "./userdto";
+import { UserResponses } from "./usersjson";
+import { userRegisterBusinessErrorHandler, userLoginBusinessErrorHandler } from "../errors/errorhandlers";
+import * as userschema from "./userschema";
+import { z } from "zod";
 
 //ユーザー新規登録処理
 export async function userRegisterController(req: Request, res: Response): Promise<void> {
-    //引数：reqのbody中とユーザー名とパスワード 
-    //戻り値：無し
-    //子モジュール：userdataregister userdataencrypt userIdgenerate
-    //ユーザー名とパスワードをPOSTrequestのメッセージヘッダのボディから取得
-    //ユーザーIDをuserIdgenerateモジュールで自動生成
-    //パスワードはuserdataencryptモジュールでハッシュ化しDBに登録
-        //ハッシュアルゴリズム cryptoモジュールを使用し、SHA-256アルゴリズムを使用してハッシュ化
-    //userdatarecordにユーザーIDとハッシュ化パスワードを渡してDB登録
-    //userIdduplicatedetection モジュールを使用し、ユーザーIDの重複を検出
-
     try{
         const { username, password } = req.body;
 
-        //バリデーション
-        if(typeof username!=='string' && password!=='string') {
-            res.status(400).send('無効な入力形式です');
-            return;
-        };
+        //バリデーション 失敗時z.ZodErrorをthrow
+        const ValidatedData = userschema.UserRegisterValidationSchema.parse({username, password});
+
+        //passwordをハッシュ化　失敗時ValidationErrorをthrow
+        const hashedpassword = userPasswordEncrypt(ValidatedData.password);
 
         //ユーザーID生成
         const userId = userIdGenerate();
 
         //UserDTOにマッピング
-        const userDTO = new UserDTO(userId, username, password);
+        const userDTO = new UserDTO(userId, ValidatedData.username, ValidatedData.password, hashedpassword);
 
-        //passwordをハッシュ化
-        if(userDTO.password !== undefined){
-            const hashedpassword = userPasswordEncrypt(userDTO.password);
-            userDTO.hashedpassword = hashedpassword;
-        };
-
-        //DB接続　poolからコネクションを払い出してデータ登録
-        const client = await userDBConnect();
-        const result = await userDataRegister(client, userDTO)
-        result === void 0 ?
-            res.status(200).send('登録完了') 
-            : res.status(400).send('登録失敗');
+        //DB接続　poolからコネクションを払い出す
+        const client = await userDBConnect(); //失敗時DBCOnnectErrorをthrow
+        //ユーザー新規登録
+        const result = await userDataRegister(client, userDTO) //失敗時DBOperationError OR ValidationErrorをthrow
+        res.status(200).json(UserResponses.USER_REGISTER_SUCCESS);
+        console.log("ユーザー新規登録成功");
         return;
-    } catch(error) {
-        console.log(error);
-        res.status(500).send('登録失敗 サーバーエラー');
-        return;
-    }
-        
+    } catch (error) {
+        if(error instanceof z.ZodError){ //入力値のバリデーション
+            console.log("入力値のバリデーションエラー:", error.issues)
+            res.status(UserResponses.VALIDATION_FAILED.status).json({
+                ...UserResponses.VALIDATION_FAILED,
+                details: error.issues.map(issue => ({
+                    field: issue.path.join('.'),
+                    message: issue.message
+                }))
+            });
+            return;
+        } else { //ビジネスロジックのエラー
+            const { response } = userRegisterBusinessErrorHandler(error as Error);
+            console.log("ビジネスロジックエラー:", response);
+            res.status(response.status).json(response);
+            return;
+        }
+    }    
 };
 
 //ログイン処理
@@ -56,34 +64,38 @@ export async function userLoginController(req: Request, res: Response): Promise<
         const { username, password } = req.body;
 
         //バリデーション
-        if(typeof username!=='string' && password!=='string') {
-            res.status(400).send('無効な入力形式です');
-            return;
-        };
-
-        //UserDTOにマッピング
-        const userDTO = new UserDTO(username, password);
+        const ValidatedData = userschema.UserLoginValidationSchema.parse({username, password}); //失敗時z.ZodErrorをthrow
 
         //passwordをハッシュ化
-        if(userDTO.password !== undefined){
-            const hashedpassword = userPasswordEncrypt(userDTO.password);
-            userDTO.hashedpassword = hashedpassword;
-        };
+        const hashedpassword = userPasswordEncrypt(ValidatedData.password); //失敗時ValidationErrorをthrow
+
+        //UserDTOにマッピング
+        const userDTO = new UserDTO(undefined, ValidatedData.username, ValidatedData.password, hashedpassword);
 
         //db接続　poolからコネクションを払い出す
-        const client = await userDBConnect();
+        const client = await userDBConnect(); //失敗時DBCOnnectErrorをthrow
 
-        /*ログイン処理 true or falseを返す
-        loginresultがtrueならログイン成功 falseならログイン失敗*/
-        const loginresult = await userLogin(client, userDTO);
+        //ログイン処理
+        const loginresult = await userLogin(client, userDTO); //DB操作失敗時DBOperationError OR ValidationErrorをthrow
         loginresult === true ? 
-            res.status(200).json({message:'ログイン成功'}) 
-            : res.status(400).json({message:'ログイン失敗 ユーザー名またはパスワードが正しくありません'});
-            console.log(loginresult);
+            res.status(UserResponses.LOGIN_SUCCESS.status /*200*/).json(UserResponses.LOGIN_SUCCESS)
+            : res.status(UserResponses.LOGIN_FAILED.status /*401*/).json(UserResponses.LOGIN_FAILED);
+        console.log("ログイン判定処理が適切に完了");
         return;
     } catch (error) {
-            console.log(error);
-            res.status(500).json({error:'ログイン失敗', message: 'ログイン失敗 サーバーエラー'});
-        return;
+        if(error instanceof z.ZodError){ //入力値のバリデーション
+            console.log("入力値のバリデーションエラー:", error.issues)
+            res.status(UserResponses.VALIDATION_FAILED.status/*400*/).json({
+                ...UserResponses.VALIDATION_FAILED,
+                details: error.issues.map(issue => ({
+                    field: issue.path.join('.'),
+                    message: issue.message
+                }))
+            });
+        } else { //ビジネスロジックのエラー
+            const { response } = userLoginBusinessErrorHandler(error as Error);
+            console.log("ビジネスロジックエラー:", response);
+            res.status(response.status).json(response);
+        }
     };
 }
