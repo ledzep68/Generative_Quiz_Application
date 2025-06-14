@@ -1,6 +1,6 @@
 //APIのエンドポイントのみ定義。ロジックはcontrollersに委任
 import express from "express";
-import {userLoginController, userRegisterController} from "./usercontrollers";
+import {userLoginController, userRegisterController} from "./usercontrollers.js";
 
 const UsersRouter = express.Router();
 

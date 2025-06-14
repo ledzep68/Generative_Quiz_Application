@@ -6,8 +6,10 @@ usermodels.tsの機能: ビジネス処理におけるDBの操作のみを提供
 *********************************************/
 
 import { Pool, PoolClient, QueryResult } from "pg";
-import { UserDTO } from "./userdto";
-import * as userdberrors from "../errors/userdberrors";
+import { UserDTO } from "./userdto.js";
+import * as userdberrors from "./errors/userdberrors.js";
+import {config} from "dotenv";
+config();
 
 //データベース接続用インスタンス
 const pool = new Pool({
@@ -34,7 +36,7 @@ export async function userDBNewDataRecord(client: PoolClient, userDTO: UserDTO):
         const userId = userDTO.userId;
         const username = userDTO.username;
         const hashedpassword = userDTO.hashedpassword;
-        const sql = "INSERT INTO Users (UserId, UserName, HashedPassword) VALUES ($1, $2, $3)";
+        const sql = "INSERT INTO users (user_id, user_name, hashed_password) VALUES ($1, $2, $3)";
         const values = [userId, username, hashedpassword];
         return await client.query(sql, values);
     } catch (error) {
@@ -48,7 +50,7 @@ export async function userDBLoginDataExtract(client: PoolClient, userDTO: UserDT
     try{
         const username = userDTO.username;
         const hashedpassword = userDTO.hashedpassword;
-        const sql ="SELECT UserId FROM users WHERE UserName = $1 AND HashedPassword = $2";
+        const sql ="SELECT user_id FROM users WHERE user_name = $1 AND hashed_password = $2";
         const values = [username, hashedpassword];
         return await client.query(sql, values);
     } catch (error) {

@@ -8,9 +8,9 @@ jest.mock("../users/usermodels", () => ({
 }));//具体的な動作（引数、戻り値）は呼び出し時に指定してもいいし、ここで指定してもいい
 
 import pgmock, {getPool} from "pgmock2";
-import * as userServices from "../users/userservice";
-import * as usermodels from "../users/usermodels";
-import {UserDTO} from "../users/userdto";
+import * as userServices from "../users/userservice.js";
+import * as usermodels from "../users/usermodels.js";
+import {UserDTO} from "../users/userdto.js";
 import { PoolClient } from "pg";
 
 const MockedPG = new pgmock();

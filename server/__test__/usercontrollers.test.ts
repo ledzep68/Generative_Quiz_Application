@@ -1,11 +1,11 @@
-import {userLoginController, userRegisterController} from "../users/usercontrollers";
-import pgmock, {getPool} from "pgmock2";
+import {userLoginController, userRegisterController} from "../users/usercontrollers.js";
+import * as pgmock from "pgmock2";
 import { PoolClient } from "pg";
-import { userIdGenerate, userPasswordEncrypt, userDataRegister, userLogin, userDBConnect } from "../users/userservice";
-import { UserDTO } from "../users/userdto";
-import * as UserResponse from "../users/usersjson";
+import { userIdGenerate, userPasswordEncrypt, userDataRegister, userLogin, userDBConnect } from "../users/userservice.js";
+import { UserDTO } from "../users/userdto.js";
+import * as UserResponse from "../users/usersjson.js";
 import { Request, Response } from 'express';
-import * as userdberrors from "../errors/userdberrors";
+import * as userdberrors from "../errors/userdberrors.js";
 
 jest.mock('../users/userservice', () => ({
   userPasswordEncrypt: jest.fn().mockImplementation((password: string) => {return "hashedtest"}),
@@ -15,8 +15,8 @@ jest.mock('../users/userservice', () => ({
   userLogin: jest.fn().mockImplementation((MockedClient: PoolClient, MockedUserDTO: jest.Mocked<UserDTO>) => {return true})
 }));
 
-const MockedPG = new pgmock();
-const MockedPool = getPool(MockedPG);
+const MockedPG = new pgmock.default();
+const MockedPool = pgmock.getPool(MockedPG);
 
 const MockedReq = {
     body: {

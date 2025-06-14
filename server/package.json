@@ -4,7 +4,7 @@
   "main": "server.ts",
   "type": "module",
   "scripts": {
-    "start": "nodemon --watch quiz-transactions --watch users --watch listening-quiz-transactions --ext ts --exec ts-node server.ts",
+    "start": "nodemon --exec 'node --loader ts-node/esm server.ts'",
     "test": "jest --verbose --coverage"
   },
   "keywords": [],

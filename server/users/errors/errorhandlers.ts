@@ -1,4 +1,4 @@
-import { UserResponses } from "../users/usersjson";
+import { UserResponses } from "../users/usersjson.js";
 
 
 //Errorのnameでレスポンスを分岐
