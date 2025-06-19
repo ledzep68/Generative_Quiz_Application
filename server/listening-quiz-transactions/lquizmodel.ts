@@ -1,5 +1,5 @@
 import { Pool, PoolClient, QueryResult } from "pg";
-import { LQuestionDTO, LAnswerResultDTO } from "./lquizdto.js";
+//model用のMapperをimport
 //import * as userdberrors from "../errors/userdberrors.js";
 import {config} from "dotenv";
 config();
@@ -14,7 +14,7 @@ const pool = new Pool({
 });
 
 //DB接続
-export async function DBGetConnect(): Promise<PoolClient> {
+export async function dbGetConnect(): Promise<PoolClient> {
     try {
         return await pool.connect();
     } catch (error) {
@@ -24,7 +24,7 @@ export async function DBGetConnect(): Promise<PoolClient> {
 };
 
 //コネクションリリース
-export async function DBRelease(client: PoolClient): Promise<void> {
+export async function dbRelease(client: PoolClient): Promise<void> {
     try {
         client.release();
     } catch (error) {
@@ -34,7 +34,7 @@ export async function DBRelease(client: PoolClient): Promise<void> {
 };
 
 //正誤判定用の解答番号取得
-export async function AnswerOptionExtract(client: PoolClient, LQuestionID: string): Promise<QueryResult> { 
+export async function answerOptionExtract(client: PoolClient, LQuestionID: string): Promise<QueryResult> { 
     try{
         const sql ="SELECT answer_option FROM listening_questions WHERE l_question_id = $1";
         const values = [LQuestionID];
@@ -46,7 +46,7 @@ export async function AnswerOptionExtract(client: PoolClient, LQuestionID: strin
 };
 
 //解答データ取得
-export async function AnswerDataExtract(client: PoolClient, LQuestionID: string): Promise<QueryResult> { 
+export async function answerDataExtract(client: PoolClient, LQuestionID: string): Promise<QueryResult> { 
     try{
         const sql ="SELECT audio_script, jpn_audio_script, explanation FROM listening_questions WHERE l_question_id = $1";
         const values = [LQuestionID];
@@ -58,7 +58,7 @@ export async function AnswerDataExtract(client: PoolClient, LQuestionID: string)
 };
 
 //回答結果データ登録
-export async function AnswerResultDataInsert(client: PoolClient, LAnswerResultDTO: LAnswerResultDTO): Promise<QueryResult> {
+export async function answerResultDataInsert(client: PoolClient, LAnswerResultDTO: LAnswerResultDTO): Promise<QueryResult> {
     try{
         const lAnswerID = LAnswerResultDTO.LAnswerID
         const lQuestionId = LAnswerResultDTO.LQuestionID;
