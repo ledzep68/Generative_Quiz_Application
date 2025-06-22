@@ -19,6 +19,8 @@ export class AudioURLGenerateInfo {
     ){}
 };
 
+
+//***lquizAnswerController***/
 //クイズデータ新規DB登録用データオブジェクト
 export class LQuizData {
     constructor(
@@ -32,3 +34,34 @@ export class LQuizData {
         public duration: number
     ){}
 }
+
+//　正誤判定用ドメインオブジェクト
+export class TorFData {
+    constructor(
+        public lQuestionID: string,
+        public userAnswerOption: "A"|"B"|"C"|"D"
+    ){}
+}
+
+//回答データ新規DB登録用ドメインオブジェクト
+export class LAnswerData {
+    constructor(
+        public lAnswerID?: string,
+        public lQuestionID?: string,
+        public userID?: string,
+        public userAnswerOption?: "A"|"B"|"C"|"D",
+        public trueOrFalse?: boolean,
+        public reviewTag?: boolean,
+        public answerDate?: Date
+    ){}
+}
+
+//解答データ検索用ドメインオブジェクト
+export class AnswerScripts {
+    constructor(
+        public lQuestionID: string,
+        public audioScript: string,
+        public jpnAudioScript: string,
+        public explanation: string
+    ){}
+};

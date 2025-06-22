@@ -39,6 +39,8 @@ export class NewQuizAudioReqDTO {
         public AudioScript: string
     ){}
 }
+
+//TTS APIからの音声データres
 export class NewQuizAudioResDTO {
     constructor(
         public Audio: string,// Base64エンコードされた音声データ
@@ -48,6 +50,7 @@ export class NewQuizAudioResDTO {
     ){}
 }
 
+//既存クイズnのリクエスト
 export class ExistingLQuizReqDTO {
     constructor(
         public requestNumOfQuizs: number,
@@ -56,9 +59,25 @@ export class ExistingLQuizReqDTO {
     ){}
 }
 
-export class LQuizResDTO {
+
+//ユーザーからの回答データPOST（リクエスト）
+export class UserAnswerReqDTO {
+    constructor(
+        public lQuestionID: string, 
+        public userID: string, 
+        public userAnswerOption: "A"|"B"|"C"|"D", 
+        public answerDate: Date,
+        public reviewTag?: boolean
+    ){}
+};
+
+//ユーザーへの正誤・解答データ送信（レスポンス）
+export class UserAnswerResDTO {
     constructor(
         public lQuestionID: string,
-        public audioURL: string
+        public trueOrFalse: boolean,
+        public audioScript: string,
+        public jpnAudioScript: string,
+        public explanation: string
     ){}
 }
