@@ -4,11 +4,14 @@ lquiz.domeinobject.ts : ListeningQuizドメイン内専用オブジェクト
 
 *********************************************/
 
-//クイズ生成プロンプト作成用データ
-export class LQuizGenerateInfo {
+//クイズ情報
+export class LQuestionInfo {
     constructor(
-        public requestNumOfQuizs: number,
-        public sectionNumber: 1|2|3|4
+        public lQuestionID: string,
+        public userID: string,
+        public sectionNumber: 1|2|3|4,
+        public reviewTag: boolean,
+        public requestedNumOfQuizs?: number
     ){}
 }
 
@@ -21,11 +24,11 @@ export class AudioURLGenerateInfo {
 
 
 //***lquizAnswerController***/
-//クイズデータ新規DB登録用データオブジェクト
-export class LQuizData {
+//クイズ出題用データオブジェクト
+export class LQuestionData {
     constructor(
         public lQuestionId: string,
-        public audioAcript: string,
+        public audioScript: string,
         public jpnAudioScript: string,
         public audioURL: string,
         public answerOption: "A"|"B"|"C"|"D",
@@ -33,7 +36,7 @@ export class LQuizData {
         public explanation: string,
         public duration: number
     ){}
-}
+};
 
 //　正誤判定用ドメインオブジェクト
 export class TorFData {

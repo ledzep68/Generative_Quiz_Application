@@ -16,6 +16,17 @@ export class ValidationError extends Error implements BusinessLogicError {
     }
 };
 
+export class ChatGPTAPIError extends Error implements BusinessLogicError {
+    constructor(
+        message: string = "ChatGPT API Error",
+        public status: number = response.lQuizGenerateControllerResponses.CHATGPT_API_ERROR.status
+    ) {
+        super(message);
+        this.name = "ChatGPTAPIError";
+        this.status = status;
+    }
+};
+
 export class AnswerJudgementError extends Error implements BusinessLogicError {
     constructor(
         message: string = "正誤判定処理エラー",

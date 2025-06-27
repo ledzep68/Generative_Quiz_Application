@@ -8,36 +8,76 @@ import * as dto from "../lquiz.dto.js";
 import * as domein from "../lquiz.domeinobject.js";
 
 //service プロンプト生成モジュール用
-export class LQuizGenerateMapper {
-    static toDomainObject(reqDTO: dto.NewQuizReqDTOFromUser): domein.LQuizGenerateInfo {
+/*export class LQuizGenerateMapper {
+    static toDomainObject(reqDTO: dto.QuestionReqDTO): domein.LQuizGenerateInfo {
         return new domein.LQuizGenerateInfo(reqDTO.requestedNumOfLQuizs, reqDTO.sectionNumber);
     }
-}
+}*/
+//service 復習クイズデータID指定取得用
+export class LQuestionInfoMapper {
+    static toDomainObject(reqDTOList: dto.QuestionReqDTO[]): domein.LQuestionInfo[] {
+        return reqDTOList.map(reqDTO => new domein.LQuestionInfo(
+            reqDTO.lQuestionID, 
+            reqDTO.userID, 
+            reqDTO.sectionNumber, 
+            reqDTO.reviewTag, 
+            reqDTO.requestedNumOfLQuizs
+        ));
+    }
+};
+//service 復習クイズデータランダム取得用
+export class LQuestionRandomInfoMapper {
+    static toDomainObject(reqDTO: dto.QuestionReqDTO): domein.LQuestionInfo {
+        return new domein.LQuestionInfo(
+            reqDTO.lQuestionID, 
+            reqDTO.userID, 
+            reqDTO.sectionNumber, 
+            reqDTO.reviewTag, 
+            reqDTO.requestedNumOfLQuizs
+        );
+    }
+};
+
+//service クイズ出題用　ドメインオブジェクト→DTOへのマッピング
+export class LQuestionDataDomObjToDTOMapper {
+    static toDomainObject(domObjList: domein.LQuestionData[]): dto.QuestionResDTO[] {
+        return domObjList.map(domObj => new dto.QuestionResDTO(
+            domObj.lQuestionId,
+            domObj.audioScript,
+            domObj.jpnAudioScript,
+            domObj.audioURL,
+            domObj.answerOption,
+            domObj.sectionNumber,
+            domObj.explanation,
+            domObj.duration
+        ));
+    }
+};
 
 
 //service 正誤判定モジュール用　配列対応済
 export class TorFMapper {
-    static toDomainObject(reqDTOs: dto.UserAnswerReqDTO[]): domein.TorFData[] {
-        return reqDTOs.map(dto => new domein.TorFData(
+    static toDomainObject(reqDTOList: dto.UserAnswerReqDTO[]): domein.TorFData[] {
+        return reqDTOList.map(dto => new domein.TorFData(
             dto.lQuestionID,
-        dto.userAnswerOption
+            dto.userAnswerOption
         ));
     }
-}
+};
 
 //service 回答データ登録モジュール用 配列対応済
 export class LAnswerRecordMapper {
-    static toDomainObject(reqDTOs: dto.UserAnswerReqDTO[], TorFs: boolean[], lAnswerIDs: string[]): domein.LAnswerData[] {
+    static toDomainObject(reqDTOList: dto.UserAnswerReqDTO[], TorFList: boolean[], lAnswerIDList: string[]): domein.LAnswerData[] {
         const domObjs: domein.LAnswerData[] = [];
-        for (let i = 0; i < reqDTOs.length; i++) {
+        for (let i = 0; i < reqDTOList.length; i++) {
             domObjs.push(new domein.LAnswerData(
-                lAnswerIDs[i],
-                reqDTOs[i].lQuestionID, 
-                reqDTOs[i].userID, 
-                reqDTOs[i].userAnswerOption, 
-                reqDTOs[i].reviewTag, 
-                TorFs[i],
-                reqDTOs[i].answerDate));
+                lAnswerIDList[i],
+                reqDTOList[i].lQuestionID, 
+                reqDTOList[i].userID, 
+                reqDTOList[i].userAnswerOption, 
+                reqDTOList[i].reviewTag, 
+                TorFList[i],
+                reqDTOList[i].answerDate));
         }
         return domObjs;
     }
@@ -45,15 +85,15 @@ export class LAnswerRecordMapper {
 
 //service userAnswerResDTOへのマッピング
 export class UserAnswerResDTOMapper {
-    static toDomainObject(lQuestionID: string[], trueOrFalse: boolean[], domObj: domein.AnswerScripts[]): dto.UserAnswerResDTO[] {
+    static toDomainObject(lQuestionIDList: string[], trueOrFalseList: boolean[], domObjList: domein.AnswerScripts[]): dto.UserAnswerResDTO[] {
         const resDTOs: dto.UserAnswerResDTO[] = [];
-        for (let i = 0; i < lQuestionID.length; i++) {
+        for (let i = 0; i < lQuestionIDList.length; i++) {
             resDTOs.push(new dto.UserAnswerResDTO(
-                lQuestionID[i],
-                trueOrFalse[i],
-                domObj[i].audioScript,
-                domObj[i].jpnAudioScript,
-                domObj[i].explanation));
+                lQuestionIDList[i],
+                trueOrFalseList[i],
+                domObjList[i].audioScript,
+                domObjList[i].jpnAudioScript,
+                domObjList[i].explanation));
         };
         return resDTOs;
     }

@@ -8,6 +8,22 @@ import * as entity from "../lquiz.entity.js";
 import * as domein from "../lquiz.domeinobject.js";
 import { PoolClient, QueryResult } from "pg";
 
+//既存クイズデータ queryResult→domein objectへのマッピング
+export class LQuestionExtractedDataMapper {
+    static toDomainObject(queryResult: QueryResult): domein.LQuestionData[] {
+        return queryResult.rows.map(row => new domein.LQuestionData(
+            row.l_question_id,
+            row.audio_script,
+            row.jpn_audio_script,
+            row.audio_url,
+            row.answer_option,
+            row.section_number,
+            row.explanation,
+            row.duration
+        ))
+    }
+}
+
 //回答結果データ登録用のクラス　entityインターフェース
 export class InsertAnswerDataMapper {
     static toDomeinObject(domObj: domein.LAnswerData): entity.LAnswerResultEntity {

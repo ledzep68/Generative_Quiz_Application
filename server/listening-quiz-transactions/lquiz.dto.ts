@@ -5,13 +5,30 @@ lquiz.dto.ts : requestとresponse用のデータ構造定義
 
 *********************************************/
 
-//ユーザーからのクイズリクエスト
-export class NewQuizReqDTOFromUser {
+//ユーザーからのクイズリクエストスキーマ
+export class QuestionReqDTO {
     constructor(
-        public requestedNumOfLQuizs: number,
-        public sectionNumber: 1|2|3|4
+        public lQuestionID: string,
+        public userID: string,
+        public sectionNumber: 1|2|3|4,
+        public reviewTag: boolean,
+        public requestedNumOfLQuizs?: number
     ){}
-}
+};
+
+//ユーザーへのクイズレスポンススキーマ
+export class QuestionResDTO {
+    constructor(
+        public lQuestionID: string,
+        public audioScript: string,
+        public jpnAudioScript: string,
+        public audioURL: string,
+        public answerOption: "A"|"B"|"C"|"D",
+        public sectionNumber: 1|2|3|4,
+        public explanation: string,
+        public duration: number
+    ){}
+};
 
 //OpenAI APIへのクイズリクエストプロンプト
 //prompt中でresで期待するクイズデータのスキーマを指定
@@ -22,26 +39,27 @@ export class NewQuizGenerateReqDTO {
 }
 
 //OpenAI APIへからのres用のクイズデータスキーマ
-export class NewQuizResDTO {
+export class GeneratedQuestionDataResDTO {
     constructor(
-        public AudioScript: string,
-        public JPNAudioScript: string,
-        public AnswerOption: "A"|"B"|"C"|"D",
-        public SectionNumber: 1|2|3|4,
-        public Explanation: string,
-        public Duration: number
+        public audioScript: string,
+        public jpnAudioScript: string,
+        public answerOption: "A"|"B"|"C"|"D",
+        public sectionNumber: 1|2|3|4,
+        public explanation: string,
+        //public Duration: number,
+        public lQuestionID?: string
     ){}
 }
 
 //TTS APIへの音声データリクエスト
-export class NewQuizAudioReqDTO {
+export class NewAudioReqDTO {
     constructor(
-        public AudioScript: string
+        public audioScript: string
     ){}
 }
 
 //TTS APIからの音声データres
-export class NewQuizAudioResDTO {
+export class GeneratedAudioResDTO {
     constructor(
         public Audio: string,// Base64エンコードされた音声データ
         public mimeType: 'audio/mp3' | 'audio/wav' | 'audio/ogg',

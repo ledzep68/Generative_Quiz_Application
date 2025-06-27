@@ -35,11 +35,56 @@ export async function dbRelease(client: PoolClient): Promise<void> {
     }
 };
 
+//指定された問題番号の既存問題のIDをlistening_answer_resultsから取得
+export async function answeredQuestionIdSelect(client: PoolClient, domObjList: domein.LQuestionInfo[]): Promise<QueryResult> {
+    try{
+        //lQuestionIDのみ、プレースホルダーを動的に生成
+        const placeholders = domObjList.map((_, index) => `$${index + 2}`).join(', ');
+        const sql = 
+            `
+            SELECT DISTINCT ON (l_question_id) l_question_id
+            FROM listening_answer_results 
+            WHERE user_id = $1 AND l_question_id IN (${placeholders})
+            ORDER BY l_question_id, created_at DESC;
+            `;
+        const values = [domObjList[0].userID, ...[domObjList.flatMap(domObj => domObj.lQuestionID)]];
+        return await client.query(sql, values);
+    } catch (error) {
+        console.log('DB操作エラー (SELECT):', error);
+        throw new dberror.DBOperationError("問題データの検索に失敗しました");
+    }
+};
+//nsweredQuestionIdSelectで取得した問題IDと一致する問題をlistening_questionsから取得
+export async function answeredQuestionDataSelect(client: PoolClient, domObjList: domein.LQuestionInfo[]): Promise<QueryResult> {
+    try{
+        //lQuestionIDのみ、プレースホルダーを動的に生成
+        const placeholders = domObjList.map((_, index) => `$${index + 1}`).join(', ');
+        const sql = `SELECT * FROM listening_questions WHERE l_question_id IN (${placeholders})`;
+        const values = [domObjList.flatMap(domObj => domObj.lQuestionID)];
+        return await client.query(sql, values);
+    } catch (error) {
+        console.log('DB操作エラー (SELECT):', error);
+        throw new dberror.DBOperationError("問題データの検索に失敗しました");
+    }
+};
+
+//既存問題データをlistening_questionsから「ランダム」に取得
+export async function answeredQuestionDataRandomSelect(client: PoolClient, domObj: domein.LQuestionInfo): Promise<QueryResult> {
+    try{
+        const sql = `SELECT * FROM listening_questions WHERE review_tag = true AND section_number = $1 ORDER BY RANDOM() LIMIT $2`;
+        const values = [domObj.sectionNumber, domObj.requestedNumOfQuizs];
+        return await client.query(sql, values);
+    } catch (error) {
+        console.log('DB操作エラー (SELECT):', error);
+        throw new dberror.DBOperationError("問題データの検索に失敗しました");
+    }
+};
+
 //正誤判定用の解答番号取得
 export async function answerOptionExtract(client: PoolClient, lQuestionIDList: string[]): Promise<QueryResult> { 
     try{
         //プレースホルダーを動的に生成
-        const placeholders = lQuestionIDList.map((_, index) => `$${index + 1}`).join(', ');
+        const placeholders = lQuestionIDList.map((_, index) => `($${index + 1}`).join(', ');
         const sql = `SELECT l_question_id, answer_option FROM listening_questions WHERE l_question_id IN (${placeholders})`;
         const values = lQuestionIDList;
         return await client.query(sql, values);
