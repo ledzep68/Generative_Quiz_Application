@@ -12,7 +12,8 @@ export class QuestionReqDTO {
         public userID: string,
         public sectionNumber: 1|2|3|4,
         public reviewTag: boolean,
-        public requestedNumOfLQuizs?: number
+        public requestedNumOfLQuizs?: number,
+        public speakingRate?: number //発話速度
     ){}
 };
 
@@ -38,7 +39,7 @@ export class NewQuizGenerateReqDTO {
     ){}
 }
 
-//OpenAI APIへからのres用のクイズデータスキーマ
+//OpenAI APIからのres用のクイズデータスキーマ
 export class GeneratedQuestionDataResDTO {
     constructor(
         public audioScript: string,
@@ -46,15 +47,17 @@ export class GeneratedQuestionDataResDTO {
         public answerOption: "A"|"B"|"C"|"D",
         public sectionNumber: 1|2|3|4,
         public explanation: string,
-        //public Duration: number,
         public lQuestionID?: string
     ){}
-}
+};
 
 //TTS APIへの音声データリクエスト
 export class NewAudioReqDTO {
     constructor(
-        public audioScript: string
+        public lQuestionID: string,
+        public audioScript: string,
+        public speakerAccent: 'American' | 'British' | 'Canadian' | 'Australian',
+        public speakingRate: number
     ){}
 }
 

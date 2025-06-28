@@ -11,7 +11,9 @@ export class LQuestionInfo {
         public userID: string,
         public sectionNumber: 1|2|3|4,
         public reviewTag: boolean,
-        public requestedNumOfQuizs?: number
+        public requestedNumOfQuizs?: number,
+        public speakerAccent?: 'American' | 'British' | 'Canadian' | 'Australian',
+        public speakingRate?: number
     ){}
 }
 
@@ -21,7 +23,6 @@ export class AudioURLGenerateInfo {
         public fileName: string
     ){}
 };
-
 
 //***lquizAnswerController***/
 //クイズ出題用データオブジェクト
