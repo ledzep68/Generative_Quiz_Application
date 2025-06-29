@@ -22,10 +22,11 @@ import { z } from "zod";
 
 
 //sectionNumberランダム選択関数
-export function sectionNumberRandomSelect(): 1|2|3|4[] {
-    const sectionNumber = Math.floor(Math.random() * 4) + 1;
-    return sectionNumber
-}
+export function sectionNumberRandomSelect(requestedNumOfLQuizs: number): number[] {
+    const sectionNumber = Math.floor(Math.random() * 4) + 1; 
+    const sectionNumberList = Array.from({ length: requestedNumOfLQuizs }, () => sectionNumber);
+    return sectionNumberList
+};
 
 //問題IDの生成
 export function lQuestionIDGenerate(requestedNumOfLQuizs: number): UUID[] {

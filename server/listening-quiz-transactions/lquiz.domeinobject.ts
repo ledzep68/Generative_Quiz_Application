@@ -24,6 +24,14 @@ export class AudioURLGenerateInfo {
     ){}
 };
 
+//音声URLデータ
+export interface AudioURL {
+    lQuestionID: string;
+    audioFilePath: string;
+    audioURL: string;
+    duration: number;
+}
+
 //***lquizAnswerController***/
 //クイズ出題用データオブジェクト
 export class LQuestionData {

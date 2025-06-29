@@ -10,12 +10,17 @@ lquizapiservice.tsの機能:
 import * as domein from "../lquiz.domeinobject.js";
 import * as dto from "../lquiz.dto.js";
 import * as businesserror from "../errors/lquiz.businesserrors.js";
+import * as apierror from "../errors/lquiz.apierrors.js";
 import fetch from "node-fetch";
 import * as schema from "../schemas/lquizapischema.js";
 import { z } from "zod";
 import { TextToSpeechClient } from '@google-cloud/text-to-speech';
 //import { google } from '@google-cloud/text-to-speech/build/protos/protos';
 import {GoogleAuth} from "google-auth-library";
+import { spawn } from 'child_process'; //ライブラリを通さず、直接他プログラムを実行するためのライブラリ
+import fs from "fs/promises"; //音声バッファデータをローカルファイルに書き込むためのライブラリ
+import path from "path";
+import os from "os";
 
 //発話パターン定義
 export const ACCENT_PATTERNS = {
@@ -280,12 +285,12 @@ export async function callChatGPT(prompt: string): Promise<dto.GeneratedQuestion
     } catch (error) {
         if (error instanceof z.ZodError) {
             console.error(`OpenAI APIから予期しない形式のレスポンスを受信しました:`, error);
-            throw new businesserror.ChatGPTAPIError(`OpenAI APIから予期しない形式のレスポンスを受信しました: ${error.message}`);
-        }else if (error instanceof businesserror.ChatGPTAPIError) {
+            throw new apierror.ChatGPTAPIError(`OpenAI APIから予期しない形式のレスポンスを受信しました: ${error.message}`);
+        }else if (error instanceof apierror.ChatGPTAPIError) {
             throw error; // 既知のビジネスエラーはそのまま
         } else {
         console.error('Unexpected ChatGPT API Error:', error);
-        throw new businesserror.ChatGPTAPIError('ChatGPT APIとの通信で予期しないエラーが発生しました');
+        throw new apierror.ChatGPTAPIError('ChatGPT APIとの通信で予期しないエラーが発生しました');
         }
     }
 };
@@ -328,7 +333,7 @@ export const TTS_VOICE_CONFIG = {
             { name: 'en-AU-Neural2-D', gender: 'MALE' }
         ]
     }
-} as const; //リテラル型の保持、readonlyによる値の変更防止によって設定値の予期しない変更を防ぎ、より厳密な型チェックが可能になる
+} as const; //リテラル型の保持、readonlyによる値の変更防止 によって設定値の予期しない変更を防ぎ、より厳密な型チェックが可能になる
 
 /*SSML生成モジュール
 引数：
@@ -393,6 +398,7 @@ export class TOEICSSMLGenerator {
 `; //<mark>音声分割に必要なタグ
     }
 
+    //XMLの特殊文字として解釈される文字をエスケープする
     private static escapeSSML(text: string): string {
         return text
             .replace(/&/g, '&amp;')
@@ -400,36 +406,20 @@ export class TOEICSSMLGenerator {
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&apos;');
-    } //XMLの特殊文字として解釈される文字を、XMLの特殊文字として解釈しないようにエスケープする
-}
+    } 
+};
 
 /*fetchモジュール
 引数：SSML
 動作：fetch
-戻り値：問題数分の音声データ
-*/
-export interface AudioSegment {
-    questionId: string;
-    audioData: Buffer;
-    startTime: number;    // 秒
-    duration: number;     // 秒
-    format: 'mp3' | 'wav';
-}
+戻り値：問題数分の音声データ*/
 
-export interface TTSResponse {
-    success: boolean;
-    audioSegments: AudioSegment[];
-    totalDuration: number;
-    fullAudioData: Buffer;
-    error?: string;
-}
-
-//Google Cloud TTSで音声生成
-export async function callGoogleCloudTTS(ssml: string): Promise<TTSResponse> {
+//Google Cloud TTSで音声生成 音声を取得し、URLを返す
+export async function callGoogleCloudTTS(ssml: string, lQuestionIDList: string[]): Promise<domein.AudioURL[]> {
     try {
         // 環境変数チェック
         if (!process.env.GOOGLE_APPLICATION_CREDENTIALS) {
-            throw new Error('GOOGLE_APPLICATION_CREDENTIALS環境変数が設定されていません');
+            throw new apierror.EnvironmentConfigError('GOOGLE_APPLICATION_CREDENTIALS環境変数が設定されていません');
         };
 
         // SSML検証
@@ -450,16 +440,10 @@ export async function callGoogleCloudTTS(ssml: string): Promise<TTSResponse> {
                 input: {
                     ssml: ssml //ssmlのみを単一のソースとする（Single Source Of Truth）
                 },
-                /*voice: {
-                    languageCode: extractLanguageCodeFromSSML(ssml),
-                    name: extractVoiceNameFromSSML(ssml),
-                    ssmlGender: 'NEUTRAL'
-                },*/
                 audioConfig: {
                     audioEncoding: 'MP3',
                     sampleRateHertz: 24000,
                     volumeGainDb: 0.0,
-                    /*speakingRate: extractSpeakingRateFromSSML(ssml),*/
                     pitch: 0.0
                 },
                 enableTimePointing: ['SSML_MARK'] // 時間情報取得用
@@ -470,146 +454,290 @@ export async function callGoogleCloudTTS(ssml: string): Promise<TTSResponse> {
         if (!response.ok) {
             const errorText = await response.text();
             console.error('TTS API Error:', response.status, errorText);
-            throw new Error(`TTS API Error: ${response.status} ${response.statusText}`);
+            throw new apierror.GoogleTTSAPIError(`TTS API Error: ${response.status} ${response.statusText}`);
         }
 
         const data = schema.GoogleTTSResponseSchema.parse(await response.json());
         
         if (!data.audioContent) {
-            throw new Error('音声コンテンツが生成されませんでした');
-        }
+            throw new apierror.GoogleTTSAPIError('音声コンテンツが生成されませんでした');
+        };
 
         // Base64デコード
         const fullAudioBuffer = Buffer.from(data.audioContent, 'base64');
         
         // 問題毎に音声を分割
-        const audioSegments = await splitAudioByQuestions(
+        const audioURLList = await splitAudioByQuestions(
             fullAudioBuffer, 
-            ssml,
-            data.timepoints || []
+            data.timepoints || [],
+            lQuestionIDList
         );
 
-        const totalDuration = audioSegments.reduce((sum, segment) => sum + segment.duration, 0);
+        const totalDuration = audioURLList.reduce((sum, segment) => sum + segment.duration, 0);
 
-        console.log(`音声生成完了: ${audioSegments.length}問, 総時間: ${totalDuration}秒`);
+        console.log(`音声生成完了: ${audioURLList.length}問, 総時間: ${totalDuration}秒`);
 
-        return {
-            success: true,
-            audioSegments,
-            totalDuration,
-            fullAudioData: fullAudioBuffer
-        };
+        return audioURLList;
 
     } catch (error) {
         console.error('TTS API呼び出しエラー:', error);
-        return {
-            success: false,
-            audioSegments: [],
-            totalDuration: 0,
-            fullAudioData: Buffer.alloc(0),
-            error: error instanceof Error ? error.message : 'TTS API呼び出しエラー'
-        };
-    }
-}
-
-
-
-//SSMLの構造検証
-function validateSSML(ssml: string): void {
-    if (!ssml || ssml.trim().length === 0) {
-        throw new Error('SSMLが空です');
-    }
-
-    if (!ssml.includes('<speak>') || !ssml.includes('</speak>')) {
-        throw new Error('無効なSSML形式です');
-    }
-
-    /*if (ssml.length > 100000) {
-        throw new Error('SSMLが長すぎます（100,000文字以下）');
-    }*/
-
-    // XML形式の基本チェック
-    try {
-        // 簡易的なXML構文チェック
-        const openTags = (ssml.match(/<[^/][^>]*>/g) || []).length;
-        const closeTags = (ssml.match(/<\/[^>]*>/g) || []).length;
-        const selfCloseTags = (ssml.match(/<[^>]*\/>/g) || []).length;
-        
-        if (openTags !== closeTags + selfCloseTags) {
-            throw new Error('SSML構文エラー: タグの開始と終了が一致しません');
+        if (error instanceof apierror.GoogleTTSAPIError || 
+            error instanceof apierror.EnvironmentConfigError ||
+            error instanceof apierror.SSMLValidationError ||
+            error instanceof apierror.AudioProcessingError) {
+            throw error;
         }
-    } catch (error) {
-        throw new Error(`SSML構文エラー: ${error}`);
+        throw new apierror.GoogleTTSAPIError(`TTS API呼び出しエラー: ${error}`);
     }
-}
+};
 
-//音声データを問題毎に分割
+//SSMLの構造検証（TOEIC音声生成専用 - 簡略版）
+function validateSSML(ssml: string): void {
+    // 1. 基本チェック
+    if (!ssml || ssml.trim().length === 0) {
+        throw new apierror.SSMLValidationError('SSMLが空です');
+    }
+
+    // 2. 必須要素の確認
+    if (!ssml.includes('<speak') || !ssml.includes('</speak>')) {
+        throw new apierror.SSMLValidationError('speak要素が見つかりません');
+    }
+
+    // 3. 音声分割用markタグの検証（最重要）
+    const markTags = ssml.match(/<mark\s+name="q\d+_(start|end)"\s*\/>/g) || [];
+    const startMarks = markTags.filter(tag => tag.includes('_start'));
+    const endMarks = markTags.filter(tag => tag.includes('_end'));
+
+    if (startMarks.length === 0) {
+        throw new apierror.SSMLValidationError('問題分割用のstartマークが見つかりません');
+    }
+
+    if (startMarks.length !== endMarks.length) {
+        throw new apierror.SSMLValidationError(`markタグのペアが不正です (start: ${startMarks.length}, end: ${endMarks.length})`);
+    }
+
+    // 4. 問題数制限
+    if (startMarks.length > 10) {
+        throw new apierror.SSMLValidationError(`問題数が上限を超えています (最大10問, 実際: ${startMarks.length}問)`);
+    }
+
+    console.log(`SSML検証完了: ${startMarks.length}問題`);
+};
+
+// markタグの順序検証（必要時のみ呼び出し）
+function validateMarkTagOrder(ssml: string, questionCount: number): void {
+    for (let i = 1; i <= questionCount; i++) {
+        const startPattern = `<mark name="q${i}_start"/>`;
+        const endPattern = `<mark name="q${i}_end"/>`;
+
+        const startIndex = ssml.indexOf(startPattern);
+        const endIndex = ssml.indexOf(endPattern);
+
+        if (startIndex === -1 || endIndex === -1) {
+            throw new apierror.SSMLValidationError(`問題${i}のmarkタグペアが見つかりません`);
+        }
+
+        if (startIndex >= endIndex) {
+            throw new apierror.SSMLValidationError(`問題${i}のmarkタグの順序が不正です`);
+        }
+    }
+};
+
+//音声データを問題毎に分割し保存　
+// 引数: 音声データ、時間情報、識別子
+// 戻り値: 保存した音声のURLリスト
 async function splitAudioByQuestions(
     audioBuffer: Buffer, //Base64でエンコードされた音声データ　未分割
     timepoints: Array<{ markName: string; timeSeconds: number }>, //時間情報　どこで切るかの指定
     lQuestionIDList: string[] //分割した各問題に付与する識別子
-): Promise<AudioSegment[]> {
+): Promise<domein.AudioURL[]> {
+    // 配列の長さが整合するか確認
+    if(timepoints.length !== lQuestionIDList.length) {
+        throw new apierror.AudioProcessingError('問題数と時間範囲の数が整合しません');
+    };
+
+    const ffmpegStatic = await import('ffmpeg-static');  // 動的import モジュール実行タイミングのみ読み込み
+    const ffmpegPath = ffmpegStatic.default;
+    
+    // 型安全な確認
+    if (typeof ffmpegPath !== 'string' || !ffmpegPath) {
+        throw new apierror.FFmpegError('ffmpeg-static did not return a valid path');
+    };
+
     // 1. timepoints をペアにグループ化
-    const questionTimeRanges = extractQuestionTimeRanges(timepoints);
+    const questionTimeRangeList = extractQuestionTimeRangeList(timepoints);
     
     // 2. 各時間範囲で音声を分割
-    const segments: AudioSegment[] = [];
+    const audioURLList: domein.AudioURL[] = [];
     
-    for (let i = 0; i < questionTimeRanges.length; i++) {
-        const { startTime, endTime } = questionTimeRanges[i];
-        const questionId = lQuestionIDList[i];
-        
-        // 3. 音声切り出し（FFmpeg等を使用）
-        const segmentBuffer = await extractAudioSegment(
-            audioBuffer,
-            startTime,
-            endTime
-        );
-        
-        segments.push({
-            questionId,
-            audioData: segmentBuffer,
-            startTime,
-            duration: endTime - startTime,
-            format: 'mp3'
-        });
-    }
-    
-    return segments;
+    // 3. 一括でFFmpeg処理（全問題を一度に切り出し）
+    return await extractMultipleAudioSegments(
+        audioBuffer,
+        questionTimeRangeList,
+        lQuestionIDList,
+        ffmpegPath
+    );
 };
 
 //時間範囲抽出
-function extractQuestionTimeRanges(timepoints: Array<{ markName: string; timeSeconds: number }>): Array<{ startTime: number; endTime: number }> {
-    const ranges = [];
+function extractQuestionTimeRangeList(timePointList: Array<{ markName: string; timeSeconds: number }>): Array<{ startTime: number; endTime: number }> {
     
-    // "q1_start", "q1_end" のペアを探す
-    for (let i = 1; i <= 100; i++) { // 最大100問まで
-        const startMark = timepoints.find(tp => tp.markName === `q${i}_start`);
-        const endMark = timepoints.find(tp => tp.markName === `q${i}_end`);
+    // 型安全性確認
+    if(timePointList.length === 0) {
+        throw new apierror.AudioSplitError('timepointsの要素数が0です');
+    };
+    if((timePointList.length % 2) !== 0) {
+        throw new apierror.AudioSplitError('要素数が偶数ではなく、startとendがどこかで欠損しています');
+    };
+    if(timePointList.length/2 > 10) {
+        throw new apierror.AudioSplitError('要求の問題数が多すぎます（最大10問まで）');
+    };
+    
+    // timepointsをMap型に変換
+    const markMap = new Map<string, number>();
+        timePointList.forEach(tp => {
+        markMap.set(tp.markName, tp.timeSeconds);
+    }); 
+
+    const rangeList = [];
+    const questionCount = timePointList.length / 2;
+    
+    // 2. 検索（O(1) × 問題数）
+    for (let i = 1; i <= questionCount; i++) {
+        const startTime = markMap.get(`q${i}_start`);
+        const endTime = markMap.get(`q${i}_end`);
         
-        if (startMark && endMark) {
-            ranges.push({
-                startTime: startMark.timeSeconds,
-                endTime: endMark.timeSeconds
+        if (startTime !== undefined && endTime !== undefined) {
+            rangeList.push({
+                startTime: startTime,
+                endTime: endTime
             });
-        }
+        } else {
+            throw new apierror.AudioSplitError(`問題${i}のstart/endペアが見つかりません`);
+        } 
     }
     
-    return ranges;
+    return rangeList;
 };
 
-//音声データの切り出し処理
-async function extractAudioSegment(
+//音声データの切り出し処理および保存
+async function extractMultipleAudioSegments(
     audioBuffer: Buffer,
-    startTime: number,
-    endTime: number
-): Promise<Buffer> {
-    // Option 1: FFmpeg を使用
-    return await ffmpegExtract(audioBuffer, startTime, endTime);
+    questionTimeRangeList: Array<{ startTime: number; endTime: number }>,
+    lQuestionIDList: string[],
+    ffmpegPath: string
+): Promise<domein.AudioURL[]> {
     
-    // Option 2: 音声処理ライブラリを使用
-    // return await audioLibraryExtract(audioBuffer, startTime, endTime);
+    // 配列の長さが整合するか確認
+    if (questionTimeRangeList.length !== lQuestionIDList.length) {
+        throw new apierror.AudioSplitError('問題数と時間範囲の数が整合しません');
+    };
+
+    const tempDir = os.tmpdir();
+    const tempInputFile = path.join(tempDir, `input_${Date.now()}.mp3`);
+    
+    try {
+        // 入力ファイルを一度だけ作成
+        await fs.writeFile(tempInputFile, audioBuffer);
+        
+        // extractSingleSegmentを並列実行し、全問題を同時に切り出し
+        const audioURLList = await Promise.all(
+            questionTimeRangeList.map((range, index) => 
+                extractSingleSegment(
+                    tempInputFile,
+                    range.startTime,
+                    range.endTime,
+                    lQuestionIDList[index],
+                    ffmpegPath
+                )
+            )
+        );
+        
+        return audioURLList;
+        
+    } catch (error) {
+        console.log('音声切り出しエラー:', error);
+        if (error instanceof apierror.AudioProcessingError ||
+            error instanceof apierror.FFmpegError ||
+            error instanceof apierror.FileOperationError) {
+            throw error;
+        }
+        throw new apierror.AudioProcessingError(`音声切り出しエラー: ${error}`);
+    } finally {
+        // クリーンアップ
+        await fs.unlink(tempInputFile).catch(() => {});
+    }
 }
+
+// 個別セグメント処理（importなし）
+async function extractSingleSegment(
+    inputFilePath: string,
+    startTime: number,
+    endTime: number,
+    lQuestionID: string,
+    ffmpegPath: string
+): Promise<domein.AudioURL> {
+    
+    const tempDir = os.tmpdir();
+    const tempOutputFile = path.join(tempDir, `output_${lQuestionID}_${Date.now()}.mp3`);
+    
+    // 最終保存先
+    const resourcesDir = path.join(process.cwd(), 'server', 'listening-quiz-resources');
+    const questionFolder = `lQuestion_${lQuestionID}_${new Date().toISOString().replace(/[-:T]/g, '').slice(0, 15)}`;
+    const finalDir = path.join(resourcesDir, questionFolder);
+    
+    try {
+        await fs.mkdir(finalDir, { recursive: true });
+        
+        // FFmpeg実行
+        const args = [
+            '-i', inputFilePath,
+            '-ss', startTime.toString(),
+            '-t', (endTime - startTime).toString(),
+            '-acodec', 'libmp3lame',
+            '-b:a', '128k',
+            '-y',
+            tempOutputFile
+        ];
+        
+        await new Promise<void>((resolve, reject) => {
+            const ffmpegProcess = spawn(ffmpegPath, args);
+            
+            let stderr = '';
+            ffmpegProcess.stderr.on('data', (data) => {
+                stderr += data.toString();
+            });
+            
+            ffmpegProcess.on('close', (code) => {
+                if (code === 0) resolve();
+                else reject(new apierror.FFmpegError(`FFmpeg failed: ${stderr}`));
+            });
+            
+            ffmpegProcess.on('error', (error) => {reject(new apierror.FFmpegError(`FFmpeg process error: ${error}`));});
+        });
+        
+        // 最終保存先にコピー
+        const finalFilePath = path.join(finalDir, 'audio_segment.mp3');
+        await fs.copyFile(tempOutputFile, finalFilePath);
+        
+        return {
+            lQuestionID: lQuestionID,
+            audioFilePath: finalFilePath,
+            audioURL: `/api/listening-quiz/${questionFolder}/audio_segment.mp3`,
+            duration: endTime - startTime
+        };
+        
+    } catch (error) {
+        console.log(error);
+        if (error instanceof apierror.FFmpegError ||
+            error instanceof apierror.FileOperationError) {
+            throw error;
+        }
+        throw new apierror.AudioProcessingError(`音声切り出しエラー: ${error}`);
+    } finally {
+        await fs.unlink(tempOutputFile).catch(() => {});
+    }
+};
 
 //Google Cloud認証トークン取得
 async function getGoogleAccessToken(): Promise<string> {
@@ -622,11 +750,14 @@ async function getGoogleAccessToken(): Promise<string> {
         const accessToken = await client.getAccessToken();
         
         if (!accessToken.token) {
-            throw new Error('アクセストークンの取得に失敗しました');
+            throw new apierror.GoogleAuthenticationError('アクセストークンの取得に失敗しました');
         }
         
         return accessToken.token;
     } catch (error) {
-        throw new Error(`認証エラー: ${error instanceof Error}`);
+        if (error instanceof apierror.GoogleAuthenticationError) {
+            throw error;
+        }
+        throw new apierror.GoogleAuthenticationError(`Google Cloud TTS認証エラー: ${error instanceof Error ? error.message : error}`);
     }
 }

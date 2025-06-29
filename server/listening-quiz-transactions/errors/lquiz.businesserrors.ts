@@ -1,4 +1,4 @@
-import * as schema from "../lquizschema.js";
+import * as schema from "../schemas/lquizbusinessschema.js";
 import * as response from "../lquiz.json.js";
 
 export interface BusinessLogicError extends Error {

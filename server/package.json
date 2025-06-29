@@ -5,7 +5,11 @@
   "type": "module",
   "scripts": {
     "start": "nodemon --exec 'node --loader ts-node/esm server.ts'",
-    "test": "jest --verbose --coverage"
+    "test": "node --experimental-vm-modules --no-warnings node_modules/.bin/jest",
+    "test:watch": "node --experimental-vm-modules --no-warnings node_modules/.bin/jest --watch",
+    "test:coverage": "node --experimental-vm-modules --no-warnings node_modules/.bin/jest --coverage",
+    "test:verbose": "node --experimental-vm-modules --no-warnings node_modules/.bin/jest --verbose",
+    "test:specific": "node --experimental-vm-modules --no-warnings node_modules/.bin/jest"
   },
   "keywords": [],
   "author": "",
@@ -16,6 +20,7 @@
     "crypto": "^1.0.1",
     "dotenv": "^16.5.0",
     "express": "^5.1.0",
+    "ffmpeg-static": "^5.2.0",
     "node": "^24.0.1",
     "node-fetch": "^3.3.2",
     "pg": "^8.15.6",
