@@ -5,6 +5,8 @@ lquiz.dto.ts : requestとresponse用のデータ構造定義
 
 *********************************************/
 
+import { SpeakerAccent } from "./services/lquizapiservice.js";
+
 //ユーザーからのクイズリクエストスキーマ
 export class QuestionReqDTO {
     constructor(
@@ -47,7 +49,8 @@ export class GeneratedQuestionDataResDTO {
         public answerOption: "A"|"B"|"C"|"D",
         public sectionNumber: 1|2|3|4,
         public explanation: string,
-        public lQuestionID?: string
+        public speakerAccent: string
+       // public lQuestionID?: string
     ){}
 };
 

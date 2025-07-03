@@ -11,7 +11,8 @@
     "skipLibCheck": true,
     "resolveJsonModule": true,
     "outDir": "./dist",
-    "noEmit": true
+    "noEmit": true,
+    "types": ["vitest/globals"]
   },
   "ts-node": {
     "esm": true,

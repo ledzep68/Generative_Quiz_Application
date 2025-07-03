@@ -11,7 +11,7 @@ import * as domein from "../lquiz.domeinobject.js";
 import * as dto from "../lquiz.dto.js";
 import * as businesserror from "../errors/lquiz.businesserrors.js";
 import * as apierror from "../errors/lquiz.apierrors.js";
-import fetch from "node-fetch";
+//import fetch from "node-fetch";
 import * as schema from "../schemas/lquizapischema.js";
 import { z } from "zod";
 import { TextToSpeechClient } from '@google-cloud/text-to-speech';
@@ -208,6 +208,7 @@ ${speakerAccentAndPatternList.map((speaker, index) => `
 ### その他の生成項目
 - jpnAudioScript: audioScriptの日本語訳（必須）
 - answerOption: 正解選択肢（Part1,3,4の場合は"A", "B", "C", "D"のいずれか。Part2の場合だけ"A", "B", "C"のいずれか）（必須）
+- sectionNumber: 問題のセクション番号。Part1,2,3,4のいずれか（必須）
 - explanation: 解説（必須）
 - speakerAccent: 各問題ごとに指定されたアクセント
 
@@ -221,6 +222,7 @@ ${speakerAccentAndPatternList.map((speaker, index) => `
     "audioScript": "string (${domObj.sectionNumber === 2 ? '質問文' : domObj.sectionNumber === 4 ? 'トーク内容+設問文' : '問題文+設問文'}+選択肢の完全な読み上げ内容)",
     "jpnAudioScript": "string",
     "answerOption": ${domObj.sectionNumber === 2 ? '"A"|"B"|"C"' : '"A"|"B"|"C"|"D"'},
+    "sectionNumber": ${domObj.sectionNumber},
     "explanation": "string",
     "speakerAccent": "${speaker.accent}"
     }`).join(',\n')}
@@ -246,6 +248,7 @@ ${speakerAccentAndPatternList.map((speaker, index) => `
 //chatgpt
 export async function callChatGPT(prompt: string): Promise<dto.GeneratedQuestionDataResDTO[]>/*lQuestionIDはnull(別途マッピング)*/ {
     try {
+        console.log('=== Step 1: fetch開始 ===');
         const response = await fetch('https://api.openai.com/v1/chat/completions', {
             method: 'POST',
             headers: {
@@ -269,14 +272,24 @@ export async function callChatGPT(prompt: string): Promise<dto.GeneratedQuestion
                 response_format: { type: "json_object" }
             })
         });
+        console.log('=== Step 2: response確認 ===');
         if (!response.ok) {
             throw new apierror.ChatGPTAPIError(`ChatGPT API Error: ${response.status} ${response.statusText}`);
         }
-
+        
+        console.log('=== Step 3: JSON parse開始 ===');
         const data = await response.json();//パース① HTTPレスポンスボディ（バイトストリーム）→ JavaScriptオブジェクト
+        console.log('=== Step 4: OpenAI APIの応答構造検証 ===');
         const validatedData = schema.openAIResponseSchema.parse(data);//パース② OpenAI APIの応答構造を検証（choices配列の存在確認など）
 
+        if (validatedData.choices.length === 0) {
+            throw new apierror.ChatGPTAPIError('ChatGPT APIからの応答に問題があります');
+            console.log('=== Step 4: 失敗 ===');
+        }
+
+        console.log('=== Step 5: content抽出 ===');
         const content = validatedData.choices[0].message.content; //ChatGPTが生成したクイズデータのJSON文字列を抽出
+        console.log('=== Step 6: content JSON parse ===');
         const parsedContent = JSON.parse(content);//パース③ 文字列をJSONオブジェクトに変換
 
         const dtoValidationResult = schema.generatedQuestionDataResDTOSchema.safeParse(parsedContent); //パース④ 予期されるDTO形式になっているか検証
@@ -376,7 +389,7 @@ export class TOEICSSMLGenerator {
     <voice name="${selectedVoice.name}">
         <prosody rate="${baseConfig.speakingRate}">
             <break time="1s"/>
-            ${questionParts.join('\n            ')}
+            ${questionParts.join('\n')}
             <break time="2s"/>
         </prosody>
     </voice>
@@ -386,17 +399,16 @@ export class TOEICSSMLGenerator {
 
     private static createQuestionSSML(question: dto.NewAudioReqDTO, questionNumber: number): string {
         // [間]を<break>タグに変換するだけ
-        const processedScript = question.audioScript
+        const escapedScript = this.escapeSSML(question.audioScript);
+        const processedScript = escapedScript
             .replace(/\[間\]/g, '<break time="1.5s"/>')
             .replace(/\[短い間\]/g, '<break time="0.8s"/>');
-        
-        const escapedScript = this.escapeSSML(processedScript);
 
         return `
 <!-- Question ${questionNumber}: ${question.lQuestionID} -->
 <mark name="q${questionNumber}_start"/>
 <prosody rate="${question.speakingRate}">
-    ${escapedScript}
+    ${processedScript}
 </prosody>
 <mark name="q${questionNumber}_end"/>
 `; //<mark>音声分割に必要なタグ
