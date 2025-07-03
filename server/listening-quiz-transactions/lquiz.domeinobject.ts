@@ -5,15 +5,23 @@ lquiz.domeinobject.ts : ListeningQuizドメイン内専用オブジェクト
 *********************************************/
 
 //クイズ情報
-export class LQuestionInfo {
+export class NewQuestionInfo {
     constructor(
-        public lQuestionID: string,
-        public userID: string,
         public sectionNumber: 1|2|3|4,
-        public reviewTag: boolean,
         public requestedNumOfQuizs?: number,
-        public speakerAccent?: 'American' | 'British' | 'Canadian' | 'Australian',
-        public speakingRate?: number
+        public speakingRate?: number //新規生成時のみ使用
+    ){}
+};
+
+export class ReviewQuestionInfo {
+    constructor(
+        public sectionNumber: 1|2|3|4,
+        public lQuestionID?: string, //復習時のみ使用
+        public userID?: string, //復習時のみ使用
+        public reviewTag?: boolean, //復習時のみ使用
+        public requestedNumOfQuizs?: number, 
+        public speakerAccent?: 'American' | 'British' | 'Canadian' | 'Australian', //新規生成時のみ使用
+        public speakingRate?: number //新規生成時のみ使用
     ){}
 }
 

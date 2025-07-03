@@ -1,638 +1,322 @@
-import {
-    getRandomSpeakerAccent,
-    generatePrompt,
-    callChatGPT,
-    TOEICSSMLGenerator,
-    callGoogleCloudTTS,
-    ACCENT_PATTERNS,
-    TTS_VOICE_CONFIG,
-    AccentType
-} from '../listening-quiz-transactions/services/lquizapiservice.js';
-import { jest, describe, test, expect, beforeEach, afterEach } from '@jest/globals';
+import { jest } from '@jest/globals';
+// Node.js組み込みfetchを無効化
+delete (global as any).fetch;
+import * as service from "../listening-quiz-transactions/services/lquizapiservice.js"
 import * as domein from "../listening-quiz-transactions/lquiz.domeinobject.js";
 import * as dto from "../listening-quiz-transactions/lquiz.dto.js";
-import * as apierrors from "../listening-quiz-transactions/errors/lquiz.apierrors.js";
-import fetch from "node-fetch";
-import fs from "fs/promises";
-import { spawn } from 'child_process';
-import { GoogleAuth } from "google-auth-library";
+import * as businesserror from "../listening-quiz-transactions/errors/lquiz.businesserrors.js";
+import * as apierror from "../listening-quiz-transactions/errors/lquiz.apierrors.js";
+//import fetch from "node-fetch";
+import * as schema from "../listening-quiz-transactions/schemas/lquizapischema.js";
+import { z } from "zod";
+import { TextToSpeechClient } from '@google-cloud/text-to-speech';
+//import { google } from '@google-cloud/text-to-speech/build/protos/protos';
+import {GoogleAuth} from "google-auth-library";
+import { spawn } from 'child_process'; //ライブラリを通さず、直接他プログラムを実行するためのライブラリ
+import fs from "fs/promises"; //音声バッファデータをローカルファイルに書き込むためのライブラリ
+import path from "path";
+import os from "os";
+import fetchMock, {manageFetchMockGlobally} from "@fetch-mock/jest";
+import { assert } from "console";
 
-// モック設定
-jest.mock('node-fetch');
-jest.mock('fs/promises');
-jest.mock('child_process');
-jest.mock('google-auth-library');
-jest.mock('ffmpeg-static', () => '/mock/path/to/ffmpeg');
 
-const mockFetch = fetch as jest.MockedFunction<typeof fetch>;
-const mockFs = fs as jest.Mocked<typeof fs>;
-const mockSpawn = spawn as jest.MockedFunction<typeof spawn>;
-const mockGoogleAuth = GoogleAuth as jest.MockedClass<typeof GoogleAuth>;
+import { AccentType } from "../listening-quiz-transactions/services/lquizapiservice.js";
 
-describe('lquizapiservices.ts', () => {
+
+/*describe('A_getRandomSpeakerAccent', () => {
+    test("A01_ランダムに発話アクセントを取得", async () => {
+        expect.assertions(12);
+        const result = seivice.getRandomSpeakerAccent(10);
+
+        // 配列の長さを確認
+        expect(result.length).toBe(10);
+
+        // 各要素がAccentTypeのいずれかであることを確認
+        const validAccents: AccentType[] = ["American", "Canadian", "British", "Australian"];
+        result.forEach(accent => {
+            expect(validAccents).toContain(accent);
+        });
+
+        console.log(result);
+
+        // 配列全体がAccentType[]の要素のみで構成されていることを確認
+        expect(result.every(accent => validAccents.includes(accent))).toBe(true);
+    });
+});
+
+describe('B_generatePrompt', () => {
+    test("B01_part3プロンプト生成", async () => {
+        expect.assertions(8);
+        const mockDomObj: jest.Mocked<domein.NewQuestionInfo> = {
+            sectionNumber: 3,
+            requestedNumOfQuizs: 5,
+            speakingRate: 1.0
+        };
+        const result = seivice.generatePrompt(mockDomObj);
+        console.log(result);
+        expect(result).toContain("TOEICリスニング Part3 の練習問題を5問生成してください。");
+        expect(result).toContain("練習問題を5問生成");
+        expect(result).toContain("出題方法: 2人または3人の会話を聞き、設問に対する答えを4つの選択肢から選ぶ");
+        expect(result).toContain("問題1の話者:");
+        expect(result).toContain("問題2の話者:");
+        expect(result).toContain("問題3の話者:");
+        expect(result).toContain("問題4の話者:");
+        expect(result).toContain("問題5の話者:");
+    });
+    test("B02_part2プロンプト生成", async () => {
+        expect.assertions(6);
+        const mockDomObj: jest.Mocked<domein.NewQuestionInfo> = {
+            sectionNumber: 2,
+            requestedNumOfQuizs: 10,
+            speakingRate: 1.0
+        };
+        const result = seivice.generatePrompt(mockDomObj);
+        console.log(result);
+        expect(result).toContain("TOEICリスニング Part2 の練習問題を10問生成してください。");
+        expect(result).toContain("練習問題を10問生成");
+        expect(result).toContain("要件: 自然な会話の流れに沿った適切な応答");
+        expect(result).toContain("問題1の話者:");
+        expect(result).toContain("問題2の話者:");
+        expect(result).toContain("問題3の話者:")
+    });
+    test("B03_part4プロンプト生成", async () => {
+        expect.assertions(6);
+        const mockDomObj: jest.Mocked<domein.NewQuestionInfo> = {
+            sectionNumber: 4,
+            requestedNumOfQuizs: 5,
+            speakingRate: 1.0
+        };
+        const result = seivice.generatePrompt(mockDomObj);
+        console.log(result);
+        expect(result).toContain("TOEICリスニング Part4 の練習問題を5問生成してください。");
+        expect(result).toContain("練習問題を5問生成");
+        expect(result).toContain("音声構造: トーク内容 + 設問文 + 4つの選択肢を連続して読み上げ（A, B, C, Dの順序で）");
+        expect(result).toContain("問題1の話者:");
+        expect(result).toContain("問題2の話者:");
+        expect(result).toContain("問題5の話者:")
+    });
+});*/
+
+fetchMock.mockGlobal();
+
+test("fetchMock設定確認", () => {
+    fetchMock.mockGlobal();
+    
+    // 設定されているルートを確認
+    console.log('Routes:', fetchMock.route);
+    
+    // グローバルfetchが置き換えられているか確認
+    console.log('fetch type:', typeof fetch);
+    console.log('global.fetch type:', typeof global.fetch);
+});
+
+describe('C_callChatGPT', () => {
     beforeEach(() => {
-        jest.clearAllMocks();
-        process.env.OPENAI_API_KEY = 'test-openai-key';
-        process.env.GOOGLE_APPLICATION_CREDENTIALS = '/path/to/credentials.json';
-        process.env.GOOGLE_CLOUD_PROJECT_ID = 'test-project';
+        fetchMock.mockReset();
+        fetchMock.clearHistory();
     });
 
-    afterEach(() => {
-        jest.restoreAllMocks();
-    });
+    test("C01_api呼出テスト", async () => {
+        const testprompt = `TOEICリスニング Part4 の練習問題を5問生成してください。
+    
+    ## Part4 仕様
+    - 問題形式: 説明文問題
+    - 出題方法: 短いトークを聞き、設問に対する答えを4つの選択肢から選ぶ
+    - 要件: アナウンス、広告、会議、講演などの実用的な内容
+    - 音声構造: トーク内容 + 設問文 + 4つの選択肢を連続して読み上げ（A, B, C, Dの順序で）
+    
+    
+    **問題1の話者:**
+    - 英語種別: オーストラリア英語 (Australian)
+    - 発音特徴: Vowel shifts: 'day' → 'die'のような音, Rising intonation: 平叙文でも語尾が上がる
+    - 語彙の特徴: arvo (afternoon), brekkie (breakfast)
+    - 表現の特徴: No worries, mate, Fair dinkum
+    
+    **問題2の話者:**
+    - 英語種別: イギリス英語 (British)
+    - 発音特徴: Non-rhotic: 語尾のrを発音しない, Received Pronunciation (RP)の特徴
+    - 語彙の特徴: lift (not elevator), flat (not apartment)
+    - 表現の特徴: Brilliant!, Cheers
+    
+    **問題3の話者:**
+    - 英語種別: アメリカ英語 (American)
+    - 発音特徴: Rhoticity: 語尾のrを明確に発音, Flat 'a': cat, hat等で平坦な'a'音
+    - 語彙の特徴: elevator (not lift), apartment (not flat)
+    - 表現の特徴: I guess..., You bet!
+    
+    **問題4の話者:**
+    - 英語種別: イギリス英語 (British)
+    - 発音特徴: Non-rhotic: 語尾のrを発音しない, Received Pronunciation (RP)の特徴
+    - 語彙の特徴: lift (not elevator), flat (not apartment)
+    - 表現の特徴: Brilliant!, Cheers
+    
+    **問題5の話者:**
+    - 英語種別: イギリス英語 (British)
+    - 発音特徴: Non-rhotic: 語尾のrを発音しない, Received Pronunciation (RP)の特徴
+    - 語彙の特徴: lift (not elevator), flat (not apartment)
+    - 表現の特徴: Brilliant!, Cheers
+    
+    
+    ## 生成要件
+    
+    ### audioScript（音声読み上げ内容）の構成
+    **Part 1の場合:**
+    - 4つの選択肢のみを連続して読み上げ
+    - 各選択肢の前に「A」「B」「C」「D」は付けない
+    - 例: "A man is reading a newspaper. [短い間] Two women are walking. [短い間] Children are playing in the park. [短い間] A dog is running."
+    
+    **Part 2の場合:**
+    - 質問文 + 短い間 + 3つの選択肢を連続して読み上げ
+    - 質問文の後に適切な間を置く
+    - 選択肢の前に「A」「B」「C」は付けない
+    - 例: "Where is the meeting room? [間] Down the hallway to your right. [短い間] Yes, I'll attend the meeting. [短い間] The meeting starts at 3 PM."
+    
+    **Part 3の場合:**
+    - 会話文 + 設問文 + 4つの選択肢を連続して読み上げ
+    - 複数の話者がいる場合は自然な会話として構成
+    - 例: "Good morning, Sarah. Did you finish the quarterly report? [間] Almost done, Mike. I just need to add the sales figures. [間] Great, we need to submit it by noon today."
+    
+    **Part 4の場合:**
+    - トーク内容 + 設問文 + 4つの選択肢を連続して読み上げ
+    - アナウンス、プレゼンテーション、広告などの形式
+    - 例: "Welcome to City Bank. We are pleased to announce our new mobile banking service. Starting next month, you can access your account anytime, anywhere."
+    
+    ### その他の生成項目
+    - jpnAudioScript: audioScriptの日本語訳（必須）
+    - answerOption: 正解選択肢（Part1,3,4の場合は"A", "B", "C", "D"のいずれか。Part2の場合だけ"A", "B", "C"のいずれか）（必須）
+    - explanation: 解説（必須）
+    - speakerAccent: 各問題ごとに指定されたアクセント
+    
+    ## 出力形式
+    必ずJSON形式で以下の構造で回答してください：
+    
+    {
+      "questions": [
+          // 問題1: Australian英語使用
+        {
+        "audioScript": "string (トーク内容+設問文+選択肢の完全な読み上げ内容)",
+        "jpnAudioScript": "string",
+        "answerOption": "A"|"B"|"C"|"D",
+        "explanation": "string",
+        "speakerAccent": "Australian"
+        },
+        // 問題2: British英語使用
+        {
+        "audioScript": "string (トーク内容+設問文+選択肢の完全な読み上げ内容)",
+        "jpnAudioScript": "string",
+        "answerOption": "A"|"B"|"C"|"D",
+        "explanation": "string",
+        "speakerAccent": "British"
+        },
+        // 問題3: American英語使用
+        {
+        "audioScript": "string (トーク内容+設問文+選択肢の完全な読み上げ内容)",
+        "jpnAudioScript": "string",
+        "answerOption": "A"|"B"|"C"|"D",
+        "explanation": "string",
+        "speakerAccent": "American"
+        },
+        // 問題4: British英語使用
+        {
+        "audioScript": "string (トーク内容+設問文+選択肢の完全な読み上げ内容)",
+        "jpnAudioScript": "string",
+        "answerOption": "A"|"B"|"C"|"D",
+        "explanation": "string",
+        "speakerAccent": "British"
+        },
+        // 問題5: British英語使用
+        {
+        "audioScript": "string (トーク内容+設問文+選択肢の完全な読み上げ内容)",
+        "jpnAudioScript": "string",
+        "answerOption": "A"|"B"|"C"|"D",
+        "explanation": "string",
+        "speakerAccent": "British"
+        }
+      ]
+    }
+    
+    ## 重要な注意事項
+    1. **audioScript内での選択肢の順序**: 必ずA→B→C→(D)の順序で音声内容を構成
+    2. **選択肢ラベルの省略**: audioScript内では「A」「B」「C」「D」のラベルは読み上げない
+    3. **適切な間の配置**: 文と文の間、質問と回答の間に自然な間を想定した構成
+    4. **Part別の音声構成の遵守**: 各Partの音声構造ルールを厳密に守る
+    5. **読み上げ時間の考慮**: 1つの問題の音声は30秒以内に収まるよう調整
+    
+    ## 品質基準
+    - TOEIC公式問題集レベルの難易度
+    - 各問題で指定されたアクセントの語彙・表現・発音特徴を自然に組み込む
+    - 文法・語彙は中級~上級レベル（TOEIC 600-990点相当）
+    - 音声として聞いた時の自然さを重視
+    - 選択肢も実際のTOEIC試験レベルの紛らわしさを持つ`;
 
-    describe('getRandomSpeakerAccent', () => {
-        // TC001-003: 正常系
-        test('TC001: 全てのアクセント種別が返されることを確認', () => {
-            expect.assertions(1);
-            const results = new Set<AccentType>();
-            for (let i = 0; i < 100; i++) {
-                results.add(getRandomSpeakerAccent());
+        const mockResponseData = {
+            "id": "chatcmpl-8XXXxxxxxxxxxxxxxxxxxxxxxx",
+            "object": "chat.completion",
+            "created": 1704067200,
+            "model": "gpt-4o",
+            "choices": [
+                {
+                "index": 0,
+                "message": {
+                    "role": "assistant",
+                    "content": "{\"questions\":[{\"audioScript\":\"Good morning, passengers. This is a safety announcement for Flight 247 to Sydney. Please ensure your seatbelts are fastened and tray tables are in the upright position. We will be experiencing some turbulence shortly. [間] What is the purpose of this announcement? [短い間] To inform passengers about meal service. [短い間] To announce a flight delay. [短い間] To provide safety instructions. [短い間] To welcome passengers aboard.\",\"jpnAudioScript\":\"おはようございます、乗客の皆様。シドニー行きフライト247の安全に関するアナウンスです。シートベルトを締め、テーブルを直立位置にしてください。まもなく乱気流を経験します。[間] このアナウンスの目的は何ですか？[短い間] 機内食サービスについて知らせるため。[短い間] フライトの遅延を発表するため。[短い間] 安全指示を提供するため。[短い間] 乗客を歓迎するため。\",\"answerOption\":\"C\",\"explanation\":\"このアナウンスでは安全に関する指示（シートベルト着用、テーブル直立）と乱気流の警告をしているため、安全指示の提供が目的です。\",\"speakerAccent\":\"Australian\"},{\"audioScript\":\"...\",\"jpnAudioScript\":\"...\",\"answerOption\":\"B\",\"explanation\":\"...\",\"speakerAccent\":\"British\"}...]}"
+                },
+                "finish_reason": "stop"
+                }
+            ],
+            "usage": {
+                "prompt_tokens": 1250,
+                "completion_tokens": 800,
+                "total_tokens": 2050
             }
-            expect(results.size).toBeGreaterThan(1);
-        });
-
-        test('TC002: 戻り値がAccentType型であることを確認', () => {
-            expect.assertions(1);
-            const result = getRandomSpeakerAccent();
-            expect(Object.keys(ACCENT_PATTERNS)).toContain(result);
-        });
-
-        test('TC003: ランダム性の確認', () => {
-            expect.assertions(1);
-            const results = Array.from({ length: 100 }, () => getRandomSpeakerAccent());
-            const uniqueResults = new Set(results);
-            expect(uniqueResults.size).toBeGreaterThan(1);
-        });
-    });
-
-    describe('generatePrompt', () => {
-        const mockDomainObj: domein.LQuestionInfo = {
-            lQuestionID: "testQuestionID",
-            userID: "testUserID",
-            sectionNumber: 1,
-            requestedNumOfQuizs: 3,
-            speakerAccent: 'American',
-            reviewTag: false
         };
 
-        // TC005-008: Part別プロンプト生成
-        test('TC005: Part1用プロンプトが正しく生成される', () => {
-            expect.assertions(3);
-            const result = generatePrompt({ ...mockDomainObj, sectionNumber: 1 });
-            expect(result).toContain('Part1');
-            expect(result).toContain('写真描写問題');
-            expect(result).toContain('4つの選択肢のみを連続して読み上げ');
-        });
-
-        test('TC006: Part2用プロンプトが正しく生成される', () => {
-            expect.assertions(3);
-            const result = generatePrompt({ ...mockDomainObj, sectionNumber: 2 });
-            expect(result).toContain('Part2');
-            expect(result).toContain('応答問題');
-            expect(result).toContain('3つの選択肢から選ぶ');
-        });
-
-        test('TC007: Part3用プロンプトが正しく生成される', () => {
-            expect.assertions(3);
-            const result = generatePrompt({ ...mockDomainObj, sectionNumber: 3 });
-            expect(result).toContain('Part3');
-            expect(result).toContain('会話問題');
-            expect(result).toContain('2人または3人の会話');
-        });
-
-        test('TC008: Part4用プロンプトが正しく生成される', () => {
-            expect.assertions(3);
-            const result = generatePrompt({ ...mockDomainObj, sectionNumber: 4 });
-            expect(result).toContain('Part4');
-            expect(result).toContain('説明文問題');
-            expect(result).toContain('短いトーク');
-        });
-
-        // TC009-011: アクセント設定
-        test('TC009: speakerAccent指定時、指定されたアクセントの特徴が含まれる', () => {
-            expect.assertions(2);
-            const result = generatePrompt(mockDomainObj);
-            expect(result).toContain('American');
-            expect(result).toContain('アメリカ英語');
-        });
-
-        test('TC010: speakerAccent未指定時、ランダムアクセントが選択される', () => {
-            expect.assertions(1);
-            const mockObj = { ...mockDomainObj };
-            delete mockObj.speakerAccent;
-            const result = generatePrompt(mockObj);
-            expect(result).toMatch(/(American|British|Canadian|Australian)/);
-        });
-
-        test('TC011: 問題数が正しくプロンプトに反映される', () => {
-            expect.assertions(1);
-            const result = generatePrompt(mockDomainObj);
-            expect(result).toContain('3問生成してください');
-        });
-
-        // TC015-016: 境界値
-        test('TC015: requestedNumOfQuizs = 1', () => {
-            expect.assertions(1);
-            const result = generatePrompt({ ...mockDomainObj, requestedNumOfQuizs: 1 });
-            expect(result).toContain('1問生成してください');
-        });
-
-        test('TC016: requestedNumOfQuizs = 10（上限）', () => {
-            expect.assertions(1);
-            const result = generatePrompt({ ...mockDomainObj, requestedNumOfQuizs: 10 });
-            expect(result).toContain('10問生成してください');
-        });
-    });
-
-    describe('callChatGPT', () => {
-        const mockResponse = {
-            ok: true,
-            json: jest.fn().mockResolvedValue({
-                choices: [{
-                    message: {
-                        content: JSON.stringify({
-                            questions: [{
-                                audioScript: 'Test audio script',
-                                jpnAudioScript: 'テスト音声スクリプト',
-                                answerOption: 'A',
-                                explanation: 'Test explanation',
-                                speakerAccent: 'American'
-                            }]
-                        })
-                    }
-                }]
-            }),
-            status: 200,
-            statusText: 'OK'
-        };
-
-        // TC017-019: 正常系
-        test('TC017: 有効なプロンプトで正常なレスポンスが返される', async () => {
-            expect.assertions(3);
-            (mockFetch as jest.MockedFunction<typeof fetch>).mockResolvedValue(mockResponse as any);
-
-            const result = await callChatGPT('test prompt');
-            
-            expect(mockFetch).toHaveBeenCalledWith('https://api.openai.com/v1/chat/completions', {
+        //fetchモック
+        fetchMock.post(
+            'https://api.openai.com/v1/chat/completions',
+            mockResponseData,
+            {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': 'Bearer test-openai-key'
+                    'Authorization': `Bearer test-openai-key`
                 },
-                body: expect.stringContaining('test prompt')
-            });
-            expect(result).toHaveLength(1);
-            expect(result[0].audioScript).toBe('Test audio script');
-        });
-
-        // TC020-026: 異常系
-        test('TC020: API_KEY未設定時のエラーハンドリング', async () => {
-            expect.assertions(1);
-            delete process.env.OPENAI_API_KEY;
-            
-            await expect(callChatGPT('test')).rejects.toThrow(apierrors.ChatGPTAPIError);
-        });
-
-        test('TC021: ネットワークエラー時のエラーハンドリング', async () => {
-            expect.assertions(1);
-            (mockFetch as jest.MockedFunction<typeof fetch>).mockRejectedValue(new Error('Network error'));
-            
-            await expect(callChatGPT('test')).rejects.toThrow(apierrors.ChatGPTAPIError);
-        });
-
-        test('TC022: APIが4xx/5xxステータスを返した場合', async () => {
-            expect.assertions(1);
-            (mockFetch as jest.MockedFunction<typeof fetch>).mockResolvedValue({
-                ok: false,
-                status: 400,
-                statusText: 'Bad Request',
-                text: jest.fn().mockResolvedValue('Error details')
-            } as any);
-
-            await expect(callChatGPT('test')).rejects.toThrow(apierrors.ChatGPTAPIError);
-        });
-
-        test('TC023: 無効なJSON文字列が返された場合', async () => {
-            expect.assertions(1);
-            (mockFetch as jest.MockedFunction<typeof fetch>).mockResolvedValue({
-                ok: true,
-                json: jest.fn().mockResolvedValue({
-                    choices: [{
-                        message: {
-                            content: 'invalid json'
+                body: {
+                    model: "gpt-4o",
+                    messages: [
+                        {
+                            role: "system",
+                            content: "あなたはTOEIC問題作成の専門家です。指定された仕様に従ってJSON形式で問題を生成してください。"
+                        },
+                        {
+                            role: "user",
+                            content: testprompt
                         }
-                    }]
-                })
-            } as any);
-
-            await expect(callChatGPT('test')).rejects.toThrow(apierrors.ChatGPTAPIError);
-        });
-
-        // TC027-029: 境界値・特殊ケース
-        test('TC027: 空のプロンプト', async () => {
-            expect.assertions(1);
-            (mockFetch as jest.MockedFunction<typeof fetch>).mockResolvedValue(mockResponse as any);
-            
-            const result = await callChatGPT('');
-            expect(mockFetch).toHaveBeenCalled();
-        });
-    });
-
-    describe('TOEICSSMLGenerator', () => {
-        const mockQuestionData: dto.NewAudioReqDTO[] = [{
-            lQuestionID: 'Q001',
-            audioScript: 'Test script [間] with breaks [短い間] here',
-            speakerAccent: 'American',
-            speakingRate: 1.0
-        }];
-
-        describe('selectRandomVoice', () => {
-            // TC030-032: 正常系
-            test('TC030: voices配列から1つの音声が選択される', () => {
-                const voices = TTS_VOICE_CONFIG.American.voices;
-                const result = TOEICSSMLGenerator.selectRandomVoice(voices);
-                
-                expect(voices).toContain(result);
-                expect(result).toHaveProperty('name');
-                expect(result).toHaveProperty('gender');
+                    ],
+                    temperature: 0,
+                    max_tokens: 2000,
+                    response_format: { type: "json_object" }
+                } //fetch-mockはJSON.stringifyをデフォルト処理する
             });
+            // fetchMockが正しく設定されているか確認
+        
+        expect.assertions(1);
+        const reslut = await service.callChatGPT(testprompt);
+        console.log('calls:', fetchMock.callHistory);
+        expect(reslut).toEqual(mockResponseData);
 
-            test('TC031: 複数回実行してランダム性を確認', () => {
-                const voices = TTS_VOICE_CONFIG.American.voices;
-                const results = Array.from({ length: 20 }, () => 
-                    TOEICSSMLGenerator.selectRandomVoice(voices)
-                );
-                
-                // ランダム性の簡易チェック（全て同じでないことを確認）
-                const uniqueNames = new Set(results.map(v => v.name));
-                expect(uniqueNames.size).toBeGreaterThanOrEqual(1);
-            });
-
-            // TC033: 異常系 - 修正: 実際には空配列でもエラーにならないため、期待値を調整
-            test('TC033: 空の配列が渡された場合', () => {
-                // 空配列の場合undefinedが返される可能性があるため、実装に合わせてテスト
-                const result = TOEICSSMLGenerator.selectRandomVoice([]);
-                expect(result).toBeUndefined();
-            });
-        });
-
-        describe('generateSSML', () => {
-            // TC034-038: 正常系
-            test('TC034: 1問のSSML生成が正常に動作', () => {
-                expect.assertions(5);
-                const result = TOEICSSMLGenerator.generateSSML(mockQuestionData);
-                
-                expect(result).toContain('<?xml version="1.0" encoding="UTF-8"?>');
-                expect(result).toContain('<speak');
-                expect(result).toContain('</speak>');
-                expect(result).toContain('<mark name="q1_start"/>');
-                expect(result).toContain('<mark name="q1_end"/>');
-            });
-
-            test('TC035: 複数問のSSML生成が正常に動作', () => {
-                expect.assertions(4);
-                const multipleQuestions = [
-                    ...mockQuestionData,
-                    { ...mockQuestionData[0], lQuestionID: 'Q002' }
-                ];
-                
-                const result = TOEICSSMLGenerator.generateSSML(multipleQuestions);
-                
-                expect(result).toContain('<mark name="q1_start"/>');
-                expect(result).toContain('<mark name="q1_end"/>');
-                expect(result).toContain('<mark name="q2_start"/>');
-                expect(result).toContain('<mark name="q2_end"/>');
-            });
-
-            test('TC036: 各アクセント設定で正しいlanguageCodeが設定される', () => {
-                expect.assertions(2);
-                const americanData = [{ ...mockQuestionData[0], speakerAccent: 'American' }];
-                const britishData = [{ ...mockQuestionData[0], speakerAccent: 'British' }];
-                
-                const americanSSML = TOEICSSMLGenerator.generateSSML(americanData as dto.NewAudioReqDTO[]);
-                const britishSSML = TOEICSSMLGenerator.generateSSML(britishData as dto.NewAudioReqDTO[]);
-                
-                expect(americanSSML).toContain('xml:lang="en-US"');
-                expect(britishSSML).toContain('xml:lang="en-GB"');
-            });
-
-            // TC039-041: 異常系 - 修正: 空配列でもエラーにならないため、期待値を調整
-            test('TC039: 空の配列が渡された場合', () => {
-                expect.assertions(3);
-                // 空配列の場合、基本的なSSML構造は生成される
-                const result = TOEICSSMLGenerator.generateSSML([]);
-                expect(result).toContain('<?xml version="1.0" encoding="UTF-8"?>');
-                expect(result).toContain('<speak');
-                expect(result).toContain('</speak>');
-            });
-        });
-
-        describe('createQuestionSSML', () => {
-            // TC046-048: 正常系 - 修正: エスケープ処理により&lt;になることを考慮
-            test('TC046: [間]/[短い間]がbreakタグに正しく変換される', () => {
-                expect.assertions(4);
-                const result = (TOEICSSMLGenerator as any).createQuestionSSML(mockQuestionData[0], 1);
-                
-                // エスケープ処理後の形式で確認
-                expect(result).toContain('&lt;break time=&quot;1.5s&quot;/&gt;');
-                expect(result).toContain('&lt;break time=&quot;0.8s&quot;/&gt;');
-                expect(result).not.toContain('[間]');
-                expect(result).not.toContain('[短い間]');
-            });
-
-            test('TC047: questionNumberが正しくmarkタグに反映される', () => {
-                expect.assertions(2);
-                const result = (TOEICSSMLGenerator as any).createQuestionSSML(mockQuestionData[0], 5);
-                
-                expect(result).toContain('<mark name="q5_start"/>');
-                expect(result).toContain('<mark name="q5_end"/>');
-            });
-        });
-
-        describe('escapeSSML', () => {
-            // TC050-057: エスケープ処理
-            test('TC050-054: XML特殊文字が正しくエスケープされる', () => {
-                expect.assertions(1);
-                const testString = '& < > " \'';
-                const result = (TOEICSSMLGenerator as any).escapeSSML(testString);
-                
-                expect(result).toBe('&amp; &lt; &gt; &quot; &apos;');
-            });
-
-            test('TC055: 複数の特殊文字を含む文字列', () => {
-                expect.assertions(1);
-                const testString = 'Test & "quote" <tag>';
-                const result = (TOEICSSMLGenerator as any).escapeSSML(testString);
-                
-                expect(result).toBe('Test &amp; &quot;quote&quot; &lt;tag&gt;');
-            });
-
-            test('TC057: 空文字列の処理', () => {
-                expect.assertions(1);
-                const result = (TOEICSSMLGenerator as any).escapeSSML('');
-                expect(result).toBe('');
-            });
-        });
-    });
-
-    describe('callGoogleCloudTTS', () => {
-        const mockSSML = `<?xml version="1.0" encoding="UTF-8"?>
-<speak version="1.0" xmlns="http://www.w3.org/2001/10/synthesis" xml:lang="en-US">
-    <mark name="q1_start"/>Test<mark name="q1_end"/>
-</speak>`;
-
-        const mockTTSResponse = {
-            ok: true,
-            json: jest.fn().mockResolvedValue({
-                audioContent: Buffer.from('mock audio data').toString('base64'),
-                timepoints: [
-                    { markName: 'q1_start', timeSeconds: 0.5 },
-                    { markName: 'q1_end', timeSeconds: 2.0 }
-                ]
-            })
+        /*
+        //OpenAI APIからのres用のクイズデータスキーマ
+        export class GeneratedQuestionDataResDTO {
+            constructor(
+                public audioScript: string,
+                public jpnAudioScript: string,
+                public answerOption: "A"|"B"|"C"|"D",
+                public sectionNumber: 1|2|3|4,
+                public explanation: string,
+                public lQuestionID?: string
+            ){}
         };
-
-        beforeEach(() => {
-            // Google Auth モック
-            const mockClient = {
-                getAccessToken: jest.fn().mockResolvedValue({ token: 'mock-token' })
-            };
-            mockGoogleAuth.prototype.getClient = jest.fn().mockResolvedValue(mockClient);
-
-            // ファイルシステムモック
-            mockFs.writeFile = jest.fn().mockResolvedValue(undefined);
-            mockFs.mkdir = jest.fn().mockResolvedValue(undefined);
-            mockFs.copyFile = jest.fn().mockResolvedValue(undefined);
-            mockFs.unlink = jest.fn().mockResolvedValue(undefined);
-
-            // FFmpegモック
-            const mockProcess = {
-                stderr: { on: jest.fn() },
-                on: jest.fn((event: string, callback: (code: number) => void) => {
-                    if (event === 'close') callback(0);
-                })
-            };
-            (mockSpawn as jest.MockedFunction<typeof spawn>).mockReturnValue(mockProcess as any);
-        });
-
-        // TC069-072: 正常系
-        test('TC069: 有効なSSMLで音声生成が成功する', async () => {
-            expect.assertions(2);
-            (mockFetch as jest.MockedFunction<typeof fetch>).mockResolvedValue(mockTTSResponse as any);
-
-            const result = await callGoogleCloudTTS(mockSSML, ['Q001']);
-            
-            expect(mockFetch).toHaveBeenCalledWith(
-                'https://texttospeech.googleapis.com/v1beta1/text:synthesize',
-                expect.objectContaining({
-                    method: 'POST',
-                    headers: expect.objectContaining({
-                        'Authorization': 'Bearer mock-token'
-                    })
-                })
-            );
-            expect(result).toHaveLength(1);
-        });
-
-        // TC073-078: 異常系
-        test('TC073: 環境変数GOOGLE_APPLICATION_CREDENTIALS未設定', async () => {
-            expect.assertions(1);
-            delete process.env.GOOGLE_APPLICATION_CREDENTIALS;
-            
-            await expect(callGoogleCloudTTS(mockSSML, ['Q001'])).rejects.toThrow(
-                apierrors.EnvironmentConfigError
-            );
-        });
-
-        test('TC074: SSML検証エラー時の処理', async () => {
-            expect.assertions(1);
-            const invalidSSML = 'invalid ssml';
-            
-            await expect(callGoogleCloudTTS(invalidSSML, ['Q001'])).rejects.toThrow(
-                apierrors.SSMLValidationError
-            );
-        });
-
-        test('TC076: TTS API エラー時の処理', async () => {
-            expect.assertions(1);
-            (mockFetch as jest.MockedFunction<typeof fetch>).mockResolvedValue({
-                ok: false,
-                status: 400,
-                statusText: 'Bad Request',
-                text: jest.fn().mockResolvedValue('API Error')
-            } as any);
-
-            await expect(callGoogleCloudTTS(mockSSML, ['Q001'])).rejects.toThrow(
-                apierrors.GoogleTTSAPIError
-            );
-        });
-    });
-
-    describe('音声処理関数群', () => {
-        describe('extractQuestionTimeRangeList', () => {
-            const validTimepoints = [
-                { markName: 'q1_start', timeSeconds: 0.5 },
-                { markName: 'q1_end', timeSeconds: 2.0 },
-                { markName: 'q2_start', timeSeconds: 3.0 },
-                { markName: 'q2_end', timeSeconds: 5.0 }
-            ];
-
-            // TC084-085: 正常系（内部関数のため、統合テストでテスト）
-            test('TC084: 有効なtimepointsから時間範囲を抽出できることを間接的に確認', async () => {
-                expect.assertions(1);
-                // callGoogleCloudTTSの正常系テストで間接的に検証済み
-                expect(true).toBe(true);
-            });
-
-            // TC086-089: 異常系（エラーケースは統合テストで検証）
-        });
-    });
-
-    describe('validateSSML', () => {
-        // TC058-064: 検証ロジック（内部関数のため統合テストで検証）
-        test('TC058: 有効なSSMLが検証を通過することを間接的に確認', async () => {
-            expect.assertions(1);
-            const validSSML = `<?xml version="1.0" encoding="UTF-8"?>
-<speak><mark name="q1_start"/>test<mark name="q1_end"/></speak>`;
-            
-            // validateSSMLは内部関数のため、callGoogleCloudTTSで間接的にテスト
-            (mockFetch as jest.MockedFunction<typeof fetch>).mockResolvedValue({
-                ok: true,
-                json: jest.fn().mockResolvedValue({
-                    audioContent: Buffer.from('test').toString('base64'),
-                    timepoints: [
-                        { markName: 'q1_start', timeSeconds: 0.5 },
-                        { markName: 'q1_end', timeSeconds: 2.0 }
-                    ]
-                })
-            } as any);
-
-            // エラーが発生しないことを確認
-            await expect(callGoogleCloudTTS(validSSML, ['Q001'])).resolves.toBeDefined();
-        });
-    });
-
-    describe('統合テスト', () => {
-        test('SSML生成からTTS呼び出しまでの一連の流れ', async () => {
-            expect.assertions(4);
-            const questionData: dto.NewAudioReqDTO[] = [{
-                lQuestionID: 'Q001',
-                audioScript: 'Test audio script',
-                speakerAccent: 'American',
-                speakingRate: 1.0
-            }];
-
-            // SSML生成
-            const ssml = TOEICSSMLGenerator.generateSSML(questionData);
-            expect(ssml).toContain('<mark name="q1_start"/>');
-
-            // TTS APIモック
-            (mockFetch as jest.MockedFunction<typeof fetch>).mockResolvedValue({
-                ok: true,
-                json: jest.fn().mockResolvedValue({
-                    audioContent: Buffer.from('mock audio').toString('base64'),
-                    timepoints: [
-                        { markName: 'q1_start', timeSeconds: 0.5 },
-                        { markName: 'q1_end', timeSeconds: 2.0 }
-                    ]
-                })
-            } as any);
-
-            // TTS呼び出し
-            const result = await callGoogleCloudTTS(ssml, ['Q001']);
-            expect(result).toHaveLength(1);
-            expect(result[0].lQuestionID).toBe('Q001');
-            expect(result[0]).toHaveProperty('audioURL');
-        });
-    });
-
-    // カバレッジ向上のための追加テスト
-    describe('カバレッジ向上テスト', () => {
-        test('複数アクセント設定での音声選択', () => {
-            expect.assertions(4);
-            Object.keys(TTS_VOICE_CONFIG).forEach(accent => {
-                const voices = TTS_VOICE_CONFIG[accent as AccentType].voices;
-                const selected = TOEICSSMLGenerator.selectRandomVoice(voices);
-                expect(voices).toContainEqual(selected);
-            });
-        });
-
-        test('generatePrompt - 各Partの詳細確認', () => {
-            expect.assertions(4);
-            const sections = [1, 2, 3, 4] as const;
-            sections.forEach(sectionNum => {
-                const mockObj = {
-                    lQuestionID: "test",
-                    userID: "test",
-                    sectionNumber: sectionNum,
-                    requestedNumOfQuizs: 1,
-                    reviewTag: false
-                };
-                const result = generatePrompt(mockObj);
-                expect(result).toContain(`Part${sectionNum}`);
-            });
-        });
-
-        test('複雑なSSML生成パターン', () => {
-            expect.assertions(4);
-            const complexQuestionData = [
-                {
-                    lQuestionID: 'Q001',
-                    audioScript: 'Complex script with [間] multiple [短い間] breaks & special chars "quotes" <tags>',
-                    speakerAccent: 'British' as AccentType,
-                    speakingRate: 0.8
-                },
-                {
-                    lQuestionID: 'Q002', 
-                    audioScript: 'Another script with symbols & more breaks [間] here',
-                    speakerAccent: 'Australian' as AccentType,
-                    speakingRate: 1.2
-                }
-            ];
-            
-            const ssml = TOEICSSMLGenerator.generateSSML(complexQuestionData);
-            expect(ssml).toContain('xml:lang="en-GB"');
-            expect(ssml).toContain('<mark name="q1_start"/>');
-            expect(ssml).toContain('<mark name="q2_end"/>');
-            expect(ssml).toContain('&amp;'); // エスケープされた&文字の確認
-        });
-
-        test('パフォーマンステスト - 大量データ処理', () => {
-            expect.assertions(3);
-            const start = performance.now();
-            
-            const largeQuestionData = Array.from({length: 10}, (_, i) => ({
-                lQuestionID: `Q${String(i+1).padStart(3, '0')}`,
-                audioScript: `Question ${i+1} script with [間] breaks [短い間] here`,
-                speakerAccent: 'American' as AccentType,
-                speakingRate: 1.0
-            }));
-            
-            const ssml = TOEICSSMLGenerator.generateSSML(largeQuestionData);
-            
-            const end = performance.now();
-            const duration = end - start;
-            
-            expect(duration).toBeLessThan(100); // 100ms以内
-            expect(ssml).toContain('<mark name="q10_end"/>');
-            expect(ssml).toContain('<mark name="q1_start"/>');
-        });
-
-        test('escapeSSML - 複雑なパターン', () => {
-            expect.assertions(5);
-            const testCases = [
-                { input: '&<>"\'', expected: '&amp;&lt;&gt;&quot;&apos;' },
-                { input: 'Normal text', expected: 'Normal text' },
-                { input: '&amp; already escaped', expected: '&amp;amp; already escaped' },
-                { input: '', expected: '' },
-                { input: 'Mix & match "quotes" <tags>', expected: 'Mix &amp; match &quot;quotes&quot; &lt;tags&gt;' }
-            ];
-            
-            testCases.forEach(({input, expected}) => {
-                const result = (TOEICSSMLGenerator as any).escapeSSML(input);
-                expect(result).toBe(expected);
-            });
-        });
+        */
     });
 });

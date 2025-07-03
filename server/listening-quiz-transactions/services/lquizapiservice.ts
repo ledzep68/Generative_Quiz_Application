@@ -111,17 +111,18 @@ export const ACCENT_PATTERNS = {
 };
 
 export type AccentType = keyof typeof ACCENT_PATTERNS; 
-export type SpeakerAccent = typeof ACCENT_PATTERNS[keyof typeof ACCENT_PATTERNS]; //要確認
+export type SpeakerAccent = typeof ACCENT_PATTERNS[keyof typeof ACCENT_PATTERNS]; 
 
-// ランダム選択関数
-export function getRandomSpeakerAccent(): AccentType {
+// ランダム選択関数 リクエストされた問題数分のアクセントを返す
+export function getRandomSpeakerAccent(requestedNumOfQuizs: number): AccentType[] {
     const accents = Object.keys(ACCENT_PATTERNS) as AccentType[];
-    const randomIndex = Math.floor(Math.random() * accents.length);
-    return accents[randomIndex];
-};//要確認
+    return Array.from({ length: requestedNumOfQuizs }, () => 
+        accents[Math.floor(Math.random() * accents.length)]
+    );
+};
 
 //問題生成プロンプトの生成
-export function generatePrompt(domObj: domein.LQuestionInfo): string {
+export function generatePrompt(domObj: domein.NewQuestionInfo): string {
 
     const sectionSpecs = {
         1: {
@@ -152,9 +153,16 @@ export function generatePrompt(domObj: domein.LQuestionInfo): string {
 
     const spec = sectionSpecs[domObj.sectionNumber as keyof typeof sectionSpecs];
 
-    // 話者アクセントをランダム選択（指定がない場合）
-    const speakerAccent = domObj.speakerAccent || getRandomSpeakerAccent();
-    const accentPattern = ACCENT_PATTERNS[speakerAccent]; //要確認
+    // 話者アクセントをランダム選択
+    const speakerAccentList: AccentType[] = getRandomSpeakerAccent(domObj.requestedNumOfQuizs as number);
+    const accentPatternList = speakerAccentList.map((accent: AccentType) => ACCENT_PATTERNS[accent]);
+
+    const speakerAccentAndPatternList = Array.from({ length: domObj.requestedNumOfQuizs as number }, (_, i) => {
+        return ({
+            accent: speakerAccentList[i % speakerAccentList.length],
+            pattern: accentPatternList[i % accentPatternList.length]
+        });
+    });
 
     return `
 TOEICリスニング Part${domObj.sectionNumber} の練習問題を${domObj.requestedNumOfQuizs}問生成してください。
@@ -165,18 +173,13 @@ TOEICリスニング Part${domObj.sectionNumber} の練習問題を${domObj.requ
 - 要件: ${spec.requirements}
 - 音声構造: ${spec.audioStructure}
 
-## 話者設定
-**話者の英語種別: ${accentPattern.description} (${speakerAccent})**
-
-### ${speakerAccent}英語の特徴
-**発音特徴:**
-${accentPattern.characteristics.map(char => `- ${char}`).join('\n')}
-
-**語彙の特徴:**
-${accentPattern.vocabulary.map(vocab => `- ${vocab}`).join('\n')}
-
-**表現の特徴:**
-${accentPattern.expressions.map(expr => `- ${expr}`).join('\n')}
+${speakerAccentAndPatternList.map((speaker, index) => `
+**問題${index + 1}の話者:**
+- 英語種別: ${speaker.pattern.description} (${speaker.accent})
+- 発音特徴: ${speaker.pattern.characteristics.slice(0, 2).join(', ')}
+- 語彙の特徴: ${speaker.pattern.vocabulary.slice(0, 2).join(', ')}
+- 表現の特徴: ${speaker.pattern.expressions.slice(0, 2).join(', ')}
+`).join('')}
 
 ## 生成要件
 
@@ -204,22 +207,23 @@ ${accentPattern.expressions.map(expr => `- ${expr}`).join('\n')}
 
 ### その他の生成項目
 - jpnAudioScript: audioScriptの日本語訳（必須）
-- answerOption: 正解選択肢（"A", "B", "C", "D"のいずれか）（必須）
+- answerOption: 正解選択肢（Part1,3,4の場合は"A", "B", "C", "D"のいずれか。Part2の場合だけ"A", "B", "C"のいずれか）（必須）
 - explanation: 解説（必須）
-- speakerAccent: "${speakerAccent}" （固定値）
+- speakerAccent: 各問題ごとに指定されたアクセント
 
 ## 出力形式
 必ずJSON形式で以下の構造で回答してください：
 
 {
   "questions": [
+  ${speakerAccentAndPatternList.map((speaker, index) => `    // 問題${index + 1}: ${speaker.accent}英語使用
     {
-    "audioScript": "string (問題文+設問文+選択肢の完全な読み上げ内容)",
+    "audioScript": "string (${domObj.sectionNumber === 2 ? '質問文' : domObj.sectionNumber === 4 ? 'トーク内容+設問文' : '問題文+設問文'}+選択肢の完全な読み上げ内容)",
     "jpnAudioScript": "string",
-    "answerOption": "A"|"B"|"C"|"D",
+    "answerOption": ${domObj.sectionNumber === 2 ? '"A"|"B"|"C"' : '"A"|"B"|"C"|"D"'},
     "explanation": "string",
-    "speakerAccent": "${speakerAccent}"
-    }
+    "speakerAccent": "${speaker.accent}"
+    }`).join(',\n')}
   ]
 }
 
@@ -232,15 +236,15 @@ ${accentPattern.expressions.map(expr => `- ${expr}`).join('\n')}
 
 ## 品質基準
 - TOEIC公式問題集レベルの難易度
-- ${speakerAccent}英語の語彙・表現・発音特徴を自然に組み込む
-- 文法・語彙は中級レベル（TOEIC 600-800点相当）
+- 各問題で指定されたアクセントの語彙・表現・発音特徴を自然に組み込む
+- 文法・語彙は中級~上級レベル（TOEIC 600-990点相当）
 - 音声として聞いた時の自然さを重視
 - 選択肢も実際のTOEIC試験レベルの紛らわしさを持つ
 `.trim();
 };
 
 //chatgpt
-export async function callChatGPT(prompt: string): Promise<dto.GeneratedQuestionDataResDTO[]> {
+export async function callChatGPT(prompt: string): Promise<dto.GeneratedQuestionDataResDTO[]>/*lQuestionIDはnull(別途マッピング)*/ {
     try {
         const response = await fetch('https://api.openai.com/v1/chat/completions', {
             method: 'POST',
@@ -266,7 +270,7 @@ export async function callChatGPT(prompt: string): Promise<dto.GeneratedQuestion
             })
         });
         if (!response.ok) {
-            throw new businesserror.ChatGPTAPIError(`ChatGPT API Error: ${response.status} ${response.statusText}`);
+            throw new apierror.ChatGPTAPIError(`ChatGPT API Error: ${response.status} ${response.statusText}`);
         }
 
         const data = await response.json();//パース① HTTPレスポンスボディ（バイトストリーム）→ JavaScriptオブジェクト
@@ -278,7 +282,7 @@ export async function callChatGPT(prompt: string): Promise<dto.GeneratedQuestion
         const dtoValidationResult = schema.generatedQuestionDataResDTOSchema.safeParse(parsedContent); //パース④ 予期されるDTO形式になっているか検証
         if (!dtoValidationResult.success) {
             console.error('DTO Validation Error:', dtoValidationResult.error);
-            throw new businesserror.ChatGPTAPIError('生成された問題データが期待する形式と一致しません');
+            throw new apierror.ChatGPTAPIError('生成された問題データが期待する形式と一致しません');
         }
 
         return dtoValidationResult.data;

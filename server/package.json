@@ -5,11 +5,8 @@
   "type": "module",
   "scripts": {
     "start": "nodemon --exec 'node --loader ts-node/esm server.ts'",
-    "test": "node --experimental-vm-modules --no-warnings node_modules/.bin/jest",
-    "test:watch": "node --experimental-vm-modules --no-warnings node_modules/.bin/jest --watch",
-    "test:coverage": "node --experimental-vm-modules --no-warnings node_modules/.bin/jest --coverage",
-    "test:verbose": "node --experimental-vm-modules --no-warnings node_modules/.bin/jest --verbose",
-    "test:specific": "node --experimental-vm-modules --no-warnings node_modules/.bin/jest"
+    "test": "node --loader ts-node/esm ./node_modules/.bin/jest --coverage --verbose",
+    "test:experimental": "node --experimental-vm-modules --loader ts-node/esm ./node_modules/.bin/jest --coverage --verbose"
   },
   "keywords": [],
   "author": "",
@@ -27,6 +24,7 @@
     "zod": "^3.25.56"
   },
   "devDependencies": {
+    "@fetch-mock/jest": "^0.2.16",
     "@types/cors": "^2.8.18",
     "@types/express": "^5.0.1",
     "@types/jest": "^29.5.14",
