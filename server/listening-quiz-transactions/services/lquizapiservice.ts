@@ -508,7 +508,7 @@ export async function callGoogleCloudTTS(ssml: string, lQuestionIDList: string[]
 };
 
 //SSMLの構造検証（TOEIC音声生成専用 - 簡略版）
-function validateSSML(ssml: string): void {
+export async function validateSSML(ssml: string): Promise<void> {
     // 1. 基本チェック
     if (!ssml || ssml.trim().length === 0) {
         throw new apierror.SSMLValidationError('SSMLが空です');
@@ -540,53 +540,39 @@ function validateSSML(ssml: string): void {
     console.log(`SSML検証完了: ${startMarks.length}問題`);
 };
 
-// markタグの順序検証（必要時のみ呼び出し）
-function validateMarkTagOrder(ssml: string, questionCount: number): void {
-    for (let i = 1; i <= questionCount; i++) {
-        const startPattern = `<mark name="q${i}_start"/>`;
-        const endPattern = `<mark name="q${i}_end"/>`;
-
-        const startIndex = ssml.indexOf(startPattern);
-        const endIndex = ssml.indexOf(endPattern);
-
-        if (startIndex === -1 || endIndex === -1) {
-            throw new apierror.SSMLValidationError(`問題${i}のmarkタグペアが見つかりません`);
-        }
-
-        if (startIndex >= endIndex) {
-            throw new apierror.SSMLValidationError(`問題${i}のmarkタグの順序が不正です`);
-        }
-    }
-};
-
 //音声データを問題毎に分割し保存　
 // 引数: 音声データ、時間情報、識別子
 // 戻り値: 保存した音声のURLリスト
-async function splitAudioByQuestions(
+export async function splitAudioByQuestions(
     audioBuffer: Buffer, //Base64でエンコードされた音声データ　未分割
     timepoints: Array<{ markName: string; timeSeconds: number }>, //時間情報　どこで切るかの指定
     lQuestionIDList: string[] //分割した各問題に付与する識別子
 ): Promise<domein.AudioURL[]> {
-    // 配列の長さが整合するか確認
-    if(timepoints.length !== lQuestionIDList.length) {
-        throw new apierror.AudioProcessingError('問題数と時間範囲の数が整合しません');
+    // 要素数が0でないか確認
+    console.log(`timepoints.length: ${timepoints.length}, lQuestionIDList.length: ${lQuestionIDList.length}`);
+    if(timepoints.length === 0 || lQuestionIDList.length === 0) {
+        throw new apierror.AudioProcessingError('問題数もしくは時間数の要素数が0です');
     };
 
     const ffmpegStatic = await import('ffmpeg-static');  // 動的import モジュール実行タイミングのみ読み込み
     const ffmpegPath = ffmpegStatic.default;
     
-    // 型安全な確認
+    // 型安全確認
     if (typeof ffmpegPath !== 'string' || !ffmpegPath) {
         throw new apierror.FFmpegError('ffmpeg-static did not return a valid path');
     };
 
-    // 1. timepoints をペアにグループ化
+    // timepoints をペアにグループ化
     const questionTimeRangeList = extractQuestionTimeRangeList(timepoints);
+    // 配列の長さが整合するか確認
+    if(questionTimeRangeList.length !== lQuestionIDList.length) {
+        throw new apierror.AudioProcessingError('問題数と時間範囲の数が整合しません');
+    };
     
-    // 2. 各時間範囲で音声を分割
-    const audioURLList: domein.AudioURL[] = [];
+    /*// 各時間範囲で音声を分割
+    const audioURLList: domein.AudioURL[] = [];*/
     
-    // 3. 一括でFFmpeg処理（全問題を一度に切り出し）
+    // 一括でFFmpeg処理（全問題を一度に切り出し）
     return await extractMultipleAudioSegments(
         audioBuffer,
         questionTimeRangeList,
@@ -596,7 +582,7 @@ async function splitAudioByQuestions(
 };
 
 //時間範囲抽出
-function extractQuestionTimeRangeList(timePointList: Array<{ markName: string; timeSeconds: number }>): Array<{ startTime: number; endTime: number }> {
+export function extractQuestionTimeRangeList(timePointList: Array<{ markName: string; timeSeconds: number }>): Array<{ startTime: number; endTime: number }> {
     
     // 型安全性確認
     if(timePointList.length === 0) {
@@ -609,7 +595,7 @@ function extractQuestionTimeRangeList(timePointList: Array<{ markName: string; t
         throw new apierror.AudioSplitError('要求の問題数が多すぎます（最大10問まで）');
     };
     
-    // timepointsをMap型に変換
+    // timepointlistをMap型に変換
     const markMap = new Map<string, number>();
         timePointList.forEach(tp => {
         markMap.set(tp.markName, tp.timeSeconds);
@@ -636,29 +622,25 @@ function extractQuestionTimeRangeList(timePointList: Array<{ markName: string; t
     return rangeList;
 };
 
-//音声データの切り出し処理および保存
-async function extractMultipleAudioSegments(
+//音声データの切り出し処理および保存、URL生成
+export async function extractMultipleAudioSegments(
     audioBuffer: Buffer,
     questionTimeRangeList: Array<{ startTime: number; endTime: number }>,
     lQuestionIDList: string[],
     ffmpegPath: string
 ): Promise<domein.AudioURL[]> {
-    
-    // 配列の長さが整合するか確認
     if (questionTimeRangeList.length !== lQuestionIDList.length) {
         throw new apierror.AudioSplitError('問題数と時間範囲の数が整合しません');
-    };
+    }
 
     const tempDir = os.tmpdir();
     const tempInputFile = path.join(tempDir, `input_${Date.now()}.mp3`);
-    
+
     try {
-        // 入力ファイルを一度だけ作成
         await fs.writeFile(tempInputFile, audioBuffer);
-        
-        // extractSingleSegmentを並列実行し、全問題を同時に切り出し
+
         const audioURLList = await Promise.all(
-            questionTimeRangeList.map((range, index) => 
+            questionTimeRangeList.map((range, index) =>
                 extractSingleSegment(
                     tempInputFile,
                     range.startTime,
@@ -668,19 +650,19 @@ async function extractMultipleAudioSegments(
                 )
             )
         );
-        
+
         return audioURLList;
-        
     } catch (error) {
         console.log('音声切り出しエラー:', error);
-        if (error instanceof apierror.AudioProcessingError ||
+        if (
+            error instanceof apierror.AudioProcessingError ||
             error instanceof apierror.FFmpegError ||
-            error instanceof apierror.FileOperationError) {
+            error instanceof apierror.FileOperationError
+        ) {
             throw error;
         }
         throw new apierror.AudioProcessingError(`音声切り出しエラー: ${error}`);
     } finally {
-        // クリーンアップ
         await fs.unlink(tempInputFile).catch(() => {});
     }
 }
@@ -705,7 +687,7 @@ async function extractSingleSegment(
     try {
         await fs.mkdir(finalDir, { recursive: true });
         
-        // FFmpeg実行
+        // ファイル切り出し条件の指定
         const args = [
             '-i', inputFilePath,
             '-ss', startTime.toString(),
@@ -717,6 +699,7 @@ async function extractSingleSegment(
         ];
         
         await new Promise<void>((resolve, reject) => {
+            //切り出し実行
             const ffmpegProcess = spawn(ffmpegPath, args);
             
             let stderr = '';

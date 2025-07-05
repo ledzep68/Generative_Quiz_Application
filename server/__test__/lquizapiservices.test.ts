@@ -370,7 +370,7 @@ describe(`D_TOEICSSMLGenerator`, () => {
         expect(result).toHaveProperty('gender');
     });
     test(`D02_generateSSML（SSML生成）`, async () => {
-        expect.assertions(1);
+        expect.assertions(3);
         const testNewAudioRequest: Mocked<dto.NewAudioReqDTO[]> = [
             {
             lQuestionID: 'testID1',
@@ -387,7 +387,9 @@ describe(`D_TOEICSSMLGenerator`, () => {
         ];
         const result = service.TOEICSSMLGenerator.generateSSML(testNewAudioRequest);
         console.log(result);
-        expect(result).contains(`<?xml version="1.0" encoding="UTF-8"?>`)
+        expect(result).contains(`<?xml version="1.0" encoding="UTF-8"?>`);
+        expect(result).contains(`xml:lang="en-GB"`);
+        expect(result).contains(`<prosody rate="1">`);
 
         /*
         export class NewAudioReqDTO {
@@ -400,4 +402,342 @@ describe(`D_TOEICSSMLGenerator`, () => {
         }
         */
     });
+    test(`D03_escapeSSML（エスケープ処理確認）`, () => {
+        expect.assertions(6);
+        const testNewAudioRequest: Mocked<dto.NewAudioReqDTO[]> = [
+            {
+            lQuestionID: 'testID1',
+            audioScript: `&<>"'`,
+            speakerAccent: 'British',
+            speakingRate: 1.0
+            }
+        ];
+        const result = service.TOEICSSMLGenerator.generateSSML(testNewAudioRequest);
+        console.log(result);
+        expect(result).contains(`&amp;`);
+        expect(result).contains(`&lt;`);
+        expect(result).contains(`&gt;`);
+        expect(result).contains(`&quot;`);
+        expect(result).contains(`&apos;`);
+        expect(result).not.toMatch(`/&(?!amp;|lt;|gt;|quot;|apos;)/`)
+    })
 });
+
+describe(`E_validateSSML`, () => {
+    test(`E01_SSML検証成功`, async () => {
+        const testSSML = `<?xml version="1.0" encoding="UTF-8"?>
+            <speak version="1.0" xmlns="http://www.w3.org/2001/10/synthesis" xml:lang="en-GB">
+                <voice name="en-GB-Neural2-C">
+                    <prosody rate="1">
+                        <break time="1s"/>
+                        
+            <!-- Question 1: testID1 -->
+            <mark name="q1_start"/>
+            <prosody rate="1">
+                Good evening, this is your captain speaking. We&apos;re currently cruising at 35,000 feet with clear skies ahead. Our estimated arrival time is 3:30 PM local time. <break time="1.5s"/> Who is speaking? <break time="0.8s"/> A flight attendant. <break time="0.8s"/> The captain. <break time="0.8s"/> Ground control. <break time="0.8s"/> A passenger.
+            </prosody>
+            <mark name="q1_end"/>
+
+
+            <!-- Question 2: testID2 -->
+            <mark name="q2_start"/>
+            <prosody rate="1">
+                Attention shoppers, we&apos;re pleased to announce our weekend sale. All electronics are 20% off until Sunday. Visit our electronics department on the third floor. <break time="1.5s"/> What is being announced? <break time="0.8s"/> A store closing. <break time="0.8s"/> A weekend sale. <break time="0.8s"/> New store hours. <break time="0.8s"/> A product recall.
+            </prosody>
+            <mark name="q2_end"/>
+
+                        <break time="2s"/>
+                    </prosody>
+                </voice>
+            </speak>`
+        const result = await service.validateSSML(testSSML);
+        console.log(result);
+        expect(result).toBe(undefined);
+    });
+    test(`E02_エラー_空SSML`, async () => {
+        expect.assertions(1);
+        const testSSML = ``;
+        await expect(service.validateSSML(testSSML)).rejects.toThrow(apierror.SSMLValidationError);
+    });
+    test(`E03_エラー_<speak>欠如`, async () => {
+        expect.assertions(1);
+        const testSSML = `<?xml version="1.0" encoding="UTF-8"?>
+            <speaf version="1.0" xmlns="http://www.w3.org/2001/10/synthesis" xml:lang="en-GB">
+                <voice name="en-GB-Neural2-C">
+                    <prosody rate="1">
+                        <break time="1s"/>
+                        
+            <!-- Question 1: testID1 -->
+            <mark name="q1_start"/>
+            <prosody rate="1">
+                Good evening, this is your captain speaking. We&apos;re currently cruising at 35,000 feet with clear skies ahead. Our estimated arrival time is 3:30 PM local time. <break time="1.5s"/> Who is speaking? <break time="0.8s"/> A flight attendant. <break time="0.8s"/> The captain. <break time="0.8s"/> Ground control. <break time="0.8s"/> A passenger.
+            </prosody>
+            <mark name="q1_end"/>
+
+                        <break time="2s"/>
+                    </prosody>
+                </voice>
+            </s>`
+        await expect(service.validateSSML(testSSML)).rejects.toThrow(apierror.SSMLValidationError);
+    });
+    test(`E03_エラー_音声分割用markタグ検証_q数字なし`, async () => {
+        expect.assertions(1);
+        const testSSML = `<?xml version="1.0" encoding="UTF-8"?>
+            <speaf version="1.0" xmlns="http://www.w3.org/2001/10/synthesis" xml:lang="en-GB">
+                <voice name="en-GB-Neural2-C">
+                    <prosody rate="1">
+                        <break time="1s"/>
+                        
+            <!-- Question 1: testID1 -->
+            <mark name="q_start"/>
+            <prosody rate="1">
+                Good evening, this is your captain speaking. We&apos;re currently cruising at 35,000 feet with clear skies ahead. Our estimated arrival time is 3:30 PM local time. <break time="1.5s"/> Who is speaking? <break time="0.8s"/> A flight attendant. <break time="0.8s"/> The captain. <break time="0.8s"/> Ground control. <break time="0.8s"/> A passenger.
+            </prosody>
+            <mark name="q1_end"/>
+
+                        <break time="2s"/>
+                    </prosody>
+                </voice>
+            </s>`
+        await expect(service.validateSSML(testSSML)).rejects.toThrow(apierror.SSMLValidationError);
+    });
+    test(`E04_エラー_音声分割用markタグ検証_対象外の正規表現`, async () => {
+        expect.assertions(1);
+        const testSSML = `<?xml version="1.0" encoding="UTF-8"?>
+            <speaf version="1.0" xmlns="http://www.w3.org/2001/10/synthesis" xml:lang="en-GB">
+                <voice name="en-GB-Neural2-C">
+                    <prosody rate="1">
+                        <break time="1s"/>
+                        
+            <!-- Question 1: testID1 -->
+            <mark name="q1_begin"/>
+            <prosody rate="1">
+                Good evening, this is your captain speaking. We&apos;re currently cruising at 35,000 feet with clear skies ahead. Our estimated arrival time is 3:30 PM local time. <break time="1.5s"/> Who is speaking? <break time="0.8s"/> A flight attendant. <break time="0.8s"/> The captain. <break time="0.8s"/> Ground control. <break time="0.8s"/> A passenger.
+            </prosody>
+            <mark name="q1_end"/>
+
+                        <break time="2s"/>
+                    </prosody>
+                </voice>
+            </s>`
+        await expect(service.validateSSML(testSSML)).rejects.toThrow(apierror.SSMLValidationError);
+    });
+    test(`E05_エラー_音声分割用markタグ検証_startMarksがnull`, async () => {
+        expect.assertions(1);
+        const testSSML = `<?xml version="1.0" encoding="UTF-8"?>
+            <speaf version="1.0" xmlns="http://www.w3.org/2001/10/synthesis" xml:lang="en-GB">
+                <voice name="en-GB-Neural2-C">
+                    <prosody rate="1">
+                        <break time="1s"/>
+                        
+            <!-- Question 1: testID1 -->
+            
+            <prosody rate="1">
+                Good evening, this is your captain speaking. We&apos;re currently cruising at 35,000 feet with clear skies ahead. Our estimated arrival time is 3:30 PM local time. <break time="1.5s"/> Who is speaking? <break time="0.8s"/> A flight attendant. <break time="0.8s"/> The captain. <break time="0.8s"/> Ground control. <break time="0.8s"/> A passenger.
+            </prosody>
+            <mark name="q1_end"/>
+
+                        <break time="2s"/>
+                    </prosody>
+                </voice>
+            </s>`
+        await expect(service.validateSSML(testSSML)).rejects.toThrow(apierror.SSMLValidationError);
+    });
+    test(`E05_エラー_音声分割用markタグ検証_startMarksとendMarksの要素数が整合しない`, async () => {
+        expect.assertions(1);
+        const testSSML = `<?xml version="1.0" encoding="UTF-8"?>
+            <speaf version="1.0" xmlns="http://www.w3.org/2001/10/synthesis" xml:lang="en-GB">
+                <voice name="en-GB-Neural2-C">
+                    <prosody rate="1">
+                        <break time="1s"/>
+                        
+            <!-- Question 1: testID1 -->
+            <mark name="q1_begin"/>
+            <prosody rate="1">
+                Good evening, this is your captain speaking. We&apos;re currently cruising at 35,000 feet with clear skies ahead. Our estimated arrival time is 3:30 PM local time. <break time="1.5s"/> Who is speaking? <break time="0.8s"/> A flight attendant. <break time="0.8s"/> The captain. <break time="0.8s"/> Ground control. <break time="0.8s"/> A passenger.
+            </prosody>
+            <mark name="q1_end"/>
+
+            <!-- Question 2: testID2 -->
+            <mark name="q2_begin"/>
+            <mark name="q2_begin"/>
+            <prosody rate="1">
+                aaaaa
+            </prosody>
+            <mark name="q2_end"/>
+
+                        <break time="2s"/>
+                    </prosody>
+                </voice>
+            </s>`
+        await expect(service.validateSSML(testSSML)).rejects.toThrow(apierror.SSMLValidationError);
+    });
+    test(`E05_エラー_音声分割用markタグ検証_要素数上限(10)越え`, async () => {
+        expect.assertions(1);
+        const testSSML = `<?xml version="1.0" encoding="UTF-8"?>
+            <speaf version="1.0" xmlns="http://www.w3.org/2001/10/synthesis" xml:lang="en-GB">
+                <voice name="en-GB-Neural2-C">
+                    <prosody rate="1">
+                        <break time="1s"/>
+                        
+            <!-- Question 1: testID1 -->
+            <mark name="q1_begin"/>
+            <prosody rate="1">
+                1
+            </prosody>
+            <mark name="q1_end"/>
+
+            <!-- Question 2: testID2 -->
+            <mark name="q2_begin"/>
+            <prosody rate="1">
+                2
+            </prosody>
+            <mark name="q2_end"/>
+
+            <!-- Question 3: testID3 -->
+            <mark name="q3_begin"/>
+            <prosody rate="1">
+                3
+            </prosody>
+            <mark name="q3_end"/>
+
+            <!-- Question 4: testID4 -->
+            <mark name="q4_begin"/>
+            <prosody rate="1">
+                4
+            </prosody>
+            <mark name="q4_end"/>
+
+            <!-- Question 5: testID5 -->
+            <mark name="q5_begin"/>
+            <prosody rate="1">
+                5
+            </prosody>
+            <mark name="q5_end"/>
+
+            <!-- Question 6: testID6 -->
+            <mark name="q6_begin"/>
+            <prosody rate="1">
+                6
+            </prosody>
+            <mark name="q6_end"/>
+
+            <!-- Question 7: testID7 -->
+            <mark name="q7_begin"/>
+            <prosody rate="1">
+                7
+            </prosody>
+            <mark name="q7_end"/>
+
+            <!-- Question 8: testID8 -->
+            <mark name="q8_begin"/>
+            <prosody rate="1">
+                8
+            </prosody>
+            <mark name="q8_end"/>
+
+            <!-- Question 9: testID9 -->
+            <mark name="q9_begin"/>
+            <prosody rate="1">
+                9
+            </prosody>
+            <mark name="q9_end"/>
+
+            <!-- Question 10: testID10 -->
+            <mark name="q10_begin"/>
+            <prosody rate="1">
+                10
+            </prosody>
+            <mark name="q10_end"/>
+
+            <!-- Question 11: testID11 -->
+            <mark name="q11_begin"/>
+            <prosody rate="1">
+                11
+            </prosody>
+            <mark name="q11_end"/>
+
+                        <break time="2s"/>
+                    </prosody>
+                </voice>
+            </s>`
+        await expect(service.validateSSML(testSSML)).rejects.toThrow(apierror.SSMLValidationError);
+    });
+})
+
+describe(`F_extractQuestionTimeRangeList`, () => {
+    test(`F01_時間範囲抽出成功`, async () => {
+        const mockTimepoints = [
+            { markName: "q1_start", timeSeconds: 0.5 },
+            { markName: "q1_end", timeSeconds: 12.3 },
+            { markName: "q2_start", timeSeconds: 13.0 },
+            { markName: "q2_end", timeSeconds: 25.8 },
+            { markName: "q3_start", timeSeconds: 26.5 },
+            { markName: "q3_end", timeSeconds: 38.2 }
+        ];
+
+        const result = service.extractQuestionTimeRangeList(mockTimepoints);
+        expect(result).toEqual([
+            { startTime: 0.5, endTime: 12.3 },
+            { startTime: 13.0, endTime: 25.8 },
+            { startTime: 26.5, endTime: 38.2 }
+        ]);
+    });
+});
+
+describe(`G_extractSingleSegment`, () => {
+    
+})
+/*describe(`H_extractMultipleAudioSegments`, () => {
+
+    test(`G01_音声データ切り出し成功`, async () => {
+        expect.assertions(5);
+        const mockAudioBuffer = Buffer.from([
+            // WAVファイルの最小限のヘッダー
+            0x52, 0x49, 0x46, 0x46, // "RIFF"
+            0x2C, 0x00, 0x00, 0x00, // ファイルサイズ
+            0x57, 0x41, 0x56, 0x45, // "WAVE"
+            0x66, 0x6D, 0x74, 0x20, // "fmt "
+            0x10, 0x00, 0x00, 0x00, // Subchunk1Size
+            0x01, 0x00, 0x01, 0x00, // AudioFormat, NumChannels
+            0x44, 0xAC, 0x00, 0x00, // SampleRate
+            0x88, 0x58, 0x01, 0x00, // ByteRate
+            0x02, 0x00, 0x10, 0x00, // BlockAlign, BitsPerSample
+            0x64, 0x61, 0x74, 0x61, // "data"
+            0x08, 0x00, 0x00, 0x00, // データサイズ
+            // 8バイトの音声データ
+            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
+        ]);
+
+        const mockTimepointList = [
+            { startTime: 0.5, endTime: 12.3 },
+            { startTime: 13.0, endTime: 25.8 },
+            { startTime: 26.5, endTime: 38.2 }
+        ];
+
+        const mockLQuestionIDList = [
+            "toeic-part4-q001",
+            "toeic-part4-q002",
+            "toeic-part4-q003"
+        ];
+        
+        const MockedFFMpeg = vitest.fn();
+        const mockFFmpeg = new MockedFFMpeg();
+        (service as any).ffmpeg = mockFFmpeg;
+
+        const result = await service.extractMultipleAudioSegments(mockAudioBuffer, mockTimepointList, mockLQuestionIDList, );
+        expect(result).toHaveLength(3);
+        expect(result).toHaveProperty('lQuestionID');
+        expect(result).toHaveProperty('audioFilePath');
+        expect(result).toHaveProperty('audioURL');
+        expect(result).toHaveProperty('duration');
+
+        //音声URLデータ
+        export interface AudioURL {
+            lQuestionID: string;
+            audioFilePath: string;
+            audioURL: string;
+            duration: number;
+        }
+    })
+})*/
