@@ -1,25 +1,27 @@
-import { describe, test, expect, beforeEach, afterAll, beforeAll, afterEach, vi, Mocked, Mock } from 'vitest'
-import * as service from "../listening-quiz-transactions/services/lquizapiservice.js"
-import * as domein from "../listening-quiz-transactions/lquiz.domeinobject.js";
-import * as dto from "../listening-quiz-transactions/lquiz.dto.js";
-import * as businesserror from "../listening-quiz-transactions/errors/lquiz.businesserrors.js";
-import * as apierror from "../listening-quiz-transactions/errors/lquiz.apierrors.js";
-//import fetch from "node-fetch";
-import * as schema from "../listening-quiz-transactions/schemas/lquizapischema.js";
+import { describe, test, expect, beforeEach, afterAll, beforeAll, afterEach, vi, Mocked, Mock, MockedFunction } from 'vitest'
 import { z } from "zod";
 import { TextToSpeechClient } from '@google-cloud/text-to-speech';
 //import { google } from '@google-cloud/text-to-speech/build/protos/protos';
 import {GoogleAuth} from "google-auth-library";
-import { spawn } from 'child_process'; //ライブラリを通さず、直接他プログラムを実行するためのライブラリ
+import { ChildProcess, spawn } from 'child_process'; //ライブラリを通さず、直接他プログラムを実行するためのライブラリ
+import { EventEmitter } from 'events';
 import fs from "fs/promises"; //音声バッファデータをローカルファイルに書き込むためのライブラリ
 import path from "path";
 import os from "os";
 import createFetchMock from 'vitest-fetch-mock';
 import { assert } from "console";
 
-
 import { AccentType } from "../listening-quiz-transactions/services/lquizapiservice.js";
+import { start } from 'repl';
+import { stderr } from 'process';
 
+
+import * as service from "../listening-quiz-transactions/services/lquizapiservice.js"
+import * as domein from "../listening-quiz-transactions/lquiz.domeinobject.js";
+import * as dto from "../listening-quiz-transactions/lquiz.dto.js";
+import * as businesserror from "../listening-quiz-transactions/errors/lquiz.businesserrors.js";
+import * as apierror from "../listening-quiz-transactions/errors/lquiz.apierrors.js";
+import * as schema from "../listening-quiz-transactions/schemas/lquizapischema.js";
 
 describe('A_getRandomSpeakerAccent', () => {
     test("A01_ランダムに発話アクセントを取得", async () => {
@@ -665,6 +667,7 @@ describe(`E_validateSSML`, () => {
     });
 })
 
+
 describe(`F_extractQuestionTimeRangeList`, () => {
     test(`F01_時間範囲抽出成功`, async () => {
         const mockTimepoints = [
@@ -685,13 +688,94 @@ describe(`F_extractQuestionTimeRangeList`, () => {
     });
 });
 
-describe(`G_extractSingleSegment`, () => {
-    
-})
-/*describe(`H_extractMultipleAudioSegments`, () => {
+/*class MockChildProcess extends EventEmitter {
+        stderr = new EventEmitter();
+        stdout = new EventEmitter();
+        pid = 12345;
+        killed = false;
+        exitCode = null
+    }
+// child_processのspawnとChildProcessをモック
+vi.mock('child_process', async () => {
+        const actual = await vi.importActual('child_process');
+        return {
+            ...actual,
+            ChildProcess: actual.ChildProcess,
+            spawn: vi.fn()
+        };
+    });*/
 
-    test(`G01_音声データ切り出し成功`, async () => {
-        expect.assertions(5);
+describe(`G_音声切り出しモジュール群`, () => {
+    //ffmpegを実際に動かしてテスト
+    const ffmpegPath = '/Users/sojikoeie/Desktop/Generative_Quiz_Application/server/node_modules/ffmpeg-static/ffmpeg';
+
+    describe(`G01_executeFFmpegProcess`, () => {
+        let createdFiles: string[] = []; // 作成したファイルを記録
+    
+        afterEach(async () => {
+            // 各テスト後にファイルをクリーンアップ
+            for (const file of createdFiles) {
+                await fs.unlink(file).catch(() => {});
+            }
+            createdFiles = []; // リセット
+        });
+
+        const startTime = 10.5;
+        const endTime = 25.8;
+        const duration = endTime - startTime;
+        //テストファイル保存用ディレクトリ
+        const testFilesDir = '/Users/sojikoeie/Desktop/Generative_Quiz_Application/server/__test__/testfiles';
+            
+        test(`G01-01_音声データ切り出し成功`, async () => {
+            expect.assertions(1);
+
+            const testFile = path.join(testFilesDir, `test_dynamic_${Date.now()}.mp3`);
+        
+            // テストファイル（短い音）を動的に生成
+            await service.executeFFmpegProcess(ffmpegPath, [
+                '-f', 'lavfi',
+                '-i', 'sine=frequency=1000:duration=10', 
+                '-acodec', 'libmp3lame',
+                '-y',
+                testFile
+            ]);
+            const outputFile = path.join(testFilesDir, `test_output_${Date.now()}.mp3`);
+
+            createdFiles.push(testFile, outputFile);
+            
+            const mockedArgs = [
+                '-i', testFile, 
+                '-ss', startTime.toString(),  
+                '-t', duration.toString(),
+                '-acodec', 'libmp3lame', 
+                '-b:a', '128k',                 
+                '-y',                               
+                outputFile                   
+            ];
+
+            await expect(service.executeFFmpegProcess(ffmpegPath, mockedArgs)).resolves.toBeUndefined();
+        });
+        test(`G01_02_失敗_存在しないファイル`, async () => {
+            expect.assertions(1);
+            await expect(service.executeFFmpegProcess(ffmpegPath, [
+                '-i', '/nonexistent/file.mp3',
+                'output.mp3'
+            ])).rejects.toThrow(apierror.FFmpegError);
+        });
+        test(`G01_03_失敗_無効なオプション`, async () => {
+            expect.assertions(1);
+            await expect(service.executeFFmpegProcess(ffmpegPath, [
+                'aaaaa'
+            ])).rejects.toThrow(apierror.FFmpegError);
+        });
+        test(`G01_04_失敗_プロセス起動失敗`, async () => {
+            expect.assertions(1);
+            await expect(service.executeFFmpegProcess('/invalid/ffmpeg', ['-version']
+            )).rejects.toThrow(apierror.FFmpegError);
+        });
+    });
+    describe(`G02_extractMultipleAudioSegments（extractSingleSegmentも含む）`, () => {
+        // 音声ファイルのモック
         const mockAudioBuffer = Buffer.from([
             // WAVファイルの最小限のヘッダー
             0x52, 0x49, 0x46, 0x46, // "RIFF"
@@ -708,8 +792,8 @@ describe(`G_extractSingleSegment`, () => {
             // 8バイトの音声データ
             0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
         ]);
-
-        const mockTimepointList = [
+        
+        const mockTimeRangeList = [
             { startTime: 0.5, endTime: 12.3 },
             { startTime: 13.0, endTime: 25.8 },
             { startTime: 26.5, endTime: 38.2 }
@@ -720,18 +804,177 @@ describe(`G_extractSingleSegment`, () => {
             "toeic-part4-q002",
             "toeic-part4-q003"
         ];
+
+        test(`G02_01_成功`, async () => {
+            expect.assertions(2);
+            const result = await service.extractMultipleAudioSegments(mockAudioBuffer, mockTimeRangeList, mockLQuestionIDList, ffmpegPath);
+            expect(result.length).toBe(mockLQuestionIDList.length);
+            expect(result[0]).haveOwnProperty('lQuestionID');
+        })
+    });
+    describe(`G03_splitAudioByQuestions`, () => {
+    const testFilesDir = path.join(__dirname, 'testfiles');
+
+    // 5問分のテスト用MP3データを生成
+    const generate5QuestionMP3 = async (): Promise<Buffer> => {
+        const tempFiles: string[] = [];
         
-        const MockedFFMpeg = vitest.fn();
-        const mockFFmpeg = new MockedFFMpeg();
-        (service as any).ffmpeg = mockFFmpeg;
+        try {
+            await fs.mkdir(testFilesDir, { recursive: true });
+            
+            // 各問題の音声ファイルを生成（異なる周波数で識別しやすく）
+            const questionFiles = [
+                // 問題1: 17.5秒、440Hz（ラの音）
+                {
+                    file: path.join(testFilesDir, 'question1.mp3'),
+                    duration: 17.5,
+                    frequency: 440
+                },
+                // 問題2: 16.8秒、523Hz（ドの音）
+                {
+                    file: path.join(testFilesDir, 'question2.mp3'),
+                    duration: 16.8,
+                    frequency: 523
+                },
+                // 問題3: 15.7秒、659Hz（ミの音）
+                {
+                    file: path.join(testFilesDir, 'question3.mp3'),
+                    duration: 15.7,
+                    frequency: 659
+                },
+                // 問題4: 16.5秒、784Hz（ソの音）
+                {
+                    file: path.join(testFilesDir, 'question4.mp3'),
+                    duration: 16.5,
+                    frequency: 784
+                },
+                // 問題5: 16.8秒、880Hz（高いラの音）
+                {
+                    file: path.join(testFilesDir, 'question5.mp3'),
+                    duration: 16.8,
+                    frequency: 880
+                }
+            ];
 
-        const result = await service.extractMultipleAudioSegments(mockAudioBuffer, mockTimepointList, mockLQuestionIDList, );
-        expect(result).toHaveLength(3);
-        expect(result).toHaveProperty('lQuestionID');
-        expect(result).toHaveProperty('audioFilePath');
-        expect(result).toHaveProperty('audioURL');
-        expect(result).toHaveProperty('duration');
+            // 各問題の音声を個別に生成
+            for (const question of questionFiles) {
+                await service.executeFFmpegProcess(ffmpegPath, [
+                    '-f', 'lavfi',
+                    '-i', `sine=frequency=${question.frequency}:duration=${question.duration}`,
+                    '-acodec', 'libmp3lame',
+                    '-b:a', '128k',
+                    '-y',
+                    question.file
+                ]);
+                tempFiles.push(question.file);
+                console.log(`Generated: ${question.file} (${question.duration}s, ${question.frequency}Hz)`);
+            }
 
+            // 問題間の無音（0.5秒）を生成
+            const silenceFile = path.join(testFilesDir, 'silence.mp3');
+            await service.executeFFmpegProcess(ffmpegPath, [
+                '-f', 'lavfi',
+                '-i', 'anullsrc=duration=0.5',
+                '-acodec', 'libmp3lame',
+                '-b:a', '128k',
+                '-y',
+                silenceFile
+            ]);
+            tempFiles.push(silenceFile);
+
+            // 連結用のリストファイルを作成
+            const concatListFile = path.join(testFilesDir, 'concat_list.txt');
+            const concatList = [
+                `file '${questionFiles[0].file}'`,
+                `file '${silenceFile}'`,
+                `file '${questionFiles[1].file}'`,
+                `file '${silenceFile}'`,
+                `file '${questionFiles[2].file}'`,
+                `file '${silenceFile}'`,
+                `file '${questionFiles[3].file}'`,
+                `file '${silenceFile}'`,
+                `file '${questionFiles[4].file}'`
+            ].join('\n');
+            
+            await fs.writeFile(concatListFile, concatList);
+            tempFiles.push(concatListFile);
+
+            // 5問分を連結
+            const finalMP3File = path.join(testFilesDir, `5questions_${Date.now()}.mp3`);
+            await service.executeFFmpegProcess(ffmpegPath, [
+                '-f', 'concat',
+                '-safe', '0',
+                '-i', concatListFile,
+                '-c', 'copy',
+                '-y',
+                finalMP3File
+            ]);
+            tempFiles.push(finalMP3File);
+
+            console.log(`Final 5-question MP3 generated: ${finalMP3File}`);
+
+            // 生成したMP3ファイルをBufferとして読み込み
+            const audioBuffer = await fs.readFile(finalMP3File);
+            console.log(`Audio buffer size: ${audioBuffer.length} bytes`);
+
+            return audioBuffer;
+
+        } finally {
+            // 一時ファイルをクリーンアップ
+            for (const file of tempFiles) {
+                await fs.unlink(file).catch(() => {});
+            }
+        }
+    };
+
+    
+    const timepoints = [
+        // 問題1: 0.5秒〜15.8秒（15.3秒間）
+        { markName: "q1_start", timeSeconds: 0.5 },
+        { markName: "q1_end", timeSeconds: 15.8 },
+        
+        // 問題2: 16.5秒〜32.1秒（15.6秒間）
+        { markName: "q2_start", timeSeconds: 16.5 },
+        { markName: "q2_end", timeSeconds: 32.1 },
+        
+        // 問題3: 33.0秒〜48.7秒（15.7秒間）
+        { markName: "q3_start", timeSeconds: 33.0 },
+        { markName: "q3_end", timeSeconds: 48.7 },
+        
+        // 問題4: 49.5秒〜65.2秒（15.7秒間）
+        { markName: "q4_start", timeSeconds: 49.5 },
+        { markName: "q4_end", timeSeconds: 65.2 },
+        
+        // 問題5: 66.0秒〜81.8秒（15.8秒間）
+        { markName: "q5_start", timeSeconds: 66.0 },
+        { markName: "q5_end", timeSeconds: 81.8 }
+    ];
+
+    // 3. lQuestionIDList: 5問分の識別子
+    const lQuestionIDList = [
+        "toeic-part4-q001",
+        "toeic-part4-q002", 
+        "toeic-part4-q003",
+        "toeic-part4-q004",
+        "toeic-part4-q005"
+    ];
+    test(`G03_01_成功`, async () => {
+        expect.assertions(26);
+        const testAudioBuffer = await generate5QuestionMP3();
+        const result = await service.splitAudioByQuestions(testAudioBuffer, timepoints, lQuestionIDList);
+        expect(result.length).toBe(5);
+        result.forEach((audioURL, index) => {
+            expect(audioURL).toHaveProperty('lQuestionID', lQuestionIDList[index]);
+            expect(audioURL).toHaveProperty('audioFilePath');
+            expect(audioURL).toHaveProperty('audioURL');
+            expect(audioURL).toHaveProperty('duration');
+            const questionIDs = result.map(item => item.lQuestionID);
+            expect(questionIDs).toEqual(lQuestionIDList);
+        });
+    }, 30000);
+    })
+});
+        /*
         //音声URLデータ
         export interface AudioURL {
             lQuestionID: string;
@@ -739,5 +982,4 @@ describe(`G_extractSingleSegment`, () => {
             audioURL: string;
             duration: number;
         }
-    })
-})*/
+        */

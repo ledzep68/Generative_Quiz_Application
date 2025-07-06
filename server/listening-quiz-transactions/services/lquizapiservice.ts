@@ -568,17 +568,21 @@ export async function splitAudioByQuestions(
     if(questionTimeRangeList.length !== lQuestionIDList.length) {
         throw new apierror.AudioProcessingError('問題数と時間範囲の数が整合しません');
     };
+    console.log(questionTimeRangeList)
     
     /*// 各時間範囲で音声を分割
     const audioURLList: domein.AudioURL[] = [];*/
     
+    console.log();
     // 一括でFFmpeg処理（全問題を一度に切り出し）
-    return await extractMultipleAudioSegments(
+    const audioURLList = await extractMultipleAudioSegments(
         audioBuffer,
         questionTimeRangeList,
         lQuestionIDList,
         ffmpegPath
     );
+    console.log(audioURLList);
+    return audioURLList;
 };
 
 //時間範囲抽出
@@ -650,7 +654,7 @@ export async function extractMultipleAudioSegments(
                 )
             )
         );
-
+        console.log(audioURLList);
         return audioURLList;
     } catch (error) {
         console.log('音声切り出しエラー:', error);
@@ -663,6 +667,7 @@ export async function extractMultipleAudioSegments(
         }
         throw new apierror.AudioProcessingError(`音声切り出しエラー: ${error}`);
     } finally {
+        //一時ファイルのクリーンアップ
         await fs.unlink(tempInputFile).catch(() => {});
     }
 }
@@ -698,22 +703,7 @@ async function extractSingleSegment(
             tempOutputFile
         ];
         
-        await new Promise<void>((resolve, reject) => {
-            //切り出し実行
-            const ffmpegProcess = spawn(ffmpegPath, args);
-            
-            let stderr = '';
-            ffmpegProcess.stderr.on('data', (data) => {
-                stderr += data.toString();
-            });
-            
-            ffmpegProcess.on('close', (code) => {
-                if (code === 0) resolve();
-                else reject(new apierror.FFmpegError(`FFmpeg failed: ${stderr}`));
-            });
-            
-            ffmpegProcess.on('error', (error) => {reject(new apierror.FFmpegError(`FFmpeg process error: ${error}`));});
-        });
+        await executeFFmpegProcess(ffmpegPath, args);
         
         // 最終保存先にコピー
         const finalFilePath = path.join(finalDir, 'audio_segment.mp3');
@@ -737,6 +727,27 @@ async function extractSingleSegment(
         await fs.unlink(tempOutputFile).catch(() => {});
     }
 };
+
+export function executeFFmpegProcess(ffmpegPath: string, args: string[]): Promise<void> {
+    return new Promise<void>((resolve, reject) => {
+            //切り出し実行
+            const ffmpegProcess = spawn(ffmpegPath, args);
+
+            console.log(`FFmpeg process started with command: ${ffmpegPath} ${args.join(' ')}`);
+            
+            let stderr = '';
+            ffmpegProcess.stderr.on('data', (data) => {
+                stderr += data.toString();
+            });
+            
+            ffmpegProcess.on('close', (code) => {
+                if (code === 0) resolve();
+                else reject(new apierror.FFmpegError(`FFmpeg failed: ${stderr}`));
+            });
+            
+            ffmpegProcess.on('error', (error) => {reject(new apierror.FFmpegError(`FFmpeg process error: ${error}`));});
+        });
+}
 
 //Google Cloud認証トークン取得
 async function getGoogleAccessToken(): Promise<string> {
