@@ -29,7 +29,7 @@ export function sectionNumberRandomSelect(requestedNumOfLQuizs: number): number[
 };
 
 //問題IDの生成
-export function lQuestionIDGenerate(requestedNumOfLQuizs: number): UUID[] {
+export function generateLQuestionID(requestedNumOfLQuizs: number): UUID[] {
     const lQuestionIDList: UUID[] = [];
     for (let i = 0; i < requestedNumOfLQuizs; i++) {
         const lQuestionID = randomUUID();
@@ -42,6 +42,32 @@ export function lQuestionIDGenerate(requestedNumOfLQuizs: number): UUID[] {
 export async function dbConnect(): Promise<PoolClient> {
     const client = await model.dbGetConnect();
     return client
+};
+
+//新規問題の挿入　バッチ処理
+export async function newQuestionDataInsert(
+    client: PoolClient, 
+    generatedQuestionDataList: dto.GeneratedQuestionDataResDTO[], 
+    audioURLList: domein.AudioURL[],
+    speakingRate: number
+): Promise<void> {
+    try{
+        // トランザクション開始
+        await client.query('BEGIN');
+        // 引数の要素を一括でentityにマッピング
+        const insertNewDataList = dbmapper.QuestionDataToEntityMapper.toEntityList(generatedQuestionDataList, audioURLList, speakingRate);
+        // 新規問題の挿入
+        await model.newQuestionBatchInsert(client, insertNewDataList);
+        // コミット
+        await client.query('COMMIT');
+    } catch (error) {
+        // エラー時はロールバック
+        await client.query('ROLLBACK');
+        console.log('INSERTエラー:', error);
+        throw new Error("問題の登録に失敗しました");
+    } finally {
+        await model.dbRelease(client);
+    }
 };
 
 //既存問題IDを指定して問題データ取得

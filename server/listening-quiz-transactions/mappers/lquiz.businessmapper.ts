@@ -6,6 +6,7 @@ lquiz.businessmapper.ts : ListeningQuiz用 controllers~models層におけるビ�
 
 import * as dto from "../lquiz.dto.js";
 import * as domein from "../lquiz.domeinobject.js";
+import * as entity from "../lquiz.entity.js";
 
 //service プロンプト生成モジュール用
 /*export class LQuizGenerateMapper {
@@ -13,23 +14,70 @@ import * as domein from "../lquiz.domeinobject.js";
         return new domein.LQuizGenerateInfo(reqDTO.requestedNumOfLQuizs, reqDTO.sectionNumber);
     }
 }*/
+
+//新規クイズデータ　dto.RandomNewQuestionReqDTO→domein.NewQuestionInfo
+export class NewQuestionInfoMapper {
+    static toDomainObject(reqDTO: dto.RandomNewQuestionReqDTO): domein.NewQuestionInfo {
+        return new domein.NewQuestionInfo(reqDTO.sectionNumber, reqDTO.requestedNumOfLQuizs, reqDTO.speakingRate);
+    }
+};
+
+//ChatGPT生成クイズデータ&lQuestionIDList→TTSリクエストへのマッパー
+export class generatedQuestionDataToTTSReqMapper {
+    static toDomainObject(generatedQuestionDataList: dto.GeneratedQuestionDataResDTO[], lQuestionIDList: string[], speakingRate: number): dto.NewAudioReqDTO[] {
+        return generatedQuestionDataList.map((generatedQuestionData, index) => new dto.NewAudioReqDTO(
+            lQuestionIDList[index],
+            generatedQuestionData.audioScript,
+            generatedQuestionData.speakerAccent,
+            speakingRate
+        ));
+    }
+};
+
+export class NewQuestionResMapper {
+    static toEntityList(
+            generatedQuestionDataList: dto.GeneratedQuestionDataResDTO[], 
+            audioURLList: domein.AudioURL[],
+            speakingRate: number
+        ): dto.QuestionResDTO[] {
+            return generatedQuestionDataList.map((questionData, index) => {
+                const audioData = audioURLList[index];
+                
+                return {
+                    lQuestionID: audioData.lQuestionID,
+                    audioScript: questionData.audioScript,
+                    jpnAudioScript: questionData.jpnAudioScript,
+                    answerOption: questionData.answerOption,
+                    sectionNumber: questionData.sectionNumber,
+                    explanation: questionData.explanation,
+                    speakerAccent: questionData.speakerAccent,
+                    speakingRate: speakingRate,
+                    duration: audioData.duration,
+                    audioFilePath: audioData.audioFilePath
+                };
+            });
+        }
+};
+
+
+
+
+
 //service 復習クイズデータID指定取得用
 export class LQuestionInfoMapper {
-    static toDomainObject(reqDTOList: dto.QuestionReqDTO[]): domein.LQuestionInfo[] {
+    static toDomainObject(reqDTOList: dto.ReviewQuestionReqDTO[]): domein.ReviewQuestionInfo[] {
         return reqDTOList.map(reqDTO => new domein.LQuestionInfo(
             reqDTO.lQuestionID, 
             reqDTO.userID, 
             reqDTO.sectionNumber, 
-            reqDTO.reviewTag, 
-            reqDTO.requestedNumOfLQuizs
+            reqDTO.reviewTag
         ));
     }
 };
 //service 復習クイズデータランダム取得用
-export class LQuestionRandomInfoMapper {
-    static toDomainObject(reqDTO: dto.QuestionReqDTO): domein.LQuestionInfo {
-        return new domein.LQuestionInfo(
-            reqDTO.lQuestionID, 
+export class RandomLQuestionInfoMapper {
+    static toDomainObject(reqDTO: dto.RandomReviewQuestionReqDTO): domein.LQuestionInfo {
+        return new domein.LQuestionInfo( 
             reqDTO.userID, 
             reqDTO.sectionNumber, 
             reqDTO.reviewTag, 

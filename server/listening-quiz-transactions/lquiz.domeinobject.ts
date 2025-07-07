@@ -4,7 +4,7 @@ lquiz.domeinobject.ts : ListeningQuizドメイン内専用オブジェクト
 
 *********************************************/
 
-//クイズ情報
+//新規問題生成用
 export class NewQuestionInfo {
     constructor(
         public sectionNumber: 1|2|3|4,
@@ -13,6 +13,7 @@ export class NewQuestionInfo {
     ){}
 };
 
+//復習問題取得用
 export class ReviewQuestionInfo {
     constructor(
         public sectionNumber: 1|2|3|4,
@@ -25,12 +26,6 @@ export class ReviewQuestionInfo {
     ){}
 }
 
-//音声保存先URL生成モジュールに渡す用データ
-export class AudioURLGenerateInfo {
-    constructor(
-        public fileName: string
-    ){}
-};
 
 //音声URLデータ
 export interface AudioURL {
@@ -38,6 +33,18 @@ export interface AudioURL {
     audioFilePath: string;
     audioURL: string;
     duration: number;
+};
+
+//新規クイズデータ記録用
+export interface NewLQuestionData {
+    lQuestionID: string;
+    audioScript: string;
+    jpnAudioScript: string;
+    answerOption: "A"|"B"|"C"|"D";
+    sectionNumber: 1|2|3|4;
+    explanation: string;
+    duration: number;
+    audioFilePath: string;
 }
 
 //***lquizAnswerController***/
@@ -47,11 +54,11 @@ export class LQuestionData {
         public lQuestionId: string,
         public audioScript: string,
         public jpnAudioScript: string,
-        public audioURL: string,
         public answerOption: "A"|"B"|"C"|"D",
         public sectionNumber: 1|2|3|4,
         public explanation: string,
-        public duration: number
+        public duration: number,
+        public audioFilePath: string
     ){}
 };
 

@@ -4,6 +4,7 @@ import * as mapper from "./mappers/lquiz.dbmapper.js";
 import * as entity from "./lquiz.entity.js"
 import * as dberror from "./errors/lquiz.dberrors.js";
 import {config} from "dotenv";
+import { omit } from "zod/v4-mini";
 config();
 
 //データベース接続用インスタンス
@@ -34,6 +35,39 @@ export async function dbRelease(client: PoolClient): Promise<void> {
         throw new dberror.DBConnectError("プールの返却に失敗しました");
     }
 };
+
+//新規クイズデータの挿入
+export async function newQuestionBatchInsert(client: PoolClient, insertNewDataList: entity.LQuestionEntity[]): Promise<QueryResult> {
+    try{
+        const placeholders = insertNewDataList.map((_, index) => {
+            const baseIndex = index * 9 + 1;
+            return `($${baseIndex}, $${baseIndex + 1}, $${baseIndex + 2}, $${baseIndex + 3}, $${baseIndex + 4}, $${baseIndex + 5}, $${baseIndex + 6}, $${baseIndex + 7}, $${baseIndex + 8})`;
+        }).join(', ');
+        
+        const sql = `INSERT INTO listening_questions 
+                    (l_question_id, audio_script, jpn_audio_script, answer_option, section_number, explanation, speaker_accent, speaking_rate, duration, audio_file_path) 
+                    VALUES ${placeholders}`;
+        
+        const values = insertNewDataList.flatMap(insertNewData => [
+            insertNewData.lQuestionID,
+            insertNewData.audioScript,
+            insertNewData.jpnAudioScript,
+            insertNewData.answerOption,
+            insertNewData.sectionNumber,
+            insertNewData.explanation,
+            insertNewData.speakerAccent,
+            insertNewData.speakingRate,
+            insertNewData.duration,
+            insertNewData.audioFilePath
+        ]);
+        
+        return await client.query(sql, values);
+    } catch (error) {
+        console.log('DB操作エラー (INSERT):', error);
+        throw new dberror.DBOperationError("問題データの挿入に失敗しました");
+    }
+}
+
 
 //指定された問題番号の既存問題のIDをlistening_answer_resultsから取得
 export async function answeredQuestionIdSelect(client: PoolClient, domObjList: domein.LQuestionInfo[]): Promise<QueryResult> {

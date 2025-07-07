@@ -4,9 +4,39 @@ lquiz.dbmapper.ts : ListeningQuiz用　models層におけるDB操作用のマッ
 
 *********************************************/
 
+import * as dto from "../lquiz.dto.js";
 import * as entity from "../lquiz.entity.js";
 import * as domein from "../lquiz.domeinobject.js";
 import { PoolClient, QueryResult } from "pg";
+
+//新規クイズデータ記録用　domein.GeneratedLQuestionData→entity.LQuestionEntity
+//dto + AudioURL → entity.LQuestionEntity への直接マッピング
+export class QuestionDataToEntityMapper {
+    static toEntityList(
+        generatedQuestionDataList: dto.GeneratedQuestionDataResDTO[], 
+        audioURLList: domein.AudioURL[],
+        speakingRate: number
+    ): entity.LQuestionEntity[] {
+        return generatedQuestionDataList.map((questionData, index) => {
+            // 対応するaudioURLを取得
+            const audioData = audioURLList[index];
+            return {
+                lQuestionID: audioData.lQuestionID,
+                audioScript: questionData.audioScript,
+                jpnAudioScript: questionData.jpnAudioScript,
+                answerOption: questionData.answerOption,
+                sectionNumber: questionData.sectionNumber,
+                explanation: questionData.explanation,
+                speakerAccent: questionData.speakerAccent,
+                speakingRate: speakingRate,
+                duration: audioData.duration,
+                audioFilePath: audioData.audioFilePath,
+                createdAt: undefined, // DB側で自動生成されるためnull
+                updatedAt: undefined  // DB側で自動生成されるためnull
+            };
+        });
+    }
+}
 
 //既存クイズデータ queryResult→domein objectへのマッピング
 export class LQuestionExtractedDataMapper {
@@ -25,7 +55,7 @@ export class LQuestionExtractedDataMapper {
 }
 
 //回答結果データ登録用のクラス　entityインターフェース
-export class InsertAnswerDataMapper {
+export class AnswerDataToEntityMapper {
     static toDomeinObject(domObj: domein.LAnswerData): entity.LAnswerResultEntity {
         return {
             lAnswerID: domObj.lAnswerID,

@@ -492,6 +492,7 @@ export async function callGoogleCloudTTS(ssml: string, lQuestionIDList: string[]
         const totalDuration = audioURLList.reduce((sum, segment) => sum + segment.duration, 0);
 
         console.log(`音声生成完了: ${audioURLList.length}問, 総時間: ${totalDuration}秒`);
+        console.log(audioURLList);
 
         return audioURLList;
 
@@ -548,41 +549,47 @@ export async function splitAudioByQuestions(
     timepoints: Array<{ markName: string; timeSeconds: number }>, //時間情報　どこで切るかの指定
     lQuestionIDList: string[] //分割した各問題に付与する識別子
 ): Promise<domein.AudioURL[]> {
-    // 要素数が0でないか確認
-    console.log(`timepoints.length: ${timepoints.length}, lQuestionIDList.length: ${lQuestionIDList.length}`);
-    if(timepoints.length === 0 || lQuestionIDList.length === 0) {
-        throw new apierror.AudioProcessingError('問題数もしくは時間数の要素数が0です');
-    };
 
-    const ffmpegStatic = await import('ffmpeg-static');  // 動的import モジュール実行タイミングのみ読み込み
-    const ffmpegPath = ffmpegStatic.default;
-    
-    // 型安全確認
-    if (typeof ffmpegPath !== 'string' || !ffmpegPath) {
-        throw new apierror.FFmpegError('ffmpeg-static did not return a valid path');
-    };
+    console.time(`splitAudioByQuestions`);
+    try{
+        // 要素数が0でないか確認
+        console.log(`timepoints.length: ${timepoints.length}, lQuestionIDList.length: ${lQuestionIDList.length}`);
+        if(timepoints.length === 0 || lQuestionIDList.length === 0) {
+            throw new apierror.AudioProcessingError('問題数もしくは時間数の要素数が0です');
+        };
 
-    // timepoints をペアにグループ化
-    const questionTimeRangeList = extractQuestionTimeRangeList(timepoints);
-    // 配列の長さが整合するか確認
-    if(questionTimeRangeList.length !== lQuestionIDList.length) {
-        throw new apierror.AudioProcessingError('問題数と時間範囲の数が整合しません');
-    };
-    console.log(questionTimeRangeList)
-    
-    /*// 各時間範囲で音声を分割
-    const audioURLList: domein.AudioURL[] = [];*/
-    
-    console.log();
-    // 一括でFFmpeg処理（全問題を一度に切り出し）
-    const audioURLList = await extractMultipleAudioSegments(
-        audioBuffer,
-        questionTimeRangeList,
-        lQuestionIDList,
-        ffmpegPath
-    );
-    console.log(audioURLList);
-    return audioURLList;
+        const ffmpegStatic = await import('ffmpeg-static');  // 動的import モジュール実行タイミングのみ読み込み
+        const ffmpegPath = ffmpegStatic.default;
+        
+        // 型安全確認
+        if (typeof ffmpegPath !== 'string' || !ffmpegPath) {
+            throw new apierror.FFmpegError('ffmpeg-static did not return a valid path');
+        };
+
+        // timepoints をペアにグループ化
+        const questionTimeRangeList = extractQuestionTimeRangeList(timepoints);
+        // 配列の長さが整合するか確認
+        if(questionTimeRangeList.length !== lQuestionIDList.length) {
+            throw new apierror.AudioProcessingError('問題数と時間範囲の数が整合しません');
+        };
+        console.log(questionTimeRangeList)
+        
+        /*// 各時間範囲で音声を分割
+        const audioURLList: domein.AudioURL[] = [];*/
+        
+        console.log();
+        // 一括でFFmpeg処理（全問題を一度に切り出し）
+        const audioURLList = await extractMultipleAudioSegments(
+            audioBuffer,
+            questionTimeRangeList,
+            lQuestionIDList,
+            ffmpegPath
+        );
+        console.log(audioURLList);
+        return audioURLList;
+    } finally {
+        console.timeEnd(`splitAudioByQuestions`);
+    }
 };
 
 //時間範囲抽出
@@ -750,7 +757,7 @@ export function executeFFmpegProcess(ffmpegPath: string, args: string[]): Promis
 }
 
 //Google Cloud認証トークン取得
-async function getGoogleAccessToken(): Promise<string> {
+export async function getGoogleAccessToken(): Promise<string> {
     try {
         const auth = new GoogleAuth({
             scopes: ['https://www.googleapis.com/auth/cloud-platform']

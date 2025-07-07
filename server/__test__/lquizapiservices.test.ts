@@ -983,3 +983,106 @@ describe(`G_音声切り出しモジュール群`, () => {
             duration: number;
         }
         */
+
+// Google Auth自体をモック
+vi.mock('google-auth-library', () => ({
+    GoogleAuth: vi.fn().mockImplementation(() => ({
+        getClient: vi.fn().mockResolvedValue({
+            getAccessToken: vi.fn().mockResolvedValue({
+                token: 'mock-access-token-for-testing',
+                expiry_date: Date.now() + 3600000
+            })
+        })
+    }))
+}));
+
+describe(`H_callGoogleCloudTTS`, () => {
+    beforeEach(() => {
+        vi.stubEnv('GOOGLE_APPLICATION_CREDENTIALS', './__test__/testkey.json');
+        fetchMock.resetMocks();
+        console.log('fetchMock type:', typeof fetchMock)
+        console.log('global fetch:', typeof global.fetch)
+    });
+
+    afterEach(() => {
+        vi.unstubAllEnvs();
+    });
+
+    test(`H01_成功`, async () => {
+        expect.assertions(3);
+
+        const mockSSML = `<?xml version="1.0" encoding="UTF-8"?>
+            <speak version="1.0" xmlns="http://www.w3.org/2001/10/synthesis" xml:lang="en-GB">
+                <voice name="en-GB-Neural2-C">
+                    <prosody rate="1">
+                        <break time="1s"/>
+                        
+            <!-- Question 1: testID1 -->
+            <mark name="q1_start"/>
+            <prosody rate="1">
+                Good evening, this is your captain speaking. We&apos;re currently cruising at 35,000 feet with clear skies ahead. Our estimated arrival time is 3:30 PM local time. <break time="1.5s"/> Who is speaking? <break time="0.8s"/> A flight attendant. <break time="0.8s"/> The captain. <break time="0.8s"/> Ground control. <break time="0.8s"/> A passenger.
+            </prosody>
+            <mark name="q1_end"/>
+
+
+            <!-- Question 2: testID2 -->
+            <mark name="q2_start"/>
+            <prosody rate="1">
+                Attention shoppers, we&apos;re pleased to announce our weekend sale. All electronics are 20% off until Sunday. Visit our electronics department on the third floor. <break time="1.5s"/> What is being announced? <break time="0.8s"/> A store closing. <break time="0.8s"/> A weekend sale. <break time="0.8s"/> New store hours. <break time="0.8s"/> A product recall.
+            </prosody>
+            <mark name="q2_end"/>
+
+                        <break time="2s"/>
+                    </prosody>
+                </voice>
+            </speak>`
+
+    const mocklQuestionIDList = [
+        "toeic-part4-q001",
+        "toeic-part4-q002"
+    ];
+
+    const mockedResponse ={
+        "audioContent": "UklGRv4CAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YdoCAAA" +
+                "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA" +
+                "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA" +
+                "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA" +
+                "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA" +
+                "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA" +
+                "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA" +
+                "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA" +
+                "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA" +
+                "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA" +
+                "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA" +
+                "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA" +
+                "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA" +
+                "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA" +
+                "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA" +
+                "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+        
+        "timepoints": [
+            {"markName": "q1_start", "timeSeconds": 1.2},
+            {"markName": "q1_end", "timeSeconds": 28.5},
+            {"markName": "q2_start","timeSeconds": 29.1},
+            {"markName": "q2_end", "timeSeconds": 52.8}
+        ]
+    };
+    vi.spyOn(service, 'getGoogleAccessToken').mockImplementationOnce(() => Promise.resolve("mockedAccessToken"));
+
+     //fetchモック
+    fetchMock.mockResponseOnce(
+        JSON.stringify(mockedResponse),
+        {
+            status: 200,
+            statusText: 'OK',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        }
+    );
+    const result = await service.callGoogleCloudTTS(mockSSML, mocklQuestionIDList);
+    expect(result.length).toBe(2);
+    expect(result[0].lQuestionID).toBe(mocklQuestionIDList[0]);
+    expect(result[1].lQuestionID).toBe(mocklQuestionIDList[1]);
+    }, 30000);
+});

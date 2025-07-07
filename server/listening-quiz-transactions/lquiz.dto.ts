@@ -7,10 +7,22 @@ lquiz.dto.ts : requestとresponse用のデータ構造定義
 
 import { SpeakerAccent } from "./services/lquizapiservice.js";
 
-//ユーザーからのクイズリクエストスキーマ
-export class QuestionReqDTO {
+//ユーザーからの新規クイズリクエストスキーマ（ランダム生成、ID非指定）
+export class RandomNewQuestionReqDTO {
     constructor(
-        public lQuestionID: string,
+        /*public lQuestionID: string,
+        public userID: string,*/
+        public sectionNumber: 1|2|3|4,
+        //public reviewTag: boolean,
+        public requestedNumOfLQuizs?: number,
+        public speakingRate?: number //発話速度
+    ){}
+};
+
+//ユーザーからの復習クイズリクエストスキーマ（ランダム、ID非指定）
+export class RandomReviewQuestionReqDTO {
+    constructor(
+        /*public lQuestionID: string,*/
         public userID: string,
         public sectionNumber: 1|2|3|4,
         public reviewTag: boolean,
@@ -19,17 +31,31 @@ export class QuestionReqDTO {
     ){}
 };
 
-//ユーザーへのクイズレスポンススキーマ
+//ユーザーからの復習クイズリクエストスキーマ（ID指定）
+export class ReviewQuestionReqDTO {
+    constructor(
+        public lQuestionID: string,
+        public userID: string,
+        public sectionNumber: 1|2|3|4,
+        public reviewTag: boolean,
+        //public requestedNumOfLQuizs?: number,
+        public speakingRate?: number //発話速度
+    ){}
+};
+
+//ユーザーへのクイズレスポンスDTO 新規・既存共通
 export class QuestionResDTO {
     constructor(
         public lQuestionID: string,
         public audioScript: string,
         public jpnAudioScript: string,
-        public audioURL: string,
         public answerOption: "A"|"B"|"C"|"D",
         public sectionNumber: 1|2|3|4,
         public explanation: string,
-        public duration: number
+        public speakerAccent: "American" | "British" | "Canadian" | "Australian",
+        public speakingRate: number,
+        public duration: number,
+        public audioFilePath: string
     ){}
 };
 
@@ -49,7 +75,7 @@ export class GeneratedQuestionDataResDTO {
         public answerOption: "A"|"B"|"C"|"D",
         public sectionNumber: 1|2|3|4,
         public explanation: string,
-        public speakerAccent: string
+        public speakerAccent: "American" | "British" | "Canadian" | "Australian"
        // public lQuestionID?: string
     ){}
 };

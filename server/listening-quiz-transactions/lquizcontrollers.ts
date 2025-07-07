@@ -17,34 +17,46 @@ import * as businessschema from "./schemas/lquizbusinessschema.js";
 
 //新規クイズ生成・出題
 export async function lquizGenerateController(req: Request, res: Response): Promise<void>{
-    
     try{
-        //reviewTag falseの場合
-        //・(ChatGPT-4o API)クイズ生成プロンプト生成、送信
-            //<プロンプト生成モジュール（引数: LQuizGenerateInfo, 戻り値: Prompt）>
-        const validatedQuestionReqDTO = businessschema.questionRandomReqValidate(req.body.QuestionReqDTO);
-        const requestedNumOfLQuizs = validatedQuestionReqDTO.requestedNumOfLQuizs
+        //バリデーション
+        const validatedRandomNewQuestionReqDTO = businessschema.randomNewQuestionReqValidate(req.body.QuestionReqDTO);
+        const requestedNumOfLQuizs = validatedRandomNewQuestionReqDTO.requestedNumOfLQuizs;
+        //プロンプト生成用ドメインオブジェクト作成
+        const newQuestionInfo = mapper.NewQuestionInfoMapper.toDomainObject(validatedRandomNewQuestionReqDTO);
 
-        const prompt = await apiservice.generatePrompt(validatedQuestionReqDTO);
-        const generatedQuizData = await apiservice.callChatGPT(prompt); //バリデーション済
-            // NewQuizGenerateReqDTO（Prompt）をOpenAI APIを使ってpostし、要求されたSectionNumかつ要求されたクイズ数の分だけリスニングクイズを生成
-                //似たような問題の生成をどうやって防止するか？
-            //データ型はLQuizdtoのJSON型の配列の形でreq
+        //プロンプト生成
+        const prompt = await apiservice.generatePrompt(newQuestionInfo);
+        //・(ChatGPT-4o API)クイズ生成プロンプト生成
+        const generatedQuizDataList = await apiservice.callChatGPT(prompt); //バリデーション済
+        //似たような問題の生成をどうやって防止するか？
+
+        //lQuestionID生成
+        const lQuestionIDList = await businessservice.generateLQuestionID(requestedNumOfLQuizs as number);
+        const speakingRate = newQuestionInfo.speakingRate;
         
-        //・(ChatGPT-4o API)クイズ文生成
-        //  受取 res = GeneratedQuestionDataResDTO[]
-        //  resからAudioScriptを取得、
-        //  NewQuizAudioReqDTO(AudioScript)をTTS APIへ送る
-        //・(Google Cloud TTS)音声合成
-        //  NewQuizAudioResDTO(Audio, durationなど)を受け取る
-        //・音声保存場所のURLを自動生成
-            //<自動生成モジュール>
-        //・音声をサーバーの特定箇所にDL
-            //ダウンロード用モジュール？
-        //・クイズのID、選択肢、解答番号、クイズ音声URLをDBに記録
-            //<DB登録モジュール（引数: lQuizData, 戻り値:boolean）>
-        //・ユーザーに配信（クイズ音声URLのAPIエンドポイントはどこで定義するか？）
-    return;
+        //SSML生成用ドメインオブジェクト作成
+        const newAudioReqDTOList = mapper.generatedQuestionDataToTTSReqMapper.toDomainObject(generatedQuizDataList, lQuestionIDList, speakingRate as number);
+        
+        // SSML生成
+        const ssml = await apiservice.TOEICSSMLGenerator.generateSSML(newAudioReqDTOList);
+        
+        //・(Google Cloud TTS)音声合成（ssmlバリデーションも含む）
+        const generatedAudioURLList = await apiservice.callGoogleCloudTTS(ssml, lQuestionIDList);
+        
+        //新規クイズデータのDBへの挿入
+        const client = await businessservice.dbConnect();
+        await businessservice.newQuestionDataInsert(client, generatedQuizDataList, generatedAudioURLList, speakingRate as number);
+        
+        //・クイズデータをユーザーに配信（クイズ音声URLのAPIエンドポイントはどこで定義するか？）
+        // audioDelivery APIエンドポイントに委任する
+        
+        //dtoへのマッピング
+        const questionResDTOList = mapper.NewQuestionResMapper.toEntityList(generatedQuizDataList, generatedAudioURLList, speakingRate as number);
+        //レスポンス送信
+        res.status(200).send({
+            QuestionResDTO: questionResDTOList
+        });
+        return;
     }catch(error){
         //errorhandler.errorHandler(error, res);
     }
