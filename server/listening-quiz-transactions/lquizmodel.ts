@@ -64,13 +64,13 @@ export async function newQuestionBatchInsert(client: PoolClient, insertNewDataLi
         return await client.query(sql, values);
     } catch (error) {
         console.log('DB操作エラー (INSERT):', error);
-        throw new dberror.DBOperationError("問題データの挿入に失敗しました");
+        throw new dberror.DBQuestionDataError("問題データの挿入に失敗しました");
     }
-}
+};
 
 
 //指定された問題番号の既存問題のIDをlistening_answer_resultsから取得
-export async function answeredQuestionIdSelect(client: PoolClient, domObjList: domein.LQuestionInfo[]): Promise<QueryResult> {
+export async function answeredQuestionIdSelect(client: PoolClient, domObjList: domein.ReviewQuestionInfo[]): Promise<QueryResult> {
     try{
         //lQuestionIDのみ、プレースホルダーを動的に生成
         const placeholders = domObjList.map((_, index) => `$${index + 2}`).join(', ');
@@ -85,11 +85,11 @@ export async function answeredQuestionIdSelect(client: PoolClient, domObjList: d
         return await client.query(sql, values);
     } catch (error) {
         console.log('DB操作エラー (SELECT):', error);
-        throw new dberror.DBOperationError("問題データの検索に失敗しました");
+        throw new dberror.DBAnswerDataError("問題データの検索に失敗しました");
     }
 };
 //nsweredQuestionIdSelectで取得した問題IDと一致する問題をlistening_questionsから取得
-export async function answeredQuestionDataSelect(client: PoolClient, domObjList: domein.LQuestionInfo[]): Promise<QueryResult> {
+export async function answeredQuestionDataSelect(client: PoolClient, domObjList: domein.ReviewQuestionInfo[]): Promise<QueryResult> {
     try{
         //lQuestionIDのみ、プレースホルダーを動的に生成
         const placeholders = domObjList.map((_, index) => `$${index + 1}`).join(', ');
@@ -98,19 +98,19 @@ export async function answeredQuestionDataSelect(client: PoolClient, domObjList:
         return await client.query(sql, values);
     } catch (error) {
         console.log('DB操作エラー (SELECT):', error);
-        throw new dberror.DBOperationError("問題データの検索に失敗しました");
+        throw new dberror.DBQuestionDataError("問題データの検索に失敗しました");
     }
 };
 
 //既存問題データをlistening_questionsから「ランダム」に取得
-export async function answeredQuestionDataRandomSelect(client: PoolClient, domObj: domein.LQuestionInfo): Promise<QueryResult> {
+export async function answeredQuestionDataRandomSelect(client: PoolClient, domObj: domein.ReviewQuestionInfo): Promise<QueryResult> {
     try{
         const sql = `SELECT * FROM listening_questions WHERE review_tag = true AND section_number = $1 ORDER BY RANDOM() LIMIT $2`;
         const values = [domObj.sectionNumber, domObj.requestedNumOfQuizs];
         return await client.query(sql, values);
     } catch (error) {
         console.log('DB操作エラー (SELECT):', error);
-        throw new dberror.DBOperationError("問題データの検索に失敗しました");
+        throw new dberror.DBQuestionDataError("問題データの検索に失敗しました");
     }
 };
 
@@ -124,7 +124,7 @@ export async function answerOptionExtract(client: PoolClient, lQuestionIDList: s
         return await client.query(sql, values);
     } catch (error) {
         console.log('DB操作エラー (SELECT):', error);
-        throw new dberror.DBOperationError("問題データの検索に失敗しました");
+        throw new dberror.DBQuestionDataError("問題データの検索に失敗しました");
     }
 };
 
@@ -138,7 +138,7 @@ export async function answerDataBatchExtract(client: PoolClient, lQuestionIDList
         return await client.query(sql, values);
     } catch (error) {
         console.log('DB操作エラー (BATCH SELECT):', error);
-        throw new dberror.DBOperationError("解答データの取得に失敗しました");
+        throw new dberror.DBQuestionDataError("解答データの取得に失敗しました");
     }
 };
 
@@ -174,6 +174,6 @@ export async function answerResultDataBatchInsert(client: PoolClient, insertAnsw
         
         } catch (error) {
             console.log('DB操作エラー (BATCH INSERT):', error);
-            throw new dberror.DBOperationError("回答結果データの登録に失敗しました");
+            throw new dberror.DBAnswerDataError("回答結果データの登録に失敗しました");
         }
 }

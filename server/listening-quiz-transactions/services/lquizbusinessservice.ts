@@ -38,19 +38,13 @@ export function generateLQuestionID(requestedNumOfLQuizs: number): UUID[] {
     return lQuestionIDList
 };
 
-//DB接続
-export async function dbConnect(): Promise<PoolClient> {
-    const client = await model.dbGetConnect();
-    return client
-};
-
 //新規問題の挿入　バッチ処理
 export async function newQuestionDataInsert(
-    client: PoolClient, 
     generatedQuestionDataList: dto.GeneratedQuestionDataResDTO[], 
     audioURLList: domein.AudioURL[],
     speakingRate: number
 ): Promise<void> {
+    const client = await model.dbGetConnect();
     try{
         // トランザクション開始
         await client.query('BEGIN');
@@ -71,7 +65,8 @@ export async function newQuestionDataInsert(
 };
 
 //既存問題IDを指定して問題データ取得
-export async function answeredQuestionDataExtract(client: PoolClient, domObj: domein.LQuestionInfo[]): Promise<domein.LQuestionData[]> {
+export async function answeredQuestionDataExtract(domObj: domein.LQuestionInfo[]): Promise<domein.LQuestionData[]> {
+    const client = await model.dbGetConnect();
     try{
         // トランザクション開始
         await client.query('BEGIN');
@@ -92,7 +87,8 @@ export async function answeredQuestionDataExtract(client: PoolClient, domObj: do
     }
 };
 //既存問題のランダム取得
-export async function answeredQuestionDataRandomExtract(client: PoolClient, domObj: domein.LQuestionInfo): Promise<domein.LQuestionData[]> {
+export async function answeredQuestionDataRandomExtract(domObj: domein.LQuestionInfo): Promise<domein.LQuestionData[]> {
+    const client = await model.dbGetConnect();
     try{
         // トランザクション開始
         await client.query('BEGIN');
@@ -123,7 +119,8 @@ export function lAnswerIdGenerate(length: number /*配列の要素数*/): UUID[]
 };
 
 //正誤判定（問題テーブル参照も行う） 配列対応済
-export async function trueOrFalseJudge(client: PoolClient, domObjList: domein.TorFData[]): Promise<boolean[]> {
+export async function trueOrFalseJudge(domObjList: domein.TorFData[]): Promise<boolean[]> {
+    const client = await model.dbGetConnect();
     try{
         // トランザクション開始
         await client.query('BEGIN');
@@ -154,14 +151,14 @@ export async function trueOrFalseJudge(client: PoolClient, domObjList: domein.To
 }
 
 //回答結果データの挿入　バッチ処理
-export async function answerResultDataInsert(client: PoolClient, domObjList: domein.LAnswerData[]): Promise<boolean> {
-    // トランザクション開始
-    await client.query('BEGIN');
-    
+export async function answerResultDataInsert(domObjList: domein.LAnswerData[]): Promise<boolean> {
+    const client = await model.dbGetConnect();
     try {
+        // トランザクション開始
+        await client.query('BEGIN');
         // domObjListの全要素を一括でentityにマッピング
         const insertAnswerDataList = domObjList.map(domObj => 
-            dbmapper.InsertAnswerDataMapper.toDomeinObject(domObj)
+            dbmapper.AnswerDataToEntityMapper.toDomeinObject(domObj)
         );
         
         // バッチINSERT実行
@@ -185,11 +182,11 @@ export async function answerResultDataInsert(client: PoolClient, domObjList: dom
 
 
 //解答データの取得 配列対応済　バッチ処理
-export async function answerDataExtract(client: PoolClient, lQuestionIDList: string[]): Promise<domein.AnswerScripts[]> {
-    // トランザクション開始
-    await client.query('BEGIN');
-    
+export async function answerDataExtract(lQuestionIDList: string[]): Promise<domein.AnswerScripts[]> { 
+    const client = await model.dbGetConnect();
     try{
+        // トランザクション開始
+        await client.query('BEGIN');
         const result = await model.answerDataBatchExtract(client, lQuestionIDList);
         // コミット
         await client.query('COMMIT');

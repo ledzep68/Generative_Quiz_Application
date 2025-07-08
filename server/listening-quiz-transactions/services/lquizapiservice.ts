@@ -9,19 +9,20 @@ lquizapiservice.tsの機能:
 
 import * as domein from "../lquiz.domeinobject.js";
 import * as dto from "../lquiz.dto.js";
-import * as businesserror from "../errors/lquiz.businesserrors.js";
 import * as apierror from "../errors/lquiz.apierrors.js";
 //import fetch from "node-fetch";
 import * as schema from "../schemas/lquizapischema.js";
 import { z } from "zod";
-import { TextToSpeechClient } from '@google-cloud/text-to-speech';
-//import { google } from '@google-cloud/text-to-speech/build/protos/protos';
 import {GoogleAuth} from "google-auth-library";
 import { spawn } from 'child_process'; //ライブラリを通さず、直接他プログラムを実行するためのライブラリ
 import fs from "fs/promises"; //音声バッファデータをローカルファイルに書き込むためのライブラリ
 import path from "path";
 import os from "os";
 
+
+//==========================================================================
+//問題生成処理モジュール群
+//==========================================================================
 //発話パターン定義
 export const ACCENT_PATTERNS = {
     American: {
@@ -119,6 +120,16 @@ export function getRandomSpeakerAccent(requestedNumOfQuizs: number): AccentType[
     return Array.from({ length: requestedNumOfQuizs }, () => 
         accents[Math.floor(Math.random() * accents.length)]
     );
+};
+
+//問題生成関数 controllerで呼び出す
+export async function generateLQuestionContent(domObj: domein.NewQuestionInfo): Promise<dto.GeneratedQuestionDataResDTO[]> {
+     //プロンプト生成
+    const prompt = await generatePrompt(domObj);
+    //・(ChatGPT-4o API)クイズ生成プロンプト生成
+    const generatedQuizDataList = await callChatGPT(prompt); //バリデーション済
+    //似たような問題の生成をどうやって防止するか？
+    return  generatedQuizDataList;
 };
 
 //問題生成プロンプトの生成
@@ -314,6 +325,21 @@ export async function callChatGPT(prompt: string): Promise<dto.GeneratedQuestion
 
 
 
+
+
+//==========================================================================
+//音声生成処理モジュール群
+//==========================================================================
+
+//音声生成関数　controllerで呼び出す
+export async function generateAudioContent(dtoList: dto.NewAudioReqDTO[], lQuestionIDList: string[]): Promise<domein.AudioURL[]> {
+    // SSML生成
+    const ssml = await TOEICSSMLGenerator.generateSSML(dtoList);
+    //・(Google Cloud TTS)音声合成（ssmlバリデーションも含む）
+    const generatedAudioURLList = await callGoogleCloudTTS(ssml, lQuestionIDList);
+    return generatedAudioURLList;
+}
+
 //音声設定（話者アクセント）
 export const TTS_VOICE_CONFIG = {
     American: {
@@ -352,19 +378,7 @@ export const TTS_VOICE_CONFIG = {
     }
 } as const; //リテラル型の保持、readonlyによる値の変更防止 によって設定値の予期しない変更を防ぎ、より厳密な型チェックが可能になる
 
-/*SSML生成モジュール
-引数：
-    [
-        {
-        lQuestionID: string.
-        audioScript: string.
-        speakerAccent: 'American' | 'British' | 'Canadian' | 'Australian',
-        speakingRate: number
-        },
-        ...(問題数分のオブジェクト)...
-    ]
-戻り値：SSML
-*/
+//SSML生成モジュール
 export class TOEICSSMLGenerator {
     //音声設定のランダム選択メソッド
     static selectRandomVoice(voices: readonly {name: string, gender: string}[]): {name: string, gender: string} {
@@ -667,8 +681,7 @@ export async function extractMultipleAudioSegments(
         console.log('音声切り出しエラー:', error);
         if (
             error instanceof apierror.AudioProcessingError ||
-            error instanceof apierror.FFmpegError ||
-            error instanceof apierror.FileOperationError
+            error instanceof apierror.FFmpegError
         ) {
             throw error;
         }
@@ -692,7 +705,7 @@ async function extractSingleSegment(
     const tempOutputFile = path.join(tempDir, `output_${lQuestionID}_${Date.now()}.mp3`);
     
     // 最終保存先
-    const resourcesDir = path.join(process.cwd(), 'server', 'listening-quiz-resources');
+    const resourcesDir = path.join(process.cwd(), 'resources', 'listening-quiz-resources');
     const questionFolder = `lQuestion_${lQuestionID}_${new Date().toISOString().replace(/[-:T]/g, '').slice(0, 15)}`;
     const finalDir = path.join(resourcesDir, questionFolder);
     
@@ -725,8 +738,7 @@ async function extractSingleSegment(
         
     } catch (error) {
         console.log(error);
-        if (error instanceof apierror.FFmpegError ||
-            error instanceof apierror.FileOperationError) {
+        if (error instanceof apierror.FFmpegError) {
             throw error;
         }
         throw new apierror.AudioProcessingError(`音声切り出しエラー: ${error}`);

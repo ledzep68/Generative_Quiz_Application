@@ -17,7 +17,7 @@ export interface BusinessLogicError extends Error {
 export class ChatGPTAPIError extends Error implements BusinessLogicError {
     constructor(
         message: string = "ChatGPT API Error",
-        public status: number = response.lQuizAPIServicesResponses.CHATGPT_API_ERROR.status
+        public status: number = response.externalAPIServicesResponses.CHATGPT_API_ERROR.status
     ) {
         super(message);
         this.name = "ChatGPTAPIError";
@@ -29,7 +29,7 @@ export class ChatGPTAPIError extends Error implements BusinessLogicError {
 export class GoogleTTSAPIError extends Error implements BusinessLogicError {
     constructor(
         message: string = "Google Cloud TTS API Error",
-        public status: number = response.lQuizAPIServicesResponses.GOOGLE_TTS_API_ERROR?.status || 500
+        public status: number = response.externalAPIServicesResponses.GOOGLE_TTS_API_ERROR?.status || 500
     ) {
         super(message);
         this.name = "GoogleTTSAPIError";
@@ -41,7 +41,7 @@ export class GoogleTTSAPIError extends Error implements BusinessLogicError {
 export class SSMLValidationError extends Error implements BusinessLogicError {
     constructor(
         message: string = "SSML構造エラー",
-        public status: number = response.lQuizAPIServicesResponses.SSML_VALIDATION_ERROR?.status || 400
+        public status: number = response.externalAPIServicesResponses.SSML_VALIDATION_ERROR?.status || 400
     ) {
         super(message);
         this.name = "SSMLValidationError";
@@ -53,7 +53,7 @@ export class SSMLValidationError extends Error implements BusinessLogicError {
 export class AudioProcessingError extends Error implements BusinessLogicError {
     constructor(
         message: string = "音声処理エラー",
-        public status: number = response.lQuizAPIServicesResponses.AUDIO_PROCESSING_ERROR?.status || 500
+        public status: number = response.externalAPIServicesResponses.AUDIO_PROCESSING_ERROR?.status || 500
     ) {
         super(message);
         this.name = "AudioProcessingError";
@@ -65,7 +65,7 @@ export class AudioProcessingError extends Error implements BusinessLogicError {
 export class FFmpegError extends Error implements BusinessLogicError {
     constructor(
         message: string = "FFmpeg処理エラー",
-        public status: number = response.lQuizAPIServicesResponses.FFMPEG_ERROR?.status || 500
+        public status: number = response.externalAPIServicesResponses.FFMPEG_ERROR?.status || 500
     ) {
         super(message);
         this.name = "FFmpegError";
@@ -77,7 +77,7 @@ export class FFmpegError extends Error implements BusinessLogicError {
 export class GoogleAuthenticationError extends Error implements BusinessLogicError {
     constructor(
         message: string = "Google Cloud認証エラー",
-        public status: number = response.lQuizAPIServicesResponses.GOOGLE_AUTH_ERROR?.status || 401
+        public status: number = response.externalAPIServicesResponses.GOOGLE_AUTH_ERROR?.status || 401
     ) {
         super(message);
         this.name = "GoogleAuthenticationError";
@@ -85,23 +85,24 @@ export class GoogleAuthenticationError extends Error implements BusinessLogicErr
     }
 }
 
+/*
 // ファイル操作エラー
 export class FileOperationError extends Error implements BusinessLogicError {
     constructor(
         message: string = "ファイル操作エラー",
-        public status: number = response.lQuizAPIServicesResponses.FILE_OPERATION_ERROR?.status || 500
+        public status: number = response.externalAPIServicesResponses.FILE_OPERATION_ERROR?.status || 500
     ) {
         super(message);
         this.name = "FileOperationError";
         this.status = status;
     }
-}
+}*/
 
 // 音声分割エラー
 export class AudioSplitError extends Error implements BusinessLogicError {
     constructor(
         message: string = "音声分割エラー",
-        public status: number = response.lQuizAPIServicesResponses.AUDIO_SPLIT_ERROR?.status || 500
+        public status: number = response.externalAPIServicesResponses.AUDIO_SPLIT_ERROR?.status || 500
     ) {
         super(message);
         this.name = "AudioSplitError";
@@ -113,7 +114,7 @@ export class AudioSplitError extends Error implements BusinessLogicError {
 export class EnvironmentConfigError extends Error implements BusinessLogicError {
     constructor(
         message: string = "環境変数設定エラー",
-        public status: number = response.lQuizAPIServicesResponses.ENVIRONMENT_CONFIG_ERROR?.status || 500
+        public status: number = response.externalAPIServicesResponses.ENVIRONMENT_CONFIG_ERROR?.status || 500
     ) {
         super(message);
         this.name = "EnvironmentConfigError";

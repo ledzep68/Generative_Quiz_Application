@@ -7,10 +7,7 @@ import * as businessservice from "./services/lquizbusinessservice.js";
 import * as apiservice from "./services/lquizapiservice.js";
 
 import * as domein from "./lquiz.domeinobject.js";
-
 import * as errorhandler from "./errors/errorhandlers.js";
-import * as dberror from "./errors/lquiz.dberrors.js";
-import * as businesserror from "./errors/lquiz.businesserrors.js";
 
 import { z } from "zod";
 import * as businessschema from "./schemas/lquizbusinessschema.js";
@@ -21,13 +18,12 @@ export async function lquizGenerateController(req: Request, res: Response): Prom
         //バリデーション
         const validatedRandomNewQuestionReqDTO = businessschema.randomNewQuestionReqValidate(req.body.QuestionReqDTO);
         const requestedNumOfLQuizs = validatedRandomNewQuestionReqDTO.requestedNumOfLQuizs;
+        
         //プロンプト生成用ドメインオブジェクト作成
         const newQuestionInfo = mapper.NewQuestionInfoMapper.toDomainObject(validatedRandomNewQuestionReqDTO);
-
-        //プロンプト生成
-        const prompt = await apiservice.generatePrompt(newQuestionInfo);
-        //・(ChatGPT-4o API)クイズ生成プロンプト生成
-        const generatedQuizDataList = await apiservice.callChatGPT(prompt); //バリデーション済
+        
+        //問題生成
+        const generatedQuizDataList = await apiservice.generateLQuestionContent(newQuestionInfo);
         //似たような問題の生成をどうやって防止するか？
 
         //lQuestionID生成
@@ -37,15 +33,11 @@ export async function lquizGenerateController(req: Request, res: Response): Prom
         //SSML生成用ドメインオブジェクト作成
         const newAudioReqDTOList = mapper.generatedQuestionDataToTTSReqMapper.toDomainObject(generatedQuizDataList, lQuestionIDList, speakingRate as number);
         
-        // SSML生成
-        const ssml = await apiservice.TOEICSSMLGenerator.generateSSML(newAudioReqDTOList);
-        
-        //・(Google Cloud TTS)音声合成（ssmlバリデーションも含む）
-        const generatedAudioURLList = await apiservice.callGoogleCloudTTS(ssml, lQuestionIDList);
+        //音声生成
+        const generatedAudioURLList = await apiservice.generateAudioContent(newAudioReqDTOList, lQuestionIDList);
         
         //新規クイズデータのDBへの挿入
-        const client = await businessservice.dbConnect();
-        await businessservice.newQuestionDataInsert(client, generatedQuizDataList, generatedAudioURLList, speakingRate as number);
+        await businessservice.newQuestionDataInsert(generatedQuizDataList, generatedAudioURLList, speakingRate as number);
         
         //・クイズデータをユーザーに配信（クイズ音声URLのAPIエンドポイントはどこで定義するか？）
         // audioDelivery APIエンドポイントに委任する
@@ -57,8 +49,10 @@ export async function lquizGenerateController(req: Request, res: Response): Prom
             QuestionResDTO: questionResDTOList
         });
         return;
-    }catch(error){
-        //errorhandler.errorHandler(error, res);
+    } catch (error) {
+        console.error('クイズ生成エラー:', error);
+        const { response } = errorhandler.generateLQuestionErrorHandler(error as Error);
+        res.status(response.status).json(response);
     }
 };
 
@@ -73,10 +67,8 @@ export async function lquizReviewController(req: Request, res: Response): Promis
     const validatedQuestionReqDTOList = businessschema.questionReqValidate(req.body.QuestionReqDTO);
     //参照用ドメインオブジェクト作成
     const questionDomObjList = mapper.LQuestionInfoMapper.toDomainObject(validatedQuestionReqDTOList);
-    //DB接続　poolからコネクションを払い出す
-    const client = await businessservice.dbConnect(); //失敗時DBCOnnectErrorをthrow
     //ListeningAnswerResultsからReviewTagがONになっている問題を取得
-    const questionReviewDomObjList = await businessservice.answeredQuestionDataExtract(client, questionDomObjList);
+    const questionReviewDomObjList = await businessservice.answeredQuestionDataExtract(questionDomObjList);
     //LQuestionIDをもとにLinsteningQuestionsテーブルから問題を参照
     //DTOへのマッピング
     const questionResDTOList = mapper.LQuestionDataDomObjToDTOMapper.toDomainObject(questionReviewDomObjList);
@@ -93,20 +85,18 @@ export async function lquizReviewByRandomController(req: Request, res: Response)
         questedNumOfLQuizs, sectionNumber, reviewTag <lQuestionID>???
     ReviewTag trueの場合、既存問題を出題、falseの場合、問題を新規生成、
     */
-    const validatedQuestionReqDTO = businessschema.questionRandomReqValidate(req.body.QuestionReqDTO);
+    const validatedQuestionReqDTO = businessschema.randomQuestionReqValidate(req.body.QuestionReqDTO);
     //参照用ドメインオブジェクト作成
-    const questionDomObj = mapper.LQuestionRandomInfoMapper.toDomainObject(validatedQuestionReqDTO);
-    //DB接続　poolからコネクションを払い出す
-    const client = await businessservice.dbConnect(); //失敗時DBCOnnectErrorをthrow
+    const questionDomObj = mapper.RandomLQuestionInfoMapper.toDomainObject(validatedQuestionReqDTO);
     //ListeningAnswerResultsからReviewTagがONになっている問題を取得
-    const questionReviewDomObjList = await businessservice.answeredQuestionDataRandomExtract(client, questionDomObj);
+    const questionReviewDomObjList = await businessservice.answeredQuestionDataRandomExtract(questionDomObj);
     //LQuestionIDをもとにLinsteningQuestionsテーブルから問題を参照
     //DTOへのマッピング
     const questionResDTOList = mapper.LQuestionDataDomObjToDTOMapper.toDomainObject(questionReviewDomObjList);
     //JSONをユーザーに配信
     res.status(200).json(questionResDTOList);
     return;
-}
+};
 
 //正誤判定・解答データ送信
 export async function lquizAnswerController(req: Request, res: Response): Promise<void> {
@@ -117,39 +107,31 @@ export async function lquizAnswerController(req: Request, res: Response): Promis
         //正誤処理用ドメインオブジェクト作成
         const trueOrFalseDomObjList = mapper.TorFMapper.toDomainObject(validatedUserAnswerReqDTO);
 
-        //DB接続　poolからコネクションを払い出す
-        const client = await businessservice.dbConnect(); //失敗時DBCOnnectErrorをthrow
         //正誤判定 LQuestionIDからListeningQuestions参照、UserAnswerOptionとAnswerOptionを比較しTrueOrFalseに正誤を登録
-        const trueOrFalseList = await businessservice.trueOrFalseJudge(client, trueOrFalseDomObjList);
+        const trueOrFalseList = await businessservice.trueOrFalseJudge( trueOrFalseDomObjList);
         //lAnswerIDを新規生成
         const lAnswerIDList = businessservice.lAnswerIdGenerate(validatedUserAnswerReqDTO.length);
         //回答記録用ドメインオブジェクトlAnswerDataDomObjに結果マッピング
         const lAnswerDataDomObj = mapper.LAnswerRecordMapper.toDomainObject(validatedUserAnswerReqDTO, trueOrFalseList, lAnswerIDList);
         //ListeningAnswerResultsに登録
-        await businessservice.answerResultDataInsert(client, lAnswerDataDomObj);
+        await businessservice.answerResultDataInsert(lAnswerDataDomObj);
         //LQuestionIDからListeningQuestions参照、AudioScript, JPNAudioScript, Explanationを取得
         const lQuestionIDList = validatedUserAnswerReqDTO.map(dto => dto.lQuestionID);
 
-        const answerScriptsDomObjList = await businessservice.answerDataExtract(client, lQuestionIDList);
+        const answerScriptsDomObjList = await businessservice.answerDataExtract(lQuestionIDList);
 
         const userAnswerResDTOList = await mapper.UserAnswerResDTOMapper.toDomainObject(lQuestionIDList, trueOrFalseList, answerScriptsDomObjList);
         //ユーザーに、userAnswerResDTOの形で結果（TrueOrFalse）と解答（lQuestionID, AudioScript, JPNAudioScript, Explanation）を送信
         res.status(200).json(userAnswerResDTOList); //dtoを使用すべき
         return;
     } catch (error) {
-        if(error instanceof z.ZodError){
-            const { response } = errorhandler.lQuizAnswerErrorHandler(error);
-            console.log("バリデーションエラー", response);
-            res.status(response.status).json(response);
-            return;
-        } else {const { response } = errorhandler.lQuizAnswerErrorHandler(error as Error);
-            console.log("ビジネスロジックエラー", response);
-            res.status(response.status).json(response);
-        }
+        console.error('クイズ生成エラー:', error);
+        const { response } = errorhandler.answerControllerErrorHandler(error as Error);
+        res.status(response.status).json(response);
     }
-}
+};
 
 //ランキング
 export async function lquizRankingController(req: Request, res: Response): Promise<void> {
-    return;
+
 }

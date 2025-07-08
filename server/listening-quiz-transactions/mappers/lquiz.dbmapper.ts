@@ -7,7 +7,7 @@ lquiz.dbmapper.ts : ListeningQuiz用　models層におけるDB操作用のマッ
 import * as dto from "../lquiz.dto.js";
 import * as entity from "../lquiz.entity.js";
 import * as domein from "../lquiz.domeinobject.js";
-import { PoolClient, QueryResult } from "pg";
+import { QueryResult } from "pg";
 
 //新規クイズデータ記録用　domein.GeneratedLQuestionData→entity.LQuestionEntity
 //dto + AudioURL → entity.LQuestionEntity への直接マッピング
