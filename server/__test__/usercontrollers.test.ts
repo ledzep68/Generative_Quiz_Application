@@ -5,15 +5,21 @@ import { userIdGenerate, userPasswordEncrypt, userDataRegister, userLogin, userD
 import { UserDTO } from "../users/userdto.js";
 import * as UserResponse from "../users/usersjson.js";
 import { Request, Response } from 'express';
-import * as userdberrors from "../errors/userdberrors.js";
+import * as userdberrors from "../users/errors/userdberrors.js";
 
-jest.mock('../users/userservice', () => ({
-  userPasswordEncrypt: jest.fn().mockImplementation((password: string) => {return "hashedtest"}),
-  userIdGenerate: jest.fn().mockImplementation(() => {return "0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11"}),
-  userDBConnect: jest.fn().mockImplementation(() => {return MockedPool.connect()}),
-  userDataRegister: jest.fn().mockImplementation((MockedClient: PoolClient, MockedUserDTO: jest.Mocked<UserDTO>) => {return true}),
-  userLogin: jest.fn().mockImplementation((MockedClient: PoolClient, MockedUserDTO: jest.Mocked<UserDTO>) => {return true})
+vi.mock('../users/userservice', () => ({
+  userPasswordEncrypt: vi.fn().mockImplementation((password: string) => {return "hashedtest"}),
+  userIdGenerate: vi.fn().mockImplementation(() => {return "0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11"}),
+  userDBConnect: vi.fn().mockImplementation(() => {return MockedPool.connect()}),
+  userDataRegister: vi.fn().mockImplementation((MockedClient: PoolClient, MockedUserDTO: jest.Mocked<UserDTO>) => {return true}),
+  userLogin: vi.fn().mockImplementation((MockedClient: PoolClient, MockedUserDTO: jest.Mocked<UserDTO>) => {return true})
 }));
+
+const mockedDBConnection = () => ({
+    query: vi.fn(),
+    release: vi.fn(),
+    connect: vi.fn()
+});
 
 const MockedPG = new pgmock.default();
 const MockedPool = pgmock.getPool(MockedPG);
@@ -47,7 +53,7 @@ test("userRegisterController_resolve", async () => {
         MockedReq.body.username,
         MockedReq.body.password,
         MockedHashedPassword
-    ) as jest.Mocked<UserDTO>;
+    ) as Mocked<UserDTO>;
     const MockedClient = await userDBConnect();
     await userDataRegister(MockedClient, MockedUserDTO);
     const userDataRegisterContTest = await userRegisterController(MockedReq, MockedRes);

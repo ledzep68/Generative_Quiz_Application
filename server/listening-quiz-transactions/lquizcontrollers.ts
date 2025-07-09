@@ -13,7 +13,7 @@ import { z } from "zod";
 import * as businessschema from "./schemas/lquizbusinessschema.js";
 
 //新規クイズ生成・出題
-export async function lquizGenerateController(req: Request, res: Response): Promise<void>{
+export async function generateQuestionController(req: Request, res: Response): Promise<void>{
     try{
         //バリデーション
         const validatedRandomNewQuestionReqDTO = businessschema.randomNewQuestionReqValidate(req.body.QuestionReqDTO);
@@ -23,27 +23,31 @@ export async function lquizGenerateController(req: Request, res: Response): Prom
         const newQuestionInfo = mapper.NewQuestionInfoMapper.toDomainObject(validatedRandomNewQuestionReqDTO);
         
         //問題生成
-        const generatedQuizDataList = await apiservice.generateLQuestionContent(newQuestionInfo);
+        const generatedQuestionDataList = await apiservice.generateLQuestionContent(newQuestionInfo);
         //似たような問題の生成をどうやって防止するか？
+        console.log(generatedQuestionDataList);
 
         //lQuestionID生成
         const lQuestionIDList = await businessservice.generateLQuestionID(requestedNumOfLQuizs as number);
         const speakingRate = newQuestionInfo.speakingRate;
         
         //SSML生成用ドメインオブジェクト作成
-        const newAudioReqDTOList = mapper.generatedQuestionDataToTTSReqMapper.toDomainObject(generatedQuizDataList, lQuestionIDList, speakingRate as number);
+        const newAudioReqDTOList = mapper.generatedQuestionDataToTTSReqMapper.toDomainObject(generatedQuestionDataList, lQuestionIDList, speakingRate as number);
         
         //音声生成
         const generatedAudioURLList = await apiservice.generateAudioContent(newAudioReqDTOList, lQuestionIDList);
-        
+        console.log(generatedAudioURLList);
+
         //新規クイズデータのDBへの挿入
-        await businessservice.newQuestionDataInsert(generatedQuizDataList, generatedAudioURLList, speakingRate as number);
+        await businessservice.newQuestionDataInsert(generatedQuestionDataList, generatedAudioURLList, speakingRate as number);
         
         //・クイズデータをユーザーに配信（クイズ音声URLのAPIエンドポイントはどこで定義するか？）
         // audioDelivery APIエンドポイントに委任する
         
         //dtoへのマッピング
-        const questionResDTOList = mapper.NewQuestionResMapper.toEntityList(generatedQuizDataList, generatedAudioURLList, speakingRate as number);
+        const questionResDTOList = mapper.NewQuestionResMapper.toEntityList(generatedQuestionDataList, generatedAudioURLList, speakingRate as number);
+        console.log(questionResDTOList);
+        
         //レスポンス送信
         res.status(200).send({
             QuestionResDTO: questionResDTOList
@@ -57,7 +61,7 @@ export async function lquizGenerateController(req: Request, res: Response): Prom
 };
 
 //既存問題の出題（ID指定方式）
-export async function lquizReviewController(req: Request, res: Response): Promise<void> {
+export async function reviewQuestionController(req: Request, res: Response): Promise<void> {
     /*
     ・ユーザーリクエスト
     const validatedQuestionReqDTO = schema.questionReqValidate(req.body.QuestionReqDTO);
@@ -78,7 +82,7 @@ export async function lquizReviewController(req: Request, res: Response): Promis
 }
 
 //既存問題の出題（ランダム方式）
-export async function lquizReviewByRandomController(req: Request, res: Response): Promise<void> {
+export async function reviewQuestionByRandomController(req: Request, res: Response): Promise<void> {
     /*
     ・ユーザーリクエスト
     const validatedQuestionReqDTO = schema.questionReqValidate(req.body.QuestionReqDTO);
@@ -99,7 +103,7 @@ export async function lquizReviewByRandomController(req: Request, res: Response)
 };
 
 //正誤判定・解答データ送信
-export async function lquizAnswerController(req: Request, res: Response): Promise<void> {
+export async function answerController(req: Request, res: Response): Promise<void> {
     try{
         //バリデーション　失敗時z.ZodErrorをthrow
         const validatedUserAnswerReqDTO = businessschema.userAnswerReqValidate(req.body.UserAnswerReqDTO);
@@ -132,6 +136,6 @@ export async function lquizAnswerController(req: Request, res: Response): Promis
 };
 
 //ランキング
-export async function lquizRankingController(req: Request, res: Response): Promise<void> {
+export async function rankingController(req: Request, res: Response): Promise<void> {
 
 }

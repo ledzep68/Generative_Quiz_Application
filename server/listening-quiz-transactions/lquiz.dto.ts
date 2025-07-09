@@ -10,10 +10,7 @@ import { SpeakerAccent } from "./services/lquizapiservice.js";
 //ユーザーからの新規クイズリクエストスキーマ（ランダム生成、ID非指定）
 export class RandomNewQuestionReqDTO {
     constructor(
-        /*public lQuestionID: string,
-        public userID: string,*/
         public sectionNumber: 1|2|3|4,
-        //public reviewTag: boolean,
         public requestedNumOfLQuizs?: number,
         public speakingRate?: number //発話速度
     ){}

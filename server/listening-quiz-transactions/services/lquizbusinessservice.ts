@@ -9,24 +9,20 @@ lquizbusinessservice.tsの機能:
 ******************************************/
 
 import {randomUUID, UUID} from "crypto";
-import { PoolClient} from "pg";
 import * as model from "../lquizmodel.js";
 import * as domein from "../lquiz.domeinobject.js";
 import * as dbmapper from "../mappers/lquiz.dbmapper.js";
 import * as dto from "../lquiz.dto.js";
-import * as dberror from "../errors/lquiz.dberrors.js";
-import * as businesserror from "../errors/lquiz.businesserrors.js";
-import fetch from "node-fetch";
-import * as schema from "../schemas/lquizbusinessschema.js";
-import { z } from "zod";
 
 
+/*
 //sectionNumberランダム選択関数
 export function sectionNumberRandomSelect(requestedNumOfLQuizs: number): number[] {
     const sectionNumber = Math.floor(Math.random() * 4) + 1; 
     const sectionNumberList = Array.from({ length: requestedNumOfLQuizs }, () => sectionNumber);
     return sectionNumberList
 };
+*/
 
 //問題IDの生成
 export function generateLQuestionID(requestedNumOfLQuizs: number): UUID[] {
@@ -65,7 +61,7 @@ export async function newQuestionDataInsert(
 };
 
 //既存問題IDを指定して問題データ取得
-export async function answeredQuestionDataExtract(domObj: domein.LQuestionInfo[]): Promise<domein.LQuestionData[]> {
+export async function answeredQuestionDataExtract(domObj: domein.ReviewQuestionInfo[]): Promise<domein.LQuestionData[]> {
     const client = await model.dbGetConnect();
     try{
         // トランザクション開始
@@ -87,7 +83,7 @@ export async function answeredQuestionDataExtract(domObj: domein.LQuestionInfo[]
     }
 };
 //既存問題のランダム取得
-export async function answeredQuestionDataRandomExtract(domObj: domein.LQuestionInfo): Promise<domein.LQuestionData[]> {
+export async function answeredQuestionDataRandomExtract(domObj: domein.ReviewQuestionInfo): Promise<domein.LQuestionData[]> {
     const client = await model.dbGetConnect();
     try{
         // トランザクション開始
