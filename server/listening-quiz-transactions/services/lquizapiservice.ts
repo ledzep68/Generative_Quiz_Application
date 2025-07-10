@@ -706,7 +706,7 @@ async function extractSingleSegment(
     
     // 最終保存先
     const resourcesDir = path.join(process.cwd(), 'resources', 'listening-quiz-resources');
-    const questionFolder = `lQuestion_${lQuestionID}_${new Date().toISOString().replace(/[-:T]/g, '').slice(0, 15)}`;
+    const questionFolder = `lQuestion_${lQuestionID}_${new Date().toISOString().replace(/[-:T]/g, '').slice(0, 15)}.`;
     const finalDir = path.join(resourcesDir, questionFolder);
     
     try {
@@ -732,7 +732,7 @@ async function extractSingleSegment(
         return {
             lQuestionID: lQuestionID,
             audioFilePath: finalFilePath,
-            audioURL: `/api/listening-quiz/${questionFolder}/audio_segment.mp3`,
+            audioURL: `/api/audio/question/${lQuestionID}`,
             duration: endTime - startTime
         };
         

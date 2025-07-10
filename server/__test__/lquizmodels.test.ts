@@ -4,7 +4,7 @@ import * as entity from "../listening-quiz-transactions/lquiz.entity.js";
 import {newDb} from "pg-mem"
 
 const mockedDB = newDb();
-const mockedPool = mockedDB.public.
+const mockedPool = mockedDB.adapters.createSlonik();
 
 const MockedQuestionDataList: entity.LQuestionEntity[] = [
     {
@@ -40,7 +40,7 @@ const MockedQuestionDataList: entity.LQuestionEntity[] = [
 describe("A_dbGetConnect", () => {
     test("A01_成功", async () => {
         expect.assertions(1);
-            const mockedClient = await mockedPool.connect();
+            const mockedClient = await mockedPool;
             console.log(mockedClient);
         expect(typeof mockedClient).toBe("object");
     });

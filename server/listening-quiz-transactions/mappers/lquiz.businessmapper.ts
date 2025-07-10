@@ -53,7 +53,7 @@ export class NewQuestionResMapper {
                     speakerAccent: questionData.speakerAccent,
                     speakingRate: speakingRate,
                     duration: audioData.duration,
-                    audioFilePath: audioData.audioFilePath
+                    audioURL: audioData.audioURL
                 };
             });
         }

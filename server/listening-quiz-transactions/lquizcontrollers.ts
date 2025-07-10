@@ -1,5 +1,5 @@
 import {Request, Response} from "express";
-import * as dto from "./lquiz.dto.js"; //API通信用のデータ構造定義
+import * as dto from "./lquiz.dto.js"; 
 
 import * as mapper from "./mappers/lquiz.businessmapper.js";
 
@@ -47,7 +47,7 @@ export async function generateQuestionController(req: Request, res: Response): P
         //dtoへのマッピング
         const questionResDTOList = mapper.NewQuestionResMapper.toEntityList(generatedQuestionDataList, generatedAudioURLList, speakingRate as number);
         console.log(questionResDTOList);
-        
+
         //レスポンス送信
         res.status(200).send({
             QuestionResDTO: questionResDTOList

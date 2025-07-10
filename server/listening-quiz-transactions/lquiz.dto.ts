@@ -52,7 +52,7 @@ export class QuestionResDTO {
         public speakerAccent: "American" | "British" | "Canadian" | "Australian",
         public speakingRate: number,
         public duration: number,
-        public audioFilePath: string
+        public audioURL: string
     ){}
 };
 

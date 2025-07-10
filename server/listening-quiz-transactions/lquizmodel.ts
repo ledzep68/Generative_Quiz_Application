@@ -37,8 +37,7 @@ export async function dbRelease(client: PoolClient): Promise<void> {
 };
 
 //新規クイズデータの挿入
-export async function newQuestionBatchInsert(insertNewDataList: entity.LQuestionEntity[]): Promise<QueryResult> {
-    const client = await dbGetConnect();
+export async function newQuestionBatchInsert(client: PoolClient, insertNewDataList: entity.LQuestionEntity[]): Promise<QueryResult> {
     try{
         const placeholders = insertNewDataList.map((_, index) => {
             const baseIndex = index * 9 + 1;
