@@ -8,13 +8,6 @@ import * as dto from "../lquiz.dto.js";
 import * as domein from "../lquiz.domeinobject.js";
 import * as entity from "../lquiz.entity.js";
 
-//service プロンプト生成モジュール用
-/*export class LQuizGenerateMapper {
-    static toDomainObject(reqDTO: dto.QuestionReqDTO): domein.LQuizGenerateInfo {
-        return new domein.LQuizGenerateInfo(reqDTO.requestedNumOfLQuizs, reqDTO.sectionNumber);
-    }
-}*/
-
 //新規クイズデータ　dto.RandomNewQuestionReqDTO→domein.NewQuestionInfo
 export class NewQuestionInfoMapper {
     static toDomainObject(reqDTO: dto.RandomNewQuestionReqDTO): domein.NewQuestionInfo {

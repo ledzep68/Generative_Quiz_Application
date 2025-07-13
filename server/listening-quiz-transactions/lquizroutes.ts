@@ -1,15 +1,13 @@
 //APIのエンドポイントのみ定義。ロジックはcontrollersに委任
 import Express from "express";
-import * as usercontrollers from "./controllers";
+import * as controller from "./lquizcontrollers.js";
 
-const usersrouter = Express.Router();
+const lQuizRouter = Express.Router();
 
-//ユーザー新規登録処理
-//usersrouter.post("/register", usercontrollers.userregister);
+//問題生成処理
+lQuizRouter.post("/generate", controller.generateQuestionController);
 
-//ユーザーログイン処理
-//usersrouter.post("/login", usercontrollers.userlogin);
+//回答処理
+lQuizRouter.post("/answer", controller.answerController);
 
-
-
-export default usersrouter;
+export default lQuizRouter;

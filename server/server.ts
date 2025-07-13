@@ -1,7 +1,9 @@
 import express from "express"
 import path from "path"
 import { fileURLToPath } from "url"
-import UsersRouter from "./users/userroutes.js"
+import usersRouter from "./users/userroutes.js"
+import lQuizRouter from "./listening-quiz-transactions/lquizroutes.js"
+import audioRouter from "./audio-delivery/audio.routes.js"
 
 const app = express();
 const port = 3000;
@@ -26,4 +28,6 @@ app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname.replace('/server', ''), 'client/dist/index.html'))
 });
 app.use(express.json());
-app.use('/users', UsersRouter);
+app.use('/users', usersRouter);
+app.use('/lquiz', lQuizRouter);
+app.use('/audio', audioRouter);
