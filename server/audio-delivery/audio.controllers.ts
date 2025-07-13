@@ -6,25 +6,28 @@ import path from 'path';
 import * as service from "./audio.services.js";
 import * as errors from "./errors/audio.businesserrors.js";
 import { audioDeliveryControllerErrorHandler } from "./errors/errorhandlers.js"
+import { error } from "console";
 
 /*
 ユーザーにaudioURLに対してGETリクエスト⇨audioデータ配信（一個ずつ）
 */
 
 export async function audioDeliveryController(req: Request, res: Response): Promise<void> {
-    const { questionId } = req.params;
+    const {lQuestionId} = req.params;
     
     try {
         // バリデーション
-        if (!questionId || questionId.trim() === '') {
+        if (!lQuestionId || lQuestionId.trim() === '') {
+            //console.log(errors.InvalidQuestionIdError, "問題IDが指定されていません");
             throw new errors.InvalidQuestionIdError("問題IDが指定されていません");
         }
         
         // 1. 問題IDから音声ファイルパスを取得
-        const audioFilePath = await service.audioFilePathExtract(questionId);
+        const audioFilePath = await service.audioFilePathExtract(lQuestionId);
+        console.log('audioFilePath: ', audioFilePath);
         
         if (!audioFilePath) {
-            throw new errors.QuestionNotFoundError(`問題ID: ${questionId} に対応する音声ファイルが見つかりません`);
+            throw new errors.QuestionNotFoundError(`問題ID: ${lQuestionId} に対応する音声ファイルが見つかりません`);
         }
         
         // 2. ファイル存在確認
@@ -38,6 +41,7 @@ export async function audioDeliveryController(req: Request, res: Response): Prom
         let stats;
         try {
             stats = await fs.stat(audioFilePath);
+            console.log('stats: ', stats);
         } catch (error) {
             throw new errors.AudioFileAccessError(`音声ファイルの情報取得に失敗しました: ${audioFilePath}`);
         }

@@ -4,6 +4,6 @@ import * as controller from "./audio.controllers.js";
 const audioRouter = express.Router();
 
 //audioデータ配信（一個ずつ）
-audioRouter.get('/question/:questionId', controller.audioDeliveryController);
+audioRouter.get('/question/:lQuestionId', controller.audioDeliveryController);
 
 export default audioRouter;
