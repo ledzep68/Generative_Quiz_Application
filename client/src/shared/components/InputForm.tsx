@@ -2,8 +2,8 @@ import { TextField, TextFieldProps } from "@mui/material"
 
 interface InputFormProps extends Omit<TextFieldProps, 'onChange'> {
     label: string;
-    value: string;
-    onChange: (value: string) => void;
+    value: string|number;
+    onChange: (value: any) => void;
 };
 
 const InputFormConmponent: React.FC<InputFormProps> = (props: InputFormProps) => {
