@@ -1,16 +1,28 @@
 import {useState} from "react";
 import { useNavigate } from "react-router-dom";
+import { useDispatch, useSelector } from "react-redux";
 import { Container, Box, Typography, Paper, SelectChangeEvent } from "@mui/material";
 import { Settings } from "@mui/icons-material";
 import ButtonComponent from "../../../../shared/components/Button";
 import InputFormComponent from "../../../../shared/components/InputForm";
 import DropdownComponent from "../../../../shared/components/Dropdown";
+import MainMenu from "../../../main-menu/components/MainMenu";
+import {setRequestParams, setRequestStatus, resetRequest} from "../newquiz.slice";
+import * as dto from "../dto.ts";
+import * as api from "../api.ts";
+import * as type from "../types.ts";
 
-const state = ["standBy", "answer", "result"];
+const state: type.QuizState = {
+    requestParams: ,
+    questions: undefined,
+    currentIndex: number;
+    answers: Record<string, string>;
+}
+//const state = ["standBy", "answer", "result"];
 
 type SectionNumTypes = 1|2|3|4;
 type NumOfLQuizesTypes = 1|2|3|4|5|6|7|8|9|10;
-type SpeakerAccentTypes = "American" | "British" | "Canadian" | "Australian";
+type SpeakerAccentTypes = "" | "American" | "British" | "Canadian" | "Australian";
 //待機画面
 //問題数、パート番号、アクセント入力
 // ボタン押下
@@ -20,33 +32,49 @@ type SpeakerAccentTypes = "American" | "British" | "Canadian" | "Australian";
 //         audioURLをもとにAPIに音声データをリクエスト（問題1問ごとにリクエスト）
 //         音声データレスポンスが届いたことを確認したらstateを回答状態に更新し、回答画面に遷移
 function standByScreen() {
-    const [state, setState] = useState('standBy');
-
-    const [sectionNum, setSectionNum] = useState<SectionNumTypes>();
-    //10以下
-    const [numOfLQuizs, setNumOfLQuizes] = useState<NumOfLQuizesTypes>();
+    //const [state, setState] = useState('standBy');
+    const navigate = useNavigate();
+    const dispatch = useDispatch();
+    /*
+    const [sectionNumber, setSectionNumber] = useState<SectionNumTypes>();
+    
+    const [requestedNumOfLQuizs, setRequestedNumOfLQuizes] = useState<NumOfLQuizesTypes>();
 
     const [speakerAccent, setSpeakerAccent] = useState<SpeakerAccentTypes>();
+    */
+    const requestParams = useSelector(state => state.newRandomQuestionRequest);
+    const { sectionNumber, requestedNumOfLQuizs, speakerAccent } = requestParams;
 
     const handleSectionChange = (event: SelectChangeEvent<unknown>) => {
-        setSectionNum(event.target.value as SectionNumTypes);
+        dispatch(setRequestParams({
+            sectionNumber: event.target.value as SectionNumTypes
+        }));
     };
 
     const handleNumOfLQuizesChange = (event: SelectChangeEvent<unknown>) => {
-        setNumOfLQuizes(event.target.value as NumOfLQuizesTypes);
+        dispatch(setRequestParams({
+            requestedNumOfLQuizs: event.target.value as NumOfLQuizesTypes
+        }));
     };
 
-    const handleSpeakerAccentChange = (event: SelectChangeEvent<unknown>) => {
-        setSpeakerAccent(event.target.value as SpeakerAccentTypes);
-    };
+    /*const handleSpeakerAccentChange = (event: SelectChangeEvent<unknown>) => {
+        dispatch(setRequestParams({
+            speakerAccent: event.target.value as SpeakerAccentTypes
+        }));
+    };*/
 
     const handleQuizInit = () => {
-        //API呼び出し
+        dispatch(setRequestStatus('pending'));
+        const randomNewQuestionReqDTO: dto.RandomNewQuestionReqDTO = {
+
+        };
+        api.newQuizApi.endpoints.fetchNewQuestions(randomNewQuestionReqDTO)
         
     };
     const handleBack = () => {
-        
-    }
+        dispatch(resetRequest());
+        navigate('/main-menu')
+    };
     return (
     <Box 
         sx={{ 
@@ -83,14 +111,14 @@ function standByScreen() {
                     {/* ドロップダウンメニュー */}
                     <DropdownComponent 
                         type="sectionNum"
-                        value={sectionNum}
+                        value={sectionNumber}
                         onChange={handleSectionChange}
                         helperText="選択してください"
                     />
 
                     <DropdownComponent 
                         type="numOfLQuizs"
-                        value={numOfLQuizs}
+                        value={requestedNumOfLQuizs}
                         onChange={handleNumOfLQuizesChange}
                         helperText="選択してください"
                     />
@@ -109,7 +137,7 @@ function standByScreen() {
                             onClick={handleQuizInit}
                             color="primary"
                             size="large"
-                            disabled={!sectionNum || !numOfLQuizs}
+                            disabled={!sectionNumber || !requestedNumOfLQuizs}
                             sx={{ width: '100%', py: 1.5 }}
                         />
 

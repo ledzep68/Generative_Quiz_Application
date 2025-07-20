@@ -35,6 +35,7 @@ const DROPDOWN_CONFIGS = { //不変定数の名前は全大文字で定義
         label: "アクセント（任意）",
         //placeholder: 'アクセントを選択',
         options: [
+            { value: ' ', label: ' ' },
             { value: 'American', label: 'アメリカ英語' },
             { value: 'British', label: 'イギリス英語' },
             { value: 'Canadian', label: 'カナダ英語' },

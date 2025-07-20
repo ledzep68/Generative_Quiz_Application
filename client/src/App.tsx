@@ -4,7 +4,7 @@ import { store } from './store/store';
 import RegisterForm from './features/user-management/register/components/RegisterForm';
 import LoginForm from './features/user-management/login/components/LoginForm';
 import MainMenu from './features/main-menu/components/MainMenu';
-import LQuiz from './features/listening-quiz-management/transaaction/components/LQuiz';
+import LQuiz from './features/listening-quiz-management/transaaction/components/lquiz.transaction';
 
 function App() {
   return (

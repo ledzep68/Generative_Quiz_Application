@@ -24,7 +24,8 @@
     "react-dom": "^19.1.0",
     "react-redux": "^9.2.0",
     "react-router-dom": "^7.6.0",
-    "typescript": "^5.8.3"
+    "typescript": "^5.8.3",
+    "zod": "^4.0.5"
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^4.4.1",

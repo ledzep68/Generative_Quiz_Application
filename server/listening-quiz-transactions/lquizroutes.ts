@@ -5,7 +5,7 @@ import * as controller from "./lquizcontrollers.js";
 const lQuizRouter = Express.Router();
 
 //問題生成処理
-lQuizRouter.post("/generate", controller.generateQuestionController);
+lQuizRouter.post("/new-quiz-generate", controller.generateQuestionController);
 
 //回答処理
 lQuizRouter.post("/answer", controller.answerController);
