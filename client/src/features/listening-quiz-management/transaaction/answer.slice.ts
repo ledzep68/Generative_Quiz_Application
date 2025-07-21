@@ -1,28 +1,19 @@
-import {createSlice} from "@reduxjs/toolkit";
+import {createSlice, PayloadAction} from "@reduxjs/toolkit";
+import z from "zod";
 
-interface RandomNewQuestionReqDTO {
-    sectionNumber :1|2|3|4,
-    requestedNumOfLQuizs: number,
-    speakingRate: number
-}
+import * as dto from "./dto.ts";
+import * as type from "./types.ts";
 
-/*
-//ユーザーからの新規クイズリクエストスキーマ（ランダム生成、ID非指定）
-export class RandomNewQuestionReqDTO {
-    constructor(
-        public sectionNumber: 1|2|3|4,
-        public requestedNumOfLQuizs?: number,
-        public speakingRate?: number //発話速度
-    ){}
+const initialState: type.AudioRequestState = {
+    requestParams: {
+        currentLQuestionId: undefined
+    },
+
+    audioData: undefined,
+
+    isValid: false,
+    validationErrors: [],
+    requestStatus: 'idle',
+    submittedAt: undefined 
 };
-*/
-export const transactionSlice = createSlice({
-    name: "randomNewQuestion",
-    initialState,
-    reducers: {
-        : (state, action) => {
-            state. = action.payload.id;
-            state.name = action.payload.name;
-        }
-    }
-})
+

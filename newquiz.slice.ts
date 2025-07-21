@@ -12,8 +12,8 @@ const initialState: type.RandomNewQuestionRequestState = {
         speakerAccent: undefined
     },
     questions: undefined,
-    isValid: undefined,
-    validationErrors: [],
+    isValid: false,
+    validationErrors: [""],
     requestStatus: 'idle',
     submittedAt: undefined 
 };

@@ -1,8 +1,8 @@
-import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query';
+import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
 
 import * as dto from "./dto.ts"
 
-export const newQuizApi = createApi({
+const newQuizApi = createApi({
     //エンドポイントの共通部分
     baseQuery: fetchBaseQuery({ baseUrl: 'api/server' }),
     //個別API定義
@@ -37,4 +37,21 @@ export const newQuizApi = createApi({
             )
         })
     })
-})
+});
+export const {
+    useFetchNewQuestionsMutation,
+    useLazyFetchAudioQuery, //手動実行　関数名にLazyと入れるだけで実現
+    useFetchAnswerMutation
+} = newQuizApi;
+
+/* 
+下記理由からLazyを選択
+・条件が揃うまで実行したくない
+・順次実行したい（問題1→問題2→問題3）
+・エラー時のリトライ制御
+・タイミングをコントロールしたい
+*/
+
+export {newQuizApi};
+
+export default newQuizApi;

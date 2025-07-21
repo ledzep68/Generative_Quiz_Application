@@ -1,3 +1,10 @@
+//======
+
+
+//音声取得は、1回のtransaction（問題取得→問題回答→結果閲覧）のサイクルが完了し、次の問題（2問目以降）に移行するタイミングでGETを出す設計とする
+//理由はユーザーの途中離脱など考慮し、できるだけ冗長なGETをなくすため
+//======
+
 import {useState} from "react";
 import { useNavigate } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
@@ -7,22 +14,21 @@ import ButtonComponent from "../../../../shared/components/Button";
 import InputFormComponent from "../../../../shared/components/InputForm";
 import DropdownComponent from "../../../../shared/components/Dropdown";
 import MainMenu from "../../../main-menu/components/MainMenu";
-import {setRequestParams, setRequestStatus, resetRequest} from "../newquiz.slice";
+import * as slice from "../newquiz.slice";
+import * as audioSlice from "../audio.slice.ts";
+import * as indexSlice from "../index-management.slice.ts"
+
 import * as dto from "../dto.ts";
 import * as api from "../api.ts";
 import * as type from "../types.ts";
+import { useAppSelector, useAppDispatch } from "../../../../shared/hooks/redux-hooks.ts"
 
-const state: type.QuizState = {
-    requestParams: ,
-    questions: undefined,
-    currentIndex: number;
-    answers: Record<string, string>;
-}
+
 //const state = ["standBy", "answer", "result"];
-
+//
 type SectionNumTypes = 1|2|3|4;
 type NumOfLQuizesTypes = 1|2|3|4|5|6|7|8|9|10;
-type SpeakerAccentTypes = "" | "American" | "British" | "Canadian" | "Australian";
+type SpeakerAccentTypes = undefined | "American" | "British" | "Canadian" | "Australian";
 //待機画面
 //問題数、パート番号、アクセント入力
 // ボタン押下
@@ -32,47 +38,105 @@ type SpeakerAccentTypes = "" | "American" | "British" | "Canadian" | "Australian
 //         audioURLをもとにAPIに音声データをリクエスト（問題1問ごとにリクエスト）
 //         音声データレスポンスが届いたことを確認したらstateを回答状態に更新し、回答画面に遷移
 function standByScreen() {
+    //状態遷移
+    const [currentView, setCurrentView] = useState<'standby' | 'answer' | 'result'>('standby');
+
     //const [state, setState] = useState('standBy');
     const navigate = useNavigate();
-    const dispatch = useDispatch();
-    /*
-    const [sectionNumber, setSectionNumber] = useState<SectionNumTypes>();
+    const dispatch = useAppDispatch();
+    const [fetchNewQuestions] = api.useFetchNewQuestionsMutation();
+    const [fetchAudio] = api.useLazyFetchAudioQuery();
     
-    const [requestedNumOfLQuizs, setRequestedNumOfLQuizes] = useState<NumOfLQuizesTypes>();
-
-    const [speakerAccent, setSpeakerAccent] = useState<SpeakerAccentTypes>();
-    */
-    const requestParams = useSelector(state => state.newRandomQuestionRequest);
-    const { sectionNumber, requestedNumOfLQuizs, speakerAccent } = requestParams;
+    //クイズリクエスト用selector
+    const requestQuestionParams = useAppSelector(state => state.newRandomQuestionRequest.requestParams);
+    const { sectionNumber, requestedNumOfLQuizs, speakingRate, speakerAccent } = requestQuestionParams;
+    //音声リクエスト用selector
+    const requestAudioParams = useAppSelector(state => state.audioRequest.requestParams);
+    const { currentLQuestionId } = requestAudioParams;
+    //問題番号管理用selector
+    const indexParams = useAppSelector(state => state.indexManagement);
+    const { lQuestionIdList } = indexParams;
 
     const handleSectionChange = (event: SelectChangeEvent<unknown>) => {
-        dispatch(setRequestParams({
+        dispatch(slice.setRequestParams({
             sectionNumber: event.target.value as SectionNumTypes
         }));
     };
 
     const handleNumOfLQuizesChange = (event: SelectChangeEvent<unknown>) => {
-        dispatch(setRequestParams({
+        dispatch(slice.setRequestParams({
             requestedNumOfLQuizs: event.target.value as NumOfLQuizesTypes
         }));
     };
 
-    /*const handleSpeakerAccentChange = (event: SelectChangeEvent<unknown>) => {
-        dispatch(setRequestParams({
+    const handleSpeakerAccentChange = (event: SelectChangeEvent<unknown>) => {
+        /*dispatch(setRequestParams({
             speakerAccent: event.target.value as SpeakerAccentTypes
-        }));
-    };*/
-
-    const handleQuizInit = () => {
-        dispatch(setRequestStatus('pending'));
-        const randomNewQuestionReqDTO: dto.RandomNewQuestionReqDTO = {
-
-        };
-        api.newQuizApi.endpoints.fetchNewQuestions(randomNewQuestionReqDTO)
-        
+        }));*/
     };
+
+    const handleQuizInit = async (event: React.MouseEvent): Promise<void> => {
+        dispatch(slice.setRequestStatus('pending'));
+        //stateをfetchモジュールに渡す
+        //Redux stateからDTOを構築
+        const randomNewQuestionReqDTO: dto.RandomNewQuestionReqDTO = {
+            sectionNumber,
+            requestedNumOfLQuizs,
+            speakingRate
+        };
+        //hooksに渡す
+        try {
+            //クイズ生成api呼び出し
+            const questionFetchResult = await fetchNewQuestions(randomNewQuestionReqDTO).unwrap();
+            dispatch(slice.setRequestStatus('success'));
+            const lQuestionIdList: string[] = questionFetchResult.map(question => question.lQuestionID)
+            //クイズデータをredux storeに保存
+            dispatch(slice.setQuestions(questionFetchResult));
+
+            const currentLQuestionId = lQuestionIdList[0]
+
+            //音声合成api呼び出し&音声データをredux storeに保存
+            dispatch(audioSlice.setAudioRequest(currentLQuestionId))
+            await handleFetchAudio(currentLQuestionId as string);
+            dispatch(audioSlice.setRequestStatus('success'));
+
+            //Index管理StateにlQuestionIdListと問題indexを保存
+            dispatch(indexSlice.setLQuestionIdList(lQuestionIdList));
+            dispatch(indexSlice.setCurrentIndex(0));
+            
+            //回答状態に移行
+            setCurrentView('answer');
+
+        } catch (error) {
+            //クイズリクエスト失敗の場合の処理
+            dispatch(slice.setRequestStatus('failed'));
+            //失敗後の処理？
+
+            //else 音声リクエスト失敗処理
+        }
+    };
+    const handleFetchAudio = async (lQuestionId: string) => {
+        try {
+            const audioData = await fetchAudio(lQuestionId).unwrap();
+            //音声データをredux storeに保存
+            dispatch(audioSlice.setAudioData(audioData));
+        } catch (error) {
+            //エラー処理
+            dispatch(audioSlice.setAudioError(""));
+        }
+    };
+
+    /* //lQuestionID[]のうち1問目の音声データ取得
+            dispatch(audioSlice.setAudioRequest(questionFetchResult.map.))
+            const lQuestionId = requestAudioParams.lQuestionId
+            const audioFetchResult = await fetchAudio(lQuestionId).unwrap();
+            //音声データをRedux storeに保存
+            dispatch(audioSlice.setAudioData(audioFetchResult))
+            //answer状態（answerScreen()）に遷移
+            setCurrentView('answer');*/
+
     const handleBack = () => {
-        dispatch(resetRequest());
+        dispatch(slice.resetRequest());
         navigate('/main-menu')
     };
     return (

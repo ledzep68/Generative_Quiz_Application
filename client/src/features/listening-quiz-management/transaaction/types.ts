@@ -1,11 +1,47 @@
 import * as dto from "./dto.ts";
 
-export interface QuizState {
-    requestParams: dto.RandomNewQuestionReqDTO;
-    questions: dto.QuestionResDTO[];
-    currentIndex: number;
-    answers: Record<string, string>;
+//共通の状態管理パラメータ
+interface stateManagementParameters {
+    //ユーザ入力のバリデーション結果
+    isValid?: boolean,
+    validationErrors?: string[],
+    //クイズリクエストの状態
+    requestStatus?: 'idle' | 'pending' | 'success' | 'failed',
+    //タイムスタンプ
+    submittedAt?: number
 }
+
+//新規クイズデータリクエストの状態管理
+export interface RandomNewQuestionRequestState extends stateManagementParameters {
+    //リクエスト
+    requestParams: dto.RandomNewQuestionReqDTO;
+    //レスポンスのクイズデータ
+    questions?: dto.QuestionResDTO[]
+};
+
+//音声データリクエストの状態管理
+export interface AudioRequestState extends stateManagementParameters {
+    requestParams: {
+        //次問題のId
+        currentLQuestionId?: string
+    },
+    audioData?: Blob
+};
+
+//クイズのIDリストとindexの状態管理
+export interface QuestionIndexState extends stateManagementParameters {
+    lQuestionIdList: string[];
+    currentQuestionIndex: 0|1|2|3|4|5|6|7|8|9;
+    //問題数の終点検知
+    isLastQuestion?: boolean 
+    //answers: Record<string, string>;
+};
+
+//正誤判定および解答データリクエストの状態管理
+export interface AnswerRequestState extends stateManagementParameters {
+    requestParams: dto.AnswerReqDTO,
+    answerData?: dto.AnswerResDTO
+};
 /*
 //新規クイズリクエストスキーマ（ランダム生成、ID非指定）
 export interface RandomNewQuestionReqDTO {

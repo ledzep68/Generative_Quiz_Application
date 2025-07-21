@@ -1,8 +1,9 @@
 //新規クイズリクエストスキーマ（ランダム生成、ID非指定）
 export interface RandomNewQuestionReqDTO {
     sectionNumber :1|2|3|4,
-    requestedNumOfLQuizs: number,
-    speakingRate?: number
+    requestedNumOfLQuizs: 1|2|3|4|5|6|7|8|9|10,
+    speakingRate?: number,
+    speakerAccent?: "American" | "British" | "Canadian" | "Australian"
 };
 
 
@@ -91,16 +92,16 @@ export class ExistingLQuizReqDTO {
 
 
 //回答データリクエスト
-export interface UserAnswerReqDTO {
+export interface AnswerReqDTO {
     lQuestionID: string, 
-    serID: string, 
+    userID: string, 
     userAnswerOption: "A"|"B"|"C"|"D", 
     answerDate: Date,
     reviewTag?: boolean
 };
 
 //正誤・解答データレスポンス
-export interface UserAnswerResDTO {
+export interface AnswerResDTO {
     lQuestionID: string,
     trueOrFalse: boolean,
     audioScript: string,

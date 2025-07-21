@@ -16,13 +16,13 @@ export async function audioDeliveryController(req: Request, res: Response): Prom
     const {lQuestionId} = req.params;
     
     try {
-        // バリデーション
+        //バリデーション
         if (!lQuestionId || lQuestionId.trim() === '') {
             //console.log(errors.InvalidQuestionIdError, "問題IDが指定されていません");
             throw new errors.InvalidQuestionIdError("問題IDが指定されていません");
         }
         
-        // 1. 問題IDから音声ファイルパスを取得
+        //問題IDから音声ファイルパスを取得
         const audioFilePath = await service.audioFilePathExtract(lQuestionId);
         console.log('audioFilePath: ', audioFilePath);
         
@@ -30,14 +30,14 @@ export async function audioDeliveryController(req: Request, res: Response): Prom
             throw new errors.QuestionNotFoundError(`問題ID: ${lQuestionId} に対応する音声ファイルが見つかりません`);
         }
         
-        // 2. ファイル存在確認
+        //ファイル存在確認
         try {
             await fs.access(audioFilePath);
         } catch (error) {
             throw new errors.AudioNotFoundError(`音声ファイルが存在しません: ${audioFilePath}`);
         }
         
-        // 3. ファイル情報取得
+        //ファイル情報取得
         let stats;
         try {
             stats = await fs.stat(audioFilePath);
@@ -46,7 +46,7 @@ export async function audioDeliveryController(req: Request, res: Response): Prom
             throw new errors.AudioFileAccessError(`音声ファイルの情報取得に失敗しました: ${audioFilePath}`);
         }
         
-        // 4. HTTPヘッダー設定
+        //HTTPヘッダー設定
         res.set({
             'Content-Type': 'audio/mpeg',
             'Content-Length': stats.size.toString(),
@@ -54,7 +54,7 @@ export async function audioDeliveryController(req: Request, res: Response): Prom
             'Accept-Ranges': 'bytes'
         });
         
-        // 5. MP3ファイルを配信
+        //MP3ファイルを配信
         res.sendFile(path.resolve(audioFilePath), (error) => {
             if (error) {
                 throw new errors.AudioDeliveryError(`音声ファイルの送信に失敗しました: ${error.message}`);

@@ -8,7 +8,7 @@ import { ReactNode } from 'react';
 interface ButtonComponentProps extends ButtonProps  {
     variant: 'text' | 'outlined' | 'contained';
     label: string;
-    onClick: () => void;
+    onClick: (event: React.MouseEvent) => void | Promise<void>;
     color: 'inherit' | 'primary' | 'secondary' | 'success' | 'error' | 'info' | 'warning';
     size: 'small' | 'medium' | 'large';
     disabled?: boolean;
