@@ -22,18 +22,10 @@ const RequestValidationSchema = z.object({
     lQuestionId: z.string()
 });
 
-function validateParams (state: type.AudioRequestState): any {
-    try{
-        const result = RequestValidationSchema.safeParse({
-            lQuestionId: state.requestParams.currentLQuestionId
-        });
-        state.isValid = true;
-        state.validationErrors = [];
-        return result
-    } catch (error) {
-        state.isValid = false;
-        state.validationErrors = ["バリデーションエラー"]
-    }
+function validateParams (state: type.AudioRequestState): z.ZodSafeParseResult<{ lQuestionId: string; }> {
+    return RequestValidationSchema.safeParse({
+        lQuestionId: state.requestParams.currentLQuestionId
+    });
 };
 
 export const audioRequestSlice = createSlice({
@@ -43,10 +35,14 @@ export const audioRequestSlice = createSlice({
         setAudioRequest: (state, action: PayloadAction<string>) => {
             state.requestParams.currentLQuestionId = action.payload;
             state.submittedAt = Date.now();
-            validateParams(state);
+            const validationResult = validateParams(state);
+            state.isValid = validationResult.success;
+            state.validationErrors = validationResult.success 
+                ? [] 
+                : validationResult.error.issues.map((issue) => issue.message);
         },
         //音声データ受信
-        setAudioData: (state, action: PayloadAction<Blob>) => {
+        setAudioData: (state, action: PayloadAction<File>) => {
             state.audioData = action.payload;
         },
         setRequestStatus: (state, action: PayloadAction<'idle' | 'pending' | 'success' | 'failed'>) => {
@@ -74,6 +70,10 @@ export const audioRequestSlice = createSlice({
         setAudioError: (state, action: PayloadAction<string>) => {
             state.validationErrors = [action.payload];
         },
+        //音声データ解放
+        clearAudioData: (state) => {
+            state.audioData = undefined;
+        },
         //リセット（次の問題用）
         resetAudioState: (state) => {
             return { ...initialState };
@@ -81,4 +81,4 @@ export const audioRequestSlice = createSlice({
     }
 });
 
-export const {setAudioRequest, setAudioData, setRequestStatus, setAudioError, resetAudioState} = audioRequestSlice.actions
+export const {setAudioRequest, setAudioData, setRequestStatus, setAudioError, clearAudioData, resetAudioState} = audioRequestSlice.actions

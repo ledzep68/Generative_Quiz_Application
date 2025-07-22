@@ -93,10 +93,10 @@ export class ExistingLQuizReqDTO {
 
 //回答データリクエスト
 export interface AnswerReqDTO {
-    lQuestionID: string, 
-    userID: string, 
-    userAnswerOption: "A"|"B"|"C"|"D", 
-    answerDate: Date,
+    lQuestionID?: string, 
+    userID?: string, 
+    userAnswerOption?: "A"|"B"|"C"|"D", 
+    answerDate?: Date,
     reviewTag?: boolean
 };
 

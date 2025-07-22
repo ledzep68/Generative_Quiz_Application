@@ -11,6 +11,10 @@ interface stateManagementParameters {
     submittedAt?: number
 }
 
+export interface CurrentScreenState {
+    currentScreen: 'standby' | 'answer' | 'result'
+};
+
 //新規クイズデータリクエストの状態管理
 export interface RandomNewQuestionRequestState extends stateManagementParameters {
     //リクエスト
@@ -25,7 +29,7 @@ export interface AudioRequestState extends stateManagementParameters {
         //次問題のId
         currentLQuestionId?: string
     },
-    audioData?: Blob
+    audioData?: File
 };
 
 //クイズのIDリストとindexの状態管理
@@ -42,6 +46,8 @@ export interface AnswerRequestState extends stateManagementParameters {
     requestParams: dto.AnswerReqDTO,
     answerData?: dto.AnswerResDTO
 };
+
+
 /*
 //新規クイズリクエストスキーマ（ランダム生成、ID非指定）
 export interface RandomNewQuestionReqDTO {

@@ -17,27 +17,35 @@ const initialState: type.RandomNewQuestionRequestState = {
     requestStatus: 'idle',
     submittedAt: undefined 
 };
+/*//サーバーからのクイズレスポンスDTO 新規・既存共通
+export interface QuestionResDTO {
+    lQuestionID: string,
+    audioScript: string,
+    jpnAudioScript: string,
+    answerOption: "A"|"B"|"C"|"D",
+    sectionNumber: 1|2|3|4,
+    explanation: string,
+    speakerAccent: "American" | "British" | "Canadian" | "Australian",
+    speakingRate: number,
+    duration: number,
+    audioURL: string
+}; */
+
 //バリデーション
 const RequestValidationSchema = z.object({
     sectionNumber: z.union([z.literal(1), z.literal(2), z.literal(3), z.literal(4)]),
-    requestedNumOfLQuizs: z.number().min(1).max(10),
-    speakingRate: z.number().min(0.5).max(2.0).optional()
+    requestedNumOfLQuizs: z.union([z.literal(1), z.literal(2), z.literal(3), z.literal(4), z.literal(5), z.literal(6), z.literal(7), z.literal(8), z.literal(9), z.literal(10)]),
+    speakingRate: z.number().min(0.5).max(2.0).optional(),
+    speakerAccent: z.union([z.literal("American"), z.literal("Canadian"), z.literal("British"), z.literal("Australian")]).optional()
 });
 
-function validateParams (state: type.RandomNewQuestionRequestState): any {
-    try{
-        const result = RequestValidationSchema.safeParse({
-            sectionNumber: state.requestParams.sectionNumber,
-            requestedNumOfLQuizs: state.requestParams.requestedNumOfLQuizs,
-            speakingRate: state.requestParams.speakingRate
-        });
-        state.isValid = true;
-        state.validationErrors = [];
-        return result
-    } catch (error) {
-        state.isValid = false;
-        state.validationErrors = ["バリデーションエラー"]
-    }
+function validateParams (state: type.RandomNewQuestionRequestState): z.ZodSafeParseResult<dto.RandomNewQuestionReqDTO> {
+    return RequestValidationSchema.safeParse({
+        sectionNumber: state.requestParams.sectionNumber,
+        requestedNumOfLQuizs: state.requestParams.requestedNumOfLQuizs,
+        speakingRate: state.requestParams.speakingRate, 
+        speakerAccent: state.requestParams.speakerAccent
+    });
 };
 
 export const newRandomQuestionRequestSlice = createSlice({
@@ -48,7 +56,7 @@ export const newRandomQuestionRequestSlice = createSlice({
             //部分更新を許可
             //Partial<RandomNewQuestionReqDTO>を受け取る
             //変更されたフィールドのみ更新
-            //更新前に自動バリデーション実行
+            //更新後に自動バリデーション実行
             //存在するフィールドのみ部分的に更新
             if (action.payload.sectionNumber !== undefined) {
                 state.requestParams.sectionNumber = action.payload.sectionNumber;
@@ -61,7 +69,11 @@ export const newRandomQuestionRequestSlice = createSlice({
             }
             
             //更新後にバリデーション実行
-            validateParams(state);
+            const validationResult = validateParams(state);
+            state.isValid = validationResult.success;
+            state.validationErrors = validationResult.success 
+                ? [] 
+                : validationResult.error.issues.map((issue) => issue.message);
         },
         setRequestStatus: (state, action: PayloadAction<'idle' | 'pending' | 'success' | 'failed'>) => {
             //送信状態の管理

@@ -16,20 +16,11 @@ const RequestValidationSchema = z.object({
     lQuestionIDList: z.array(z.string()),
     currentQuestionIndex: z.number().min(0).max(9)
 });
-
-function validateParams (state: type.QuestionIndexState): any {
-    try{
-        const result = RequestValidationSchema.safeParse({
-            lQuestionIdList: state.lQuestionIdList,
-            currentQuestionIndex: state.currentQuestionIndex
-        });
-        state.isValid = true;
-        state.validationErrors = [];
-        return result
-    } catch (error) {
-        state.isValid = false;
-        state.validationErrors = ["バリデーションエラー"]
-    }
+function validateParams (state: type.QuestionIndexState): z.ZodSafeParseResult<{ lQuestionIDList: string[]; currentQuestionIndex: number; }> {
+    return RequestValidationSchema.safeParse({
+        lQuestionIdList: state.lQuestionIdList,
+        currentQuestionIndex: state.currentQuestionIndex
+    });
 };
 
 export const quiestionIndexManagementSlice = createSlice({
@@ -40,7 +31,11 @@ export const quiestionIndexManagementSlice = createSlice({
             if (action.payload !== undefined) {
                 state.lQuestionIdList = action.payload;
             };
-            validateParams(state);
+            const validationResult = validateParams(state);
+            state.isValid = validationResult.success;
+            state.validationErrors = validationResult.success 
+                ? [] 
+                : validationResult.error.issues.map((issue) => issue.message);
         },
         setCurrentIndex: (state, action: PayloadAction<0|1|2|3|4|5|6|7|8|9>) => {
             state.currentQuestionIndex = action.payload;
