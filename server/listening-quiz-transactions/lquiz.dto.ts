@@ -5,7 +5,7 @@ lquiz.dto.ts : requestとresponse用のデータ構造定義
 
 *********************************************/
 
-import { SpeakerAccent } from "./services/lquizapiservice.js";
+import { SpeakerAccent } from "./services/lquizapiservice.ts";
 
 //ユーザーからの新規クイズリクエストスキーマ（ランダム生成、ID非指定）
 export class RandomNewQuestionReqDTO {

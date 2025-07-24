@@ -7,7 +7,7 @@ usermodels.tsの機能: ビジネス処理におけるDBの操作のみを提供
 
 import { Pool, PoolClient, QueryResult } from "pg";
 import { UserDTO } from "./userdto.js";
-import * as userdberrors from "./errors/userdberrors.js";
+import * as userdberrors from "./errors/userdberrors.ts";
 import {config} from "dotenv";
 config();
 

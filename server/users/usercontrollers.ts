@@ -7,11 +7,11 @@ usercontrollers.tsの機能:
 *********************************************/
 
 import { Request, Response } from "express";
-import { userPasswordEncrypt, userIdGenerate, userDataRegister, userDBConnect, userLogin } from "./userservice.js";
-import { UserDTO } from "./userdto.js";
-import { UserResponses } from "./usersjson.js";
-import { userRegisterBusinessErrorHandler, userLoginBusinessErrorHandler } from "./errors/errorhandlers.js";
-import * as userschema from "./userschema.js";
+import { userPasswordEncrypt, userIdGenerate, userDataRegister, userDBConnect, userLogin } from "./userservice.ts";
+import { UserDTO } from "./userdto.ts";
+import { UserResponses } from "./usersjson.ts";
+import { userRegisterBusinessErrorHandler, userLoginBusinessErrorHandler } from "./errors/errorhandlers.ts";
+import * as userschema from "./userschema.ts";
 import { z } from "zod";
 
 //ユーザー新規登録処理

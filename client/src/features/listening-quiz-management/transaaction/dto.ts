@@ -103,7 +103,7 @@ export interface AnswerReqDTO {
 //正誤・解答データレスポンス
 export interface AnswerResDTO {
     lQuestionID: string,
-    trueOrFalse: boolean,
+    isCorrect: boolean,
     audioScript: string,
     jpnAudioScript: string,
     explanation: string

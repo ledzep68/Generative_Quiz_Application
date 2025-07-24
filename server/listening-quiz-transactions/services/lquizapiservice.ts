@@ -7,11 +7,11 @@ lquizapiservice.tsの機能:
 
 ******************************************/
 
-import * as domein from "../lquiz.domeinobject.js";
-import * as dto from "../lquiz.dto.js";
-import * as apierror from "../errors/lquiz.apierrors.js";
+import * as domein from "../lquiz.domeinobject.ts";
+import * as dto from "../lquiz.dto.ts";
+import * as apierror from "../errors/lquiz.apierrors.ts";
 //import fetch from "node-fetch";
-import * as schema from "../schemas/lquizapischema.js";
+import * as schema from "../schemas/lquizapischema.ts";
 import { z } from "zod";
 import {GoogleAuth} from "google-auth-library";
 import { spawn } from 'child_process'; //ライブラリを通さず、直接他プログラムを実行するためのライブラリ

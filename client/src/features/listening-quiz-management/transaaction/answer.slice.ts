@@ -4,16 +4,24 @@ import z from "zod";
 import * as dto from "./dto.ts";
 import * as type from "./types.ts";
 
+const testAnswerData: dto.AnswerResDTO = {
+    lQuestionID: "test",
+    isCorrect: true,
+    audioScript: "test",
+    jpnAudioScript: "test",
+    explanation: "test"
+};
+
 const initialState: type.AnswerRequestState = {
     requestParams: {
         lQuestionID: undefined,
-        userID: undefined,
+        userID: "test",//undefined,
         userAnswerOption: undefined,
         answerDate: undefined,
         reviewTag: undefined
     },
 
-    answerData: undefined,
+    answerData: testAnswerData,//undefined,
 
     isValid: false,
     validationErrors: [],
@@ -38,6 +46,7 @@ export const answerSlice = createSlice({
     initialState,
     reducers: {
         setRequestParams: (state, action: PayloadAction<Partial<dto.AnswerReqDTO>>) => {
+            console.log('reducer呼び出し:', action.payload);
             if(action.payload.lQuestionID !== undefined) {
                 state.requestParams.lQuestionID = action.payload.lQuestionID;
             };

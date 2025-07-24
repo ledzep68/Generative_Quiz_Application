@@ -1,15 +1,30 @@
 import {createSlice, PayloadAction} from "@reduxjs/toolkit";
-import z from "zod";
+import z, { set } from "zod";
 
 import * as dto from "./dto.ts";
 import * as type from "./types.ts";
 
-const initialState: type.AudioRequestState = {
+const createDummyAudioBlob = (): File => {
+    const dummyData = new ArrayBuffer(1024); // 1KB のダミーデータ
+    const blob = new Blob([dummyData], { type: 'audio/mpeg' });
+    return new File([blob], 'dummy-audio.mp3', { 
+        type: 'audio/mpeg',
+        lastModified: Date.now() 
+    });
+};
+
+const testBlob = createDummyAudioBlob();
+
+const initialState: type.AudioState = {
     requestParams: {
         currentLQuestionId: undefined
     },
 
-    audioData: undefined,
+    audioData: testBlob,
+
+    isAudioReadyToPlay: false,
+
+    audioStart: false,
 
     isValid: undefined,
     validationErrors: [],
@@ -22,7 +37,7 @@ const RequestValidationSchema = z.object({
     lQuestionId: z.string()
 });
 
-function validateParams (state: type.AudioRequestState): z.ZodSafeParseResult<{ lQuestionId: string; }> {
+function validateParams (state: type.AudioState): z.ZodSafeParseResult<{ lQuestionId: string; }> {
     return RequestValidationSchema.safeParse({
         lQuestionId: state.requestParams.currentLQuestionId
     });
@@ -70,6 +85,12 @@ export const audioRequestSlice = createSlice({
         setAudioError: (state, action: PayloadAction<string>) => {
             state.validationErrors = [action.payload];
         },
+        setIsAudioReadyToPlay: (state, action: PayloadAction<boolean>) => {
+            state.isAudioReadyToPlay = action.payload;
+        },
+        setAudioStart: (state, action: PayloadAction<boolean>) => {
+            state.audioStart = action.payload;
+        },
         //音声データ解放
         clearAudioData: (state) => {
             state.audioData = undefined;
@@ -81,4 +102,4 @@ export const audioRequestSlice = createSlice({
     }
 });
 
-export const {setAudioRequest, setAudioData, setRequestStatus, setAudioError, clearAudioData, resetAudioState} = audioRequestSlice.actions
+export const {setAudioRequest, setAudioData, setRequestStatus, setAudioError, setIsAudioReadyToPlay, setAudioStart, clearAudioData, resetAudioState} = audioRequestSlice.actions

@@ -1,11 +1,13 @@
-//======
+//===========================================================================
 
 
 //音声取得は、1回のtransaction（問題取得→問題回答→結果閲覧）のサイクルが完了し、次の問題（2問目以降）に移行するタイミングでGETを出す設計とする
 //理由はユーザーの途中離脱など考慮し、できるだけ冗長なGETをなくすため
-//======
 
-import {use, useState} from "react";
+//音声は音声再生ボタンを押したタイミングで再生
+
+//===========================================================================
+import {use, useState, useEffect} from "react";
 import { useNavigate } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 
@@ -22,6 +24,7 @@ import DropdownComponent from "../../../../shared/components/Dropdown";
 import MainMenu from "../../../main-menu/components/MainMenu";
 import CheckBoxComponent from "../../../../shared/components/CheckBox";
 import AnswerButtonComponent from "./AnswerButton.tsx";
+import QuizInterruptPopup from "./InterruptPopUp.tsx";
 
 import * as newQuestionSlice from "../newquiz.slice";
 import * as uiSlice from "../ui.slice.ts";
@@ -33,6 +36,7 @@ import * as dto from "../dto.ts";
 import * as api from "../api.ts";
 import * as type from "../types.ts";
 import { useAppSelector, useAppDispatch } from "../../../../shared/hooks/redux-hooks.ts";
+import { current } from "@reduxjs/toolkit";
 
 function ListeningQuizPage() {
     const currentScreen = useAppSelector(state => state.uiManagement.currentScreen);
@@ -42,6 +46,7 @@ function ListeningQuizPage() {
             {currentScreen === 'standby' && <StandByScreen />}
             {currentScreen === 'answer' && <AnswerScreen />}
             {currentScreen === 'result' && <ResultScreen />}
+            
         </div>
     );
 };
@@ -69,9 +74,10 @@ function StandByScreen() {
     //音声リクエスト用selector
     const requestAudioParams = useAppSelector(state => state.audioManagement.requestParams);
     const { currentLQuestionId } = requestAudioParams;
+    const isAudioReadyToPlay = useAppSelector(state => state.audioManagement.isAudioReadyToPlay);
     //問題番号管理用selector
     const indexParams = useAppSelector(state => state.indexManagement);
-    const { lQuestionIdList } = indexParams;
+    const { lQuestionIdList, currentQuestionIndex } = indexParams;
 
     const handleSectionChange = (event: SelectChangeEvent<unknown>) => {
         dispatch(newQuestionSlice.setRequestParams({
@@ -108,12 +114,13 @@ function StandByScreen() {
             //クイズデータをredux storeに保存
             dispatch(newQuestionSlice.setQuestions(questionFetchResult));
 
-            const currentLQuestionId = lQuestionIdList[0]
+            const currentLQuestionId = lQuestionIdList[currentQuestionIndex]; //初期状態は0
 
             //音声合成api呼び出し&音声データをredux storeに保存
             dispatch(audioSlice.setAudioRequest(currentLQuestionId))
             await handleFetchAudio(currentLQuestionId as string);
             dispatch(audioSlice.setRequestStatus('success'));
+            dispatch(audioSlice.setIsAudioReadyToPlay(true));
 
             //Index管理StateにlQuestionIdListと問題indexを保存
             dispatch(indexSlice.setLQuestionIdList(lQuestionIdList));
@@ -218,9 +225,9 @@ function StandByScreen() {
                             label="問題を開始する"
                             onClick={handleQuizInit}
                             color="primary"
-                            size="large"
+                            size="medium"
                             disabled={!sectionNumber || !requestedNumOfLQuizs}
-                            sx={{ width: '100%', py: 1.5 }}
+                            sx={{ width: '100%', py: 1 }}
                         />
 
                         <ButtonComponent 
@@ -228,8 +235,8 @@ function StandByScreen() {
                             label="戻る"
                             onClick={handleBack}
                             color="primary"
-                            size="large"
-                            sx={{ width: '100%', py: 1.5 }}
+                            size="medium"
+                            sx={{ width: '100%', py: 1 }}
                         />
                     </Box>
                 </Paper>
@@ -253,17 +260,27 @@ function AnswerScreen() {
 
     //問題番号管理用selector
     const indexParams = useAppSelector(state => state.indexManagement);
-    const { currentQuestionIndex } = indexParams;
+    const { currentQuestionIndex=0 } = indexParams;
 
     //クイズデータselector（現在のindexの問題だけ取得）
     const questionDataList = useAppSelector(state => state.newRandomQuestionRequest.questions) as dto.QuestionResDTO[];
-    const { lQuestionID, audioScript, jpnAudioScript, answerOption, sectionNumber, explanation, speakerAccent, speakingRate, duration } = questionDataList[currentQuestionIndex];
+    const currentQuestion = questionDataList[currentQuestionIndex];
+    if (!currentQuestion) {
+        return <div>クイズデータを読み込み中...</div>; // 早期リターン
+    };
+    const { lQuestionID, sectionNumber, speakerAccent, duration } = currentQuestion;
 
     //音声データselector
     const audioBlob = useAppSelector(state => state.audioManagement.audioData) as File;
+    if (!audioBlob || !questionDataList || questionDataList.length === 0) {
+        return <div>音声データを読み込み中...</div>;
+    };
+    const isAudioReadyToPlay = useAppSelector(state => state.audioManagement.isAudioReadyToPlay);
 
     //回答リクエスト用selector
-    const requestAnswerParams = useAppSelector(state => state.answerManagement.requestParams);
+    const requestAnswerParams = useAppSelector(state => {
+        return state.answerManagement.requestParams
+    });
     const { /*lQuestionID,*/ userID, userAnswerOption, answerDate, reviewTag } = requestAnswerParams;
 
     const navigate = useNavigate();
@@ -283,8 +300,18 @@ function AnswerScreen() {
         }));
     };
 
+    //デバッグ用
+    useEffect(() => {
+        console.log('=== 実際の更新後確認 ===');
+        console.log('userAnswerOption:', userAnswerOption);
+        console.log('disabled状態:', !userAnswerOption);
+    }, [userAnswerOption]);
+
     //音声再生
     const handleAudioPlay = async () => {
+        if(!isAudioReadyToPlay){
+            throw new Error("音声データが準備されていません");
+        };
         //BlobをオブジェクトURLに変換 windowでブラウザのURLを明示的に使用
         const audioBlobURL = window.URL.createObjectURL(audioBlob);
 
@@ -315,7 +342,7 @@ function AnswerScreen() {
     };
 
     const handleAnswer = async () => {
-        //回答内容をAPIに送る
+        /*//回答内容をAPIに送る
         //回答レスポンスが届いたことを確認
         //stateを結果状態に更新し、結果画面（Result.tsx）に遷移(Navigate)
         //Redux stateからDTOを構築
@@ -337,22 +364,41 @@ function AnswerScreen() {
 
         } catch (error) {
             console.log(error);
-        }
+        }*/
+        dispatch(uiSlice.setCurrentScreen('result'));
     };
 
-    const handleBack = () => {
-        navigate('/');
+    //中断ポップアップ
+    const [showInterruptPopup, setShowInterruptPopup] = useState(false);
+
+    const handleQuit = () => {
+    setShowInterruptPopup(true);
     };
+
+    const handleClosePopup = () => {
+    setShowInterruptPopup(false);
+    };
+
+    const handleMainMenu = () => {
+    setShowInterruptPopup(false);
+    navigate('/main-menu');
+    };
+
+    const handleLogout = () => {
+    setShowInterruptPopup(false);
+    //各種リセット処理
+    //ログアウト処理
+    navigate('/login');
+    };
+
     return (
         //回答画面
         //コンポーネント：回答ボタン(A|B|C|D), 回答するボタン, 後で復習　チェックボックス, やめるボタン
         <Box 
             sx={{ 
-                minHeight: '100vh',
+                minHeight: 'calc(100vh - 64px)',
+                height: 'auto',
                 width: '100%',
-                position: 'fixed',
-                top: 0,
-                left: 0,
                 overflowY: 'auto',
                 backgroundColor: 'pastel.main'
             }}
@@ -360,7 +406,7 @@ function AnswerScreen() {
             <Container maxWidth="md">
                 <Box
                     sx={{
-                        marginTop: 8,
+                        marginTop: 3,
                         display: 'flex',
                         flexDirection: 'column',
                         alignItems: 'center',
@@ -370,27 +416,27 @@ function AnswerScreen() {
                     <Paper 
                         elevation={10}
                         sx={{
-                            padding: 4,
+                            padding: 1,
                             display: 'flex',
                             flexDirection: 'column',
                             width: '100%',
                             maxWidth: 600,
-                            gap: 3
+                            gap: 1
                         }}
                     >
                         {/* 問題情報 */}
-                        <Box sx={{ textAlign: 'center', mb: 2 }}>
+                        <Box sx={{ textAlign: 'center', mb: 1 }}>
                             <Typography variant="h4" component="h1" gutterBottom>
                                 第{currentQuestionIndex + 1}問
                             </Typography>
-                            <Typography variant="body1" color="text.secondary">
+                            {/*<Typography variant="body1" color="text.secondary">
                                 セクション {sectionNumber} | {speakerAccent} | 再生時間: {duration}秒
-                            </Typography>
+                            </Typography>*/}
                         </Box>
 
                         {/* 音声再生ボタン */}
-                        <Box sx={{ textAlign: 'center', py: 2 }}>
-                            <Typography variant="h6" gutterBottom>
+                        <Box sx={{ textAlign: 'center', py: 1 }}>
+                            <Typography variant="body1" gutterBottom>
                                 音声を再生して問題に答えてください
                             </Typography>
                             <ButtonComponent
@@ -398,8 +444,8 @@ function AnswerScreen() {
                                 label="🔊 音声再生"
                                 onClick={handleAudioPlay}
                                 color="primary"
-                                size="large"
-                                sx={{ minWidth: 200, py: 1.5 }}
+                                size="medium"
+                                sx={{ minWidth: 200, py: 1, fontSize: '1rem' }}
                             />
                         </Box>
 
@@ -407,6 +453,7 @@ function AnswerScreen() {
                         <AnswerButtonComponent
                             selectedAnswer={userAnswerOption || ''}
                             onAnswerChange={handleUserAnswerChange}
+                            sx = {{ display: 'flex', flexDirection: 'column', gap: 1, mt: 2, fontSize: '1rem' }}
                         />
 
                         {/* 復習タグチェックボックス */}
@@ -414,28 +461,34 @@ function AnswerScreen() {
                             label="後で復習する"
                             checked={reviewTag || false}
                             onChange={handleReviewTagChange}
-                            helperText="復習が必要な問題にチェックしてください"
+                            sx={{ fontSize: 'body1' }}
                         />
 
                         {/* ボタン群 */}
-                        <Box sx={{ mt: 2, display: 'flex', flexDirection: 'column', gap: 2 }}>
+                        <Box sx={{ mt: 1, display: 'flex', flexDirection: 'column', gap: 1 }}>
                             <ButtonComponent 
                                 variant="contained"
                                 label="回答する"
                                 onClick={handleAnswer}
                                 color="primary"
-                                size="large"
+                                size="medium"
                                 disabled={!userAnswerOption}
-                                sx={{ width: '100%', py: 1.5 }}
+                                sx={{ width: '100%', py: 1, fontSize: '1rem' }}
                             />
 
                             <ButtonComponent 
                                 variant="outlined"
                                 label="やめる"
-                                onClick={handleBack}
+                                onClick={handleQuit}
                                 color="primary"
-                                size="large"
-                                sx={{ width: '100%', py: 1.5 }}
+                                size="medium"
+                                sx={{ width: '100%', py: 1, fontSize: '1rem' }}
+                            />
+                            <QuizInterruptPopup
+                                open={showInterruptPopup}
+                                onClose={handleClosePopup}
+                                onMainMenu={handleMainMenu}
+                                onLogout={handleLogout}
                             />
                         </Box>
                     </Paper>
@@ -446,7 +499,7 @@ function AnswerScreen() {
 };
 
 //結果画面（API呼び出し）
-//回答の正誤「正解|不正解」、「解説」、「（問題数がnumOfLQuizs未満なら）次の問題に進むボタン|（問題数がnumOfLQuizsと等しいなら）回答結果を見る　ボタン」「後で復習　チェックボックス」「やめるボタン」を表示
+//回答の正誤「正解|不正解」、「解説」、「音声再生ボタン」、「（問題数がnumOfLQuizs未満なら）次の問題に進むボタン|（問題数がnumOfLQuizsと等しいなら）回答結果を見る　ボタン」「後で復習　チェックボックス」「やめるボタン」を表示
 //次の問題に進むボタンを押下
 //  stateを待機状態に更新し、クイズAPIを送信
 
@@ -454,9 +507,278 @@ function AnswerScreen() {
 //  stateを結果状態に更新し、結果画面（Result.tsx）に遷移(Navigate)
 
 function ResultScreen() {
-    return (
+    //状態'answer'
+    const screenState = useAppSelector(state => state.uiManagement.currentScreen);
 
-    )
+    //問題番号管理用selector
+    const indexParams = useAppSelector(state => state.indexManagement);
+    const { lQuestionIdList, currentQuestionIndex=0 } = indexParams;
+
+    //クイズデータselector（現在のindexの問題だけ取得）
+    const requestedNumOfLQuizs = useAppSelector(state => state.newRandomQuestionRequest.numOfLQuizs);
+    const questionDataList = useAppSelector(state => state.newRandomQuestionRequest.questions) as dto.QuestionResDTO[];
+    const currentQuestion = questionDataList[currentQuestionIndex];
+    if (!currentQuestion) {
+        return <div>クイズデータを読み込み中...</div>; // 早期リターン
+    };
+    const { lQuestionID, audioScript, jpnAudioScript, answerOption, sectionNumber, explanation, speakerAccent, speakingRate, duration, audioURL } = currentQuestion;
+
+    //音声データselector
+    const audioBlob = useAppSelector(state => state.audioManagement.audioData) as File;
+    if (!audioBlob || !questionDataList || questionDataList.length === 0) {
+        return <div>音声データを読み込み中...</div>;
+    };
+
+    //回答リクエスト用selector
+    const requestAnswerParams = useAppSelector(state => {
+        return state.answerManagement.requestParams
+    });
+    const { /*lQuestionID,*/ userID, userAnswerOption, answerDate, reviewTag } = requestAnswerParams;
+    const answerData = useAppSelector(state => {
+        return state.answerManagement.answerData
+    }) as dto.AnswerResDTO;
+    const { isCorrect } = answerData;
+
+    //正誤・解答データレスポンス
+    /*export interface AnswerResDTO {
+        lQuestionID: string,
+        isCorrect: boolean,
+        audioScript: string,
+        jpnAudioScript: string,
+        explanation: string
+    }*/
+
+    const navigate = useNavigate();
+    const dispatch = useAppDispatch();
+    const {load, play} = useAudioPlayer();
+
+    const [fetchAudio] = api.useLazyFetchAudioQuery();
+
+    // 最終問題かどうかの判定
+    const isLastQuestion = currentQuestionIndex + 1 >= requestedNumOfLQuizs;
+
+    // 音声再生（解説用）
+    const handleAudioPlay = async () => {
+        // 音声データの取得と再生ロジック
+        // 既存のhandleAudioPlayと同様の実装
+        try {
+            const audioData = await fetchAudio(lQuestionID).unwrap() as File;
+            dispatch(audioSlice.setAudioData(audioData));
+            play();
+        } catch (error) {
+            console.error('音声取得に失敗:', error);
+        }
+    };
+
+    // 次の問題に進む
+    const handleNextQuestion = async () => {
+        const nextIndex = currentQuestionIndex + 1;
+        
+        if (nextIndex < requestedNumOfLQuizs) {
+            // 次の問題の音声データを取得
+            const nextLQuestionId = lQuestionIdList[nextIndex];
+            
+            try {
+                // 音声データ取得
+                const audioData = await fetchAudio(nextLQuestionId).unwrap() as File;
+                dispatch(audioSlice.setAudioData(audioData));
+                
+                // インデックス更新
+                dispatch(indexSlice.setCurrentIndex(nextIndex as 0|1|2|3|4|5|6|7|8|9));
+                
+                // answer画面に遷移
+                dispatch(uiSlice.setCurrentScreen('answer'));
+                
+            } catch (error) {
+                console.error('次の問題の音声取得に失敗:', error);
+            }
+        }
+    };
+
+    // 結果一覧を見る
+    const handleViewResults = () => {
+        // 結果一覧画面に遷移（別途実装が必要）
+        navigate('/quiz-results');
+    };
+
+    // 復習タグの変更
+    const handleReviewTagChange = (checked: boolean) => {
+        dispatch(answerSlice.setRequestParams({
+            reviewTag: checked
+        }));
+    };
+
+    /* 
+    //正誤・解答データレスポンス
+    export interface AnswerResDTO {
+        lQuestionID: string,
+        isCorrect: boolean,
+        audioScript: string,
+        jpnAudioScript: string,
+        explanation: string
+    }
+    */
+
+    // 中断ポップアップ
+    const [showInterruptPopup, setShowInterruptPopup] = useState(false);
+
+    const handleQuit = () => {
+        setShowInterruptPopup(true);
+    };
+
+    const handleClosePopup = () => {
+        setShowInterruptPopup(false);
+    };
+
+    const handleMainMenu = () => {
+        setShowInterruptPopup(false);
+        navigate('/main-menu');
+    };
+
+    const handleLogout = () => {
+        setShowInterruptPopup(false);
+        navigate('/login');
+    };
+
+    return (
+        <Box 
+            sx={{ 
+                minHeight: '100vh',
+                width: '100%',
+                overflowY: 'auto',
+                backgroundColor: 'pastel.main',
+                paddingBottom: 2
+            }}
+        >
+            <Container maxWidth="md">
+                <Box
+                    sx={{
+                        marginTop: 3,
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center'
+                    }}
+                >
+                    <Paper 
+                        elevation={10}
+                        sx={{
+                            padding: 2,
+                            display: 'flex',
+                            flexDirection: 'column',
+                            width: '100%',
+                            maxWidth: 600,
+                            gap: 2
+                        }}
+                    >
+                        {/* 問題情報 */}
+                        <Box sx={{ textAlign: 'center', mb: 1 }}>
+                            <Typography variant="h4" component="h1" gutterBottom>
+                                第{currentQuestionIndex + 1}問 結果
+                            </Typography>
+                        </Box>
+
+                        {/* 正誤結果 */}
+                        <Box sx={{ textAlign: 'center', py: 2 }}>
+                            <Typography 
+                                variant="h5" 
+                                sx={{ 
+                                    color: isCorrect ? 'success.main' : 'error.main',
+                                    fontWeight: 'bold',
+                                    mb: 2
+                                }}
+                            >
+                                {isCorrect ? '✅ 正解' : '❌ 不正解'}
+                            </Typography>
+                            
+                            {/* 回答情報 */}
+                            <Box sx={{ backgroundColor: 'grey.100', p: 2, borderRadius: 1, mb: 2 }}>
+                                <Typography variant="body1" gutterBottom>
+                                    <strong>あなたの回答:</strong> {userAnswerOption}
+                                </Typography>
+                                <Typography variant="body1">
+                                    <strong>正解:</strong> {answerOption}
+                                </Typography>
+                            </Box>
+                        </Box>
+
+                        {/* 解説 */}
+                        {explanation && (
+                            <Box sx={{ mb: 2 }}>
+                                <Typography variant="h6" gutterBottom sx={{ fontWeight: 'bold' }}>
+                                    解説
+                                </Typography>
+                                <Typography variant="body1" sx={{ backgroundColor: 'grey.50', p: 2, borderRadius: 1 }}>
+                                    {explanation}
+                                </Typography>
+                            </Box>
+                        )}
+
+                        {/* 音声再生ボタン */}
+                        <Box sx={{ textAlign: 'center', py: 1 }}>
+                            <Typography variant="body1" gutterBottom>
+                                もう一度音声を聞く
+                            </Typography>
+                            <ButtonComponent
+                                variant="outlined"
+                                label="🔊 音声再生"
+                                onClick={handleAudioPlay}
+                                color="primary"
+                                size="medium"
+                                sx={{ minWidth: 200, py: 1 }}
+                            />
+                        </Box>
+
+                        {/* 復習タグチェックボックス */}
+                        <CheckBoxComponent
+                            label="後で復習する"
+                            checked={reviewTag || false}
+                            onChange={handleReviewTagChange}
+                        />
+
+                        {/* ボタン群 */}
+                        <Box sx={{ mt: 2, display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+                            {!isLastQuestion ? (
+                                <ButtonComponent 
+                                    variant="contained"
+                                    label="次の問題に進む"
+                                    onClick={handleNextQuestion}
+                                    color="primary"
+                                    size="medium"
+                                    sx={{ width: '100%', py: 1 }}
+                                />
+                            ) : (
+                                <ButtonComponent 
+                                    variant="contained"
+                                    label="回答結果を見る"
+                                    onClick={handleViewResults}
+                                    color="primary"
+                                    size="medium"
+                                    sx={{ width: '100%', py: 1 }}
+                                />
+                            )}
+
+                            <ButtonComponent 
+                                variant="outlined"
+                                label="やめる"
+                                onClick={handleQuit}
+                                color="primary"
+                                size="medium"
+                                sx={{ width: '100%', py: 1 }}
+                            />
+                        </Box>
+
+                        {/* 中断ポップアップ */}
+                        <QuizInterruptPopup
+                            open={showInterruptPopup}
+                            onClose={handleClosePopup}
+                            onMainMenu={handleMainMenu}
+                            onLogout={handleLogout}
+                        />
+                    </Paper>
+                </Box>
+            </Container>
+        </Box>
+    );
 };
 
 export default ListeningQuizPage;

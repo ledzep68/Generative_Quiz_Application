@@ -1,5 +1,5 @@
-import * as schema from "../schemas/lquizbusinessschema.js";
-import * as response from "../lquiz.json.js";
+import * as schema from "../schemas/lquizbusinessschema.ts";
+import * as response from "../lquiz.json.ts";
 
 export interface BusinessLogicError extends Error {
     status: number;

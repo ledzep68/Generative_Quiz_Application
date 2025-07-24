@@ -45,78 +45,78 @@ const DROPDOWN_CONFIGS = { //不変定数の名前は全大文字で定義
 }
 
 interface DropdownProps extends Omit<SelectProps, 'labelId' | 'label'> {
-  type: keyof typeof DROPDOWN_CONFIGS;
-  
-  //FormControlから継承
-  error?: FormControlProps['error'];
-  disabled?: FormControlProps['disabled'];
-  fullWidth?: FormControlProps['fullWidth'];
-  size?: FormControlProps['size'];
-  variant?: FormControlProps['variant']
+    type: keyof typeof DROPDOWN_CONFIGS;
+    
+    //FormControlから継承
+    error?: FormControlProps['error'];
+    disabled?: FormControlProps['disabled'];
+    fullWidth?: FormControlProps['fullWidth'];
+    size?: FormControlProps['size'];
+    variant?: FormControlProps['variant']
 
-  helperText?: string;
+    helperText?: string;
 };
 
 // 汎用Dropdownコンポーネント
 function DropdownComponent({
-  type,
-  value,
-  onChange,
-  error = false,
-  disabled = false,
-  fullWidth = true,
-  size = 'medium',
-  variant = 'outlined',
-  helperText,
-  sx,
-  ...selectProps
-}: DropdownProps) {
+    type,
+    value,
+    onChange,
+    error = false,
+    disabled = false,
+    fullWidth = true,
+    size = 'medium',
+    variant = 'outlined',
+    helperText,
+    sx,
+    ...selectProps
+    }: DropdownProps) {
 
-  const config = DROPDOWN_CONFIGS[type];
-  const labelId = `${type}-dropdown-label`;
-  const selectId = `${type}-dropdown`;
+    const config = DROPDOWN_CONFIGS[type];
+    const labelId = `${type}-dropdown-label`;
+    const selectId = `${type}-dropdown`;
 
-  return (
-    <Box>
-        <Typography 
-            variant="body2" 
-            sx={{ mb: 1, fontWeight: 500, color: error ? 'error.main' : 'text.primary' }}
-        >
-            {config.label}
-        </Typography>
+    return (
+        <Box>
+            <Typography 
+                variant="body2" 
+                sx={{ mb: 1, fontWeight: 500, color: error ? 'error.main' : 'text.primary' }}
+            >
+                {config.label}
+            </Typography>
 
-        <FormControl
-        fullWidth={fullWidth}
-        error={error}
-        disabled={disabled}
-        size={size}
-        variant={variant}
-        sx={sx}
-        >
-        <InputLabel id={labelId}>
-            {/*{config.placeholder}*/}
-        </InputLabel>
-        <Select
-            labelId={labelId}
-            id={selectId}
-            value={value}
-            
-            onChange={onChange}
-            {...selectProps}
-        >
-            {config.options.map((option) => (
-            <MenuItem key={option.value} value={option.value}>
-                {option.label}
-            </MenuItem>
-            ))}
-        </Select>
-        {helperText && (
-            <FormHelperText>
-            {helperText}
-            </FormHelperText>
-        )}
-        </FormControl>
-    </Box>
+            <FormControl
+            fullWidth={fullWidth}
+            error={error}
+            disabled={disabled}
+            size={size}
+            variant={variant}
+            sx={sx}
+            >
+            <InputLabel id={labelId}>
+                {/*{config.placeholder}*/}
+            </InputLabel>
+            <Select
+                labelId={labelId}
+                id={selectId}
+                value={value}
+                
+                onChange={onChange}
+                {...selectProps}
+            >
+                {config.options.map((option) => (
+                <MenuItem key={option.value} value={option.value}>
+                    {option.label}
+                </MenuItem>
+                ))}
+            </Select>
+            {helperText && (
+                <FormHelperText>
+                {helperText}
+                </FormHelperText>
+            )}
+            </FormControl>
+        </Box>
   );
 }
 

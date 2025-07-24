@@ -1,8 +1,8 @@
 import { Pool, PoolClient, QueryResult } from "pg";
-import * as domein from "./lquiz.domeinobject.js";
-import * as mapper from "./mappers/lquiz.dbmapper.js";
-import * as entity from "./lquiz.entity.js"
-import * as dberror from "./errors/lquiz.dberrors.js";
+import * as domein from "./lquiz.domeinobject.ts";
+import * as mapper from "./mappers/lquiz.dbmapper.ts";
+import * as entity from "./lquiz.entity.ts"
+import * as dberror from "./errors/lquiz.dberrors.ts";
 import {config} from "dotenv";
 import { omit } from "zod/v4-mini";
 config();

@@ -1,4 +1,4 @@
-import * as response from "../audio.responses.js";
+import * as response from "../audio.responses.ts";
 
 export interface DBError extends Error {
 };

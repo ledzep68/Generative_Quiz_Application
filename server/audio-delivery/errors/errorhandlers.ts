@@ -1,4 +1,4 @@
-import { audioDeliveryControllerResponses, modelsLayerResponses } from "../audio.responses.js";
+import { audioDeliveryControllerResponses, modelsLayerResponses } from "../audio.responses.ts";
 
 //audio配信Controller用エラーハンドラ
 export function audioDeliveryControllerErrorHandler(error: Error): {response: any} {

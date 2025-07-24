@@ -4,14 +4,14 @@ import * as dto from "./dto.ts"
 
 const newQuizApi = createApi({
     //エンドポイントの共通部分
-    baseQuery: fetchBaseQuery({ baseUrl: 'api/server' }),
+    baseQuery: fetchBaseQuery({ baseUrl: `http://localhost:3000/api` /*本番環境で切り替え必要　環境変数で設定*/ }),
     //個別API定義
     endpoints: (builder) => ({
         //新規クイズリクエスト
         fetchNewQuestions: builder.mutation<dto.QuestionResDTO[], dto.RandomNewQuestionReqDTO>({
             query: (data) => (
                 {
-                    url: '/lquiz/new-quiz-generate', 
+                    url: `/lquiz/new-quiz-generate`, 
                     method: 'POST',
                     body: data
                 }
@@ -21,7 +21,7 @@ const newQuizApi = createApi({
         fetchAudio: builder.query<Blob, string>({
             query: (lQuestionId: string) => (
                 {
-                    url: '/audio//question/${lQuestionId}',
+                    url: `/audio/question/${lQuestionId}`,
                     method: 'GET',
                     responseHandler: (response) => response.blob()
                 }
@@ -30,7 +30,7 @@ const newQuizApi = createApi({
         fetchAnswer: builder.mutation<dto.AnswerResDTO, dto.AnswerReqDTO>({
             query: (data) => (
                 {
-                    url: '/lquiz/answer',
+                    url: `/lquiz/answer`,
                     method: 'POST',
                     body: data
                 }

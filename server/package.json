@@ -4,7 +4,7 @@
   "main": "server.ts",
   "type": "module",
   "scripts": {
-    "start": "nodemon --exec 'node --loader ts-node/esm server.ts'",
+    "dev": "nodemon --watch './**/*.ts' --exec ts-node server.ts",
     "test-vitest": "vitest --coverage",
     "test-jest": "node --loader ts-node/esm ./node_modules/.bin/jest --coverage --verbose",
     "test-jest:experimental": "node --experimental-vm-modules --loader ts-node/esm ./node_modules/.bin/jest --coverage --verbose"

@@ -9,21 +9,23 @@ interface AnswerButtonsProps {
     //options: Array<"A" | "B" | "C" | "D">; // シンプルな選択肢配列
     selectedAnswer: string;
     onAnswerChange: (answer: string) => void;
+    sx: {}
 }
 
 const AnswerButtonComponent: React.FC<AnswerButtonsProps> = ({
     //options,
     selectedAnswer,
-    onAnswerChange
+    onAnswerChange,
+    sx
 }) => {
     const fixedOptions: ("A" | "B" | "C" | "D")[] = ["A", "B", "C", "D"];
 
     return (
         <Box>
-            <Typography variant="h6" gutterBottom>
+            <Typography variant="body1" gutterBottom>
                 回答を選択してください
             </Typography>
-            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, mt: 2 }}>
+            <Box sx = {sx}>
                 {fixedOptions.map((option) => (
                     <Button
                         key={option}

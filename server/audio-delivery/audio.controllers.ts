@@ -3,9 +3,9 @@ import z from "zod";
 import fs from 'fs/promises';
 import path from 'path';
 
-import * as service from "./audio.services.js";
-import * as errors from "./errors/audio.businesserrors.js";
-import { audioDeliveryControllerErrorHandler } from "./errors/errorhandlers.js"
+import * as service from "./audio.services.ts";
+import * as errors from "./errors/audio.businesserrors.ts";
+import { audioDeliveryControllerErrorHandler } from "./errors/errorhandlers.ts"
 import { error } from "console";
 
 /*

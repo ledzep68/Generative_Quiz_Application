@@ -1,4 +1,5 @@
 import express from "express"
+import cors from "cors"
 import path from "path"
 import { fileURLToPath } from "url"
 import usersRouter from "./users/userroutes.js"
@@ -17,6 +18,11 @@ app.listen(port, () => {
     console.log(`Example app listening on port ${port}`)
 });
 
+//CORS設定 Viteの開発サーバーとのコミュニケーション
+app.use(cors({
+    origin: 'http://localhost:5173',
+    credentials: true
+}));
 //静的ファイルを配信
 app.use(
     express.static(

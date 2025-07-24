@@ -17,7 +17,7 @@ interface ButtonComponentProps extends ButtonProps  {
 
 const ButtonComponent = (props: ButtonComponentProps) => {
     return (
-        <Button // ← ButtonPropsではなくButton
+        <Button
             variant={props.variant}
             onClick={props.onClick}
             color={props.color}

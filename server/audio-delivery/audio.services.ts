@@ -1,4 +1,4 @@
-import * as model from './audio.models.js';
+import * as model from './audio.models.ts';
 
 import crypto from "crypto";
 

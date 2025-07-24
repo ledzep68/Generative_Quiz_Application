@@ -1,9 +1,9 @@
 import {vi} from 'vitest';
 
-import * as controller from "../audio-delivery/audio.controllers.js";
-import * as service from "../audio-delivery/audio.services.js";
-import * as errors from "../audio-delivery/errors/audio.businesserrors.js";
-import * as responses from "../audio-delivery/audio.responses.js";
+import * as controller from "../audio-delivery/audio.controllers.ts";
+import * as service from "../audio-delivery/audio.services.ts";
+import * as errors from "../audio-delivery/errors/audio.businesserrors.ts";
+import * as responses from "../audio-delivery/audio.responses.ts";
 
 import { Request, Response } from "express";
 import { z } from "zod";

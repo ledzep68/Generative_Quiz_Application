@@ -1,4 +1,4 @@
-import { audioDeliveryControllerResponses } from "../audio.responses.js";
+import { audioDeliveryControllerResponses } from "../audio.responses.ts";
 
 // 音声配信関連の基底エラーインターface
 export interface AudioDeliveryError extends Error {

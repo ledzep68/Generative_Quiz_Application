@@ -2,7 +2,7 @@ import { Pool, PoolClient, QueryResult } from "pg";
 import {config} from "dotenv";
 import { omit } from "zod/v4-mini";
 
-import * as dberror from "./errors/audio.dberrors.js";
+import * as dberror from "./errors/audio.dberrors.ts";
 
 config();
 

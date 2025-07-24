@@ -7,10 +7,10 @@ userservice.tsの機能:
 *********************************************/
 
 import crypto, {randomUUID} from "crypto";
-import { userDBGetConnect, userDBNewDataRecord, userDBLoginDataExtract, userDBRelease, userDBDisconnect } from "./usermodels.js";
+import { userDBGetConnect, userDBNewDataRecord, userDBLoginDataExtract, userDBRelease, userDBDisconnect } from "./usermodels.ts";
 import { PoolClient } from "pg";
-import { UserDTO } from "./userdto.js";
-import * as userbusinesserrors from "./errors/userbusinesserrors.js";
+import { UserDTO } from "./userdto.ts";
+import * as userbusinesserrors from "./errors/userbusinesserrors.ts";
 
 //ユーザーIDの生成
 export function userIdGenerate(){

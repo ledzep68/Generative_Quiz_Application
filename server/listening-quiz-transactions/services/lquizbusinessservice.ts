@@ -9,10 +9,10 @@ lquizbusinessservice.tsの機能:
 ******************************************/
 
 import {randomUUID, UUID} from "crypto";
-import * as model from "../lquizmodel.js";
-import * as domein from "../lquiz.domeinobject.js";
-import * as dbmapper from "../mappers/lquiz.dbmapper.js";
-import * as dto from "../lquiz.dto.js";
+import * as model from "../lquizmodel.ts";
+import * as domein from "../lquiz.domeinobject.ts";
+import * as dbmapper from "../mappers/lquiz.dbmapper.ts";
+import * as dto from "../lquiz.dto.ts";
 
 
 /*

@@ -1,5 +1,5 @@
 import {z} from "zod";
-import * as dto from "../lquiz.dto.js";
+import * as dto from "../lquiz.dto.ts";
 
 //OpenAI APIからのレスポンスが期待される形式か検証するバリデーション
 export const openAIResponseSchema = z.object({

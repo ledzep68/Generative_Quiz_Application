@@ -23,13 +23,17 @@ export interface RandomNewQuestionRequestState extends stateManagementParameters
     questions?: dto.QuestionResDTO[]
 };
 
-//音声データリクエストの状態管理
-export interface AudioRequestState extends stateManagementParameters {
+//音声データの状態管理
+export interface AudioState extends stateManagementParameters {
     requestParams: {
         //次問題のId
         currentLQuestionId?: string
     },
     audioData?: File
+    //音声再生準備完了
+    isAudioReadyToPlay: boolean
+    //音声再生開始
+    audioStart: boolean
 };
 
 //クイズのIDリストとindexの状態管理

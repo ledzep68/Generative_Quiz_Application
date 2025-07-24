@@ -1,16 +1,16 @@
 import {Request, Response} from "express";
-import * as dto from "./lquiz.dto.js"; 
+import * as dto from "./lquiz.dto.ts"; 
 
-import * as mapper from "./mappers/lquiz.businessmapper.js";
+import * as mapper from "./mappers/lquiz.businessmapper.ts";
 
-import * as businessservice from "./services/lquizbusinessservice.js";
-import * as apiservice from "./services/lquizapiservice.js";
+import * as businessservice from "./services/lquizbusinessservice.ts";
+import * as apiservice from "./services/lquizapiservice.ts";
 
-import * as domein from "./lquiz.domeinobject.js";
-import * as errorhandler from "./errors/errorhandlers.js";
+import * as domein from "./lquiz.domeinobject.ts";
+import * as errorhandler from "./errors/errorhandlers.ts";
 
 import { z } from "zod";
-import * as businessschema from "./schemas/lquizbusinessschema.js";
+import * as businessschema from "./schemas/lquizbusinessschema.ts";
 
 //新規クイズ生成・出題
 export async function generateQuestionController(req: Request, res: Response): Promise<void>{
