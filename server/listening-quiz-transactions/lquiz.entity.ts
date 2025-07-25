@@ -5,14 +5,14 @@ lquiz.entity.ts : ListeningQuiz用のエンティティ
 *********************************************/
 
 export interface LQuestionEntity {
-    lQuestionID?: string;
+    lQuestionID?: string; //listening-partx-XXXXXXXX(hash8桁)
     audioScript?: string;
     jpnAudioScript?: string,
     answerOption?: "A"|"B"|"C"|"D";
     sectionNumber?: 1|2|3|4;
     explanation?: string;
-    speakerAccent?: 'American' | 'British' | 'Canadian' | 'Australian'; //DB未追加 ユーザー指定時のみ登録
-    speakingRate?: number; //DB未追加　ユーザー指定時のみ登録
+    speakerAccent?: 'American' | 'British' | 'Canadian' | 'Australian'; 
+    speakingRate?: number; 
     duration?: number;
     audioFilePath?: string;
     createdAt?: Date;

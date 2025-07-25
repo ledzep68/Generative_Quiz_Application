@@ -1,6 +1,6 @@
 import {Mocked, vi} from "vitest";
 import {Pool, PoolClient} from "pg";
-import * as entity from "../listening-quiz-transactions/lquiz.entity.js";
+import * as entity from "../listening-quiz-transactions/lquiz.entity.ts";
 import {newDb} from "pg-mem"
 
 const mockedDB = newDb();

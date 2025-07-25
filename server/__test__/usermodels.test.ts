@@ -1,5 +1,5 @@
-import {UserDTO} from "../users/userdto.js";
-import * as usermodels from "../users/usermodels.js";
+import {UserDTO} from "../users/userdto.ts";
+import * as usermodels from "../users/usermodels.ts";
 import pgmock, {getPool} from "pgmock2";
 
 const MockedPG = new pgmock();

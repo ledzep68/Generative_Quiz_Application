@@ -24,11 +24,11 @@ import {
     ACCENT_PATTERNS,
     TTS_VOICE_CONFIG,
     AccentType
-} from '../listening-quiz-transactions/services/lquizapiservice.js';
+} from '../listening-quiz-transactions/services/lquizapiservice.ts';
 
-import * as domein from "../listening-quiz-transactions/lquiz.domeinobject.js";
-import * as dto from "../listening-quiz-transactions/lquiz.dto.js";
-import * as apierrors from "../listening-quiz-transactions/errors/lquiz.apierrors.js";
+import * as domein from "../listening-quiz-transactions/lquiz.domeinobject.ts";
+import * as dto from "../listening-quiz-transactions/lquiz.dto.ts";
+import * as apierrors from "../listening-quiz-transactions/errors/lquiz.apierrors.ts";
 
 // モック関数の型アサーション
 const mockFetch = fetch as jest.MockedFunction<typeof fetch>;

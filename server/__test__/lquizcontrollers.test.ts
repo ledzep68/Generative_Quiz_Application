@@ -1,12 +1,12 @@
 import { describe, test, expect, beforeEach, afterAll, beforeAll, afterEach, vi, Mocked, Mock, MockedFunction } from 'vitest'
 import { Request, Response } from 'express';
-import * as controller from "../listening-quiz-transactions/lquizcontrollers.js"
-import * as service from "../listening-quiz-transactions/services/lquizapiservice.js"
-import * as domein from "../listening-quiz-transactions/lquiz.domeinobject.js";
-import * as dto from "../listening-quiz-transactions/lquiz.dto.js";
+import * as controller from "../listening-quiz-transactions/lquizcontrollers.ts"
+import * as service from "../listening-quiz-transactions/services/lquizapiservice.ts"
+import * as domein from "../listening-quiz-transactions/lquiz.domeinobject.ts";
+import * as dto from "../listening-quiz-transactions/lquiz.dto.ts";
 import * as businesserror from "../listening-quiz-transactions/errors/lquiz.businesserrors.js";
-import * as apierror from "../listening-quiz-transactions/errors/lquiz.apierrors.js";
-import * as schema from "../listening-quiz-transactions/schemas/lquizapischema.js";
+import * as apierror from "../listening-quiz-transactions/errors/lquiz.apierrors.ts";
+import * as schema from "../listening-quiz-transactions/schemas/lquizapischema.ts";
 
 vi.mock('../listening-quiz-transactions/services/lquizapiservice', () => ({
     generateLQuestionContent: vi.fn().mockImplementation(

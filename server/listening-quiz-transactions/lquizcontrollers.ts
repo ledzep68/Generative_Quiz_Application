@@ -39,7 +39,7 @@ export async function generateQuestionController(req: Request, res: Response): P
         console.log(generatedAudioURLList);
 
         //新規クイズデータのDBへの挿入
-        await businessservice.newQuestionDataInsert(generatedQuestionDataList, generatedAudioURLList, speakingRate as number);
+        await businessservice.newQuestionDataInsert(generatedQuestionDataList, generatedAudioURLList, speakingRate as number); //lQuestionIDListがない
         
         //・クイズデータをユーザーに配信（クイズ音声URLのAPIエンドポイントはどこで定義するか？）
         // audioDelivery APIエンドポイントに委任する
