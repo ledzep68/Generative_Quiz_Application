@@ -9,10 +9,14 @@ import { audioDeliveryControllerErrorHandler } from "./errors/errorhandlers.ts"
 import { error } from "console";
 
 /*
-ユーザーにaudioURLに対してGETリクエスト⇨audioデータ配信（一個ずつ）
+GETリクエスト⇨audioデータ配信（一個ずつ）
 */
 
-export async function audioDeliveryController(req: Request, res: Response): Promise<void> {
+async function audioDeliveryController(req: Request, res: Response): Promise<void> {
+    console.log('=== Audio API Hit ==='); // ★ 最初に追加
+    console.log('Method:', req.method);
+    console.log('URL:', req.url);
+    console.log('params:', req.params);
     const {lQuestionId} = req.params;
     
     try {
@@ -20,7 +24,7 @@ export async function audioDeliveryController(req: Request, res: Response): Prom
         if (!lQuestionId || lQuestionId.trim() === '') {
             //console.log(errors.InvalidQuestionIdError, "問題IDが指定されていません");
             throw new errors.InvalidQuestionIdError("問題IDが指定されていません");
-        }
+        };
         
         //問題IDから音声ファイルパスを取得
         const audioFilePath = await service.audioFilePathExtract(lQuestionId);
@@ -28,14 +32,15 @@ export async function audioDeliveryController(req: Request, res: Response): Prom
         
         if (!audioFilePath) {
             throw new errors.QuestionNotFoundError(`問題ID: ${lQuestionId} に対応する音声ファイルが見つかりません`);
-        }
+        };
         
         //ファイル存在確認
         try {
             await fs.access(audioFilePath);
+            console.log('audio file exists');
         } catch (error) {
             throw new errors.AudioNotFoundError(`音声ファイルが存在しません: ${audioFilePath}`);
-        }
+        };
         
         //ファイル情報取得
         let stats;
@@ -44,7 +49,7 @@ export async function audioDeliveryController(req: Request, res: Response): Prom
             console.log('stats: ', stats);
         } catch (error) {
             throw new errors.AudioFileAccessError(`音声ファイルの情報取得に失敗しました: ${audioFilePath}`);
-        }
+        };
         
         //HTTPヘッダー設定
         res.set({
@@ -86,4 +91,6 @@ export async function audioDeliveryController(req: Request, res: Response): Prom
             });
         }
     }
-}
+};
+
+export default audioDeliveryController;

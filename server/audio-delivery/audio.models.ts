@@ -2,9 +2,14 @@ import { Pool, PoolClient, QueryResult } from "pg";
 import {config} from "dotenv";
 import { omit } from "zod/v4-mini";
 
+import path from 'path';
+import { fileURLToPath } from 'url';
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
 import * as dberror from "./errors/audio.dberrors.ts";
 
-config();
+config({path: path.join(__dirname, '../.env')});
 
 //データベース接続用インスタンス
 const pool = new Pool({

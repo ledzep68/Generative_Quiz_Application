@@ -268,7 +268,7 @@ function AnswerScreen() {
     if (!currentQuestion) {
         return <div>クイズデータを読み込み中...</div>; // 早期リターン
     };
-    const { lQuestionID, sectionNumber, speakerAccent, duration } = currentQuestion;
+    //const { lQuestionID, sectionNumber, speakerAccent, duration } = currentQuestion;
 
     //音声データselector
     const audioBlob = useAppSelector(state => state.audioManagement.audioData) as File;
@@ -515,7 +515,7 @@ function ResultScreen() {
     const { lQuestionIdList, currentQuestionIndex=0 } = indexParams;
 
     //クイズデータselector（現在のindexの問題だけ取得）
-    const requestedNumOfLQuizs = useAppSelector(state => state.newRandomQuestionRequest.numOfLQuizs);
+    const requestedNumOfLQuizs = useAppSelector(state => state.newRandomQuestionRequest.requestParams.requestedNumOfLQuizs);
     const questionDataList = useAppSelector(state => state.newRandomQuestionRequest.questions) as dto.QuestionResDTO[];
     const currentQuestion = questionDataList[currentQuestionIndex];
     if (!currentQuestion) {

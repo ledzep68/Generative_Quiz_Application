@@ -5,7 +5,12 @@ import * as entity from "./lquiz.entity.ts"
 import * as dberror from "./errors/lquiz.dberrors.ts";
 import {config} from "dotenv";
 import { omit } from "zod/v4-mini";
-config();
+
+import path from 'path'; 
+import { fileURLToPath } from 'url'; 
+const __filename = fileURLToPath(import.meta.url); 
+const __dirname = path.dirname(__filename); 
+config({ path: path.join(__dirname, '../.env') });
 
 //データベース接続用インスタンス
 const pool = new Pool({
@@ -40,12 +45,12 @@ export async function dbRelease(client: PoolClient): Promise<void> {
 export async function newQuestionBatchInsert(client: PoolClient, insertNewDataList: entity.LQuestionEntity[]): Promise<QueryResult> {
     try{
         const placeholders = insertNewDataList.map((_, index) => {
-            const baseIndex = index * 9 + 1;
-            return `($${baseIndex}, $${baseIndex + 1}, $${baseIndex + 2}, $${baseIndex + 3}, $${baseIndex + 4}, $${baseIndex + 5}, $${baseIndex + 6}, $${baseIndex + 7}, $${baseIndex + 8})`;
+            const baseIndex = index * 10 + 1;
+            return `($${baseIndex}, $${baseIndex + 1}, $${baseIndex + 2}, $${baseIndex + 3}, $${baseIndex + 4}, $${baseIndex + 5}, $${baseIndex + 6}, $${baseIndex + 7}, $${baseIndex + 8}, $${baseIndex + 9})`;
         }).join(', ');
         
         const sql = `INSERT INTO listening_questions 
-                    (l_question_id, audio_script, jpn_audio_script, answer_option, section_number, explanation, speaker_accent, speaking_rate, duration, audio_file_path) 
+                    (l_question_id, audio_script, jpn_audio_script, answer_option, section_num, explanation, speaker_accent, speaking_rate, duration, audio_file_path) 
                     VALUES ${placeholders}`;
         
         const values = insertNewDataList.flatMap(insertNewData => [

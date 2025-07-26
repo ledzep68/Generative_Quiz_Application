@@ -5,6 +5,7 @@ import RegisterForm from './features/user-management/register/components/Registe
 import LoginForm from './features/user-management/login/components/LoginForm';
 import MainMenu from './features/main-menu/components/MainMenu';
 import LQuiz from './features/listening-quiz-management/transaaction/components/lquiz.transaction';
+import TestScreen from '../__test__/TestComponent';
 
 function App() {
   return (
@@ -15,6 +16,7 @@ function App() {
           <Route path="/register" element={<RegisterForm />} />
           <Route path="/main-menu" element={<MainMenu />} />
           <Route path="/listening-quiz" element={<div><LQuiz /></div>} />
+          <Route path="/test" element={<div><TestScreen /></div>} />
         </Routes>
       </BrowserRouter>
     </Provider>

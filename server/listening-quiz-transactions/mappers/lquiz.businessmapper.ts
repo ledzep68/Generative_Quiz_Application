@@ -69,10 +69,12 @@ export class LQuestionInfoMapper {
 };
 //service 復習クイズデータランダム取得用
 export class RandomLQuestionInfoMapper {
-    static toDomainObject(reqDTO: dto.RandomReviewQuestionReqDTO): domein.LQuestionInfo {
-        return new domein.LQuestionInfo( 
-            reqDTO.userID, 
+    static toDomainObject(reqDTO: dto.RandomReviewQuestionReqDTO): domein.ReviewQuestionInfo {
+        return new domein.ReviewQuestionInfo( 
             reqDTO.sectionNumber, 
+            reqDTO.lQuestionID,
+            reqDTO.userID,
+            reqDTO.speakingRate,
             reqDTO.reviewTag, 
             reqDTO.requestedNumOfLQuizs
         );

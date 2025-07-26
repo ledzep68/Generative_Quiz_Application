@@ -46,6 +46,7 @@ export async function newQuestionDataInsert(
         await client.query('BEGIN');
         // 引数の要素を一括でentityにマッピング
         const insertNewDataList = dbmapper.QuestionDataToEntityMapper.toEntityList(generatedQuestionDataList, audioURLList, speakingRate);
+        console.log(insertNewDataList);
         // 新規問題の挿入
         await model.newQuestionBatchInsert(client, insertNewDataList);
         // コミット

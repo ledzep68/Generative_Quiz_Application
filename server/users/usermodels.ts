@@ -9,7 +9,11 @@ import { Pool, PoolClient, QueryResult } from "pg";
 import { UserDTO } from "./userdto.js";
 import * as userdberrors from "./errors/userdberrors.ts";
 import {config} from "dotenv";
-config();
+import path from 'path'; 
+import { fileURLToPath } from 'url'; 
+const __filename = fileURLToPath(import.meta.url); 
+const __dirname = path.dirname(__filename); 
+config({ path: path.join(__dirname, '../.env') });
 
 //データベース接続用インスタンス
 const pool = new Pool({
@@ -78,4 +82,3 @@ export async function userDBDisconnect(): Promise<void> {
         throw new userdberrors.DBConnectError("DBプールの終了に失敗しました");
     }
 };
-

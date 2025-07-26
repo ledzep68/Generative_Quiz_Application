@@ -14,15 +14,13 @@ const __filename = fileURLToPath(import.meta.url);
 //server.tsの親フォルダserverの絶対パス
 const __dirname = path.dirname(__filename);
 
-app.listen(port, () => {
-    console.log(`Example app listening on port ${port}`)
-});
-
-//CORS設定 Viteの開発サーバーとのコミュニケーション
+//ミドルウェア設定　CORS設定 Viteの開発サーバーとのコミュニケーション
 app.use(cors({
     origin: 'http://localhost:5173',
     credentials: true
 }));
+
+app.use(express.json());
 //静的ファイルを配信
 app.use(
     express.static(
@@ -30,10 +28,15 @@ app.use(
     )
 );
 
-app.get('/', (req, res) => {
-    res.sendFile(path.join(__dirname.replace('/server', ''), 'client/index.html'))
+app.use('/api/users', usersRouter);
+app.use('/api/lquiz', lQuizRouter);
+app.use('/api/audio', audioRouter);
+
+//すべての不明なルートをindex.htmlにfallback
+app.get('*', (req, res) => {
+    res.sendFile(path.join(__dirname.replace('/server', ''), 'client/dist/index.html'));
 });
-app.use(express.json());
-app.use('/users', usersRouter);
-app.use('/lquiz', lQuizRouter);
-app.use('/audio', audioRouter);
+
+app.listen(port, () => {
+    console.log(`Example app listening on port ${port}`)
+});

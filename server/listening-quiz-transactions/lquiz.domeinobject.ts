@@ -31,7 +31,7 @@ export class ReviewQuestionInfo {
 export interface AudioURL {
     lQuestionID: string;
     audioFilePath: string;
-    audioURL: string;
+    audioURL?: string;
     duration: number;
 };
 

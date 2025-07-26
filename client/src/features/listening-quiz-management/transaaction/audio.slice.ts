@@ -20,7 +20,7 @@ const initialState: type.AudioState = {
         currentLQuestionId: undefined
     },
 
-    audioData: testBlob,
+    audioData: undefined,
 
     isAudioReadyToPlay: false,
 
