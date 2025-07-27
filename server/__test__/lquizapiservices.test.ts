@@ -47,16 +47,16 @@ describe('A_getRandomSpeakerAccent', () => {
 describe('B_generatePrompt', () => {
     test("B01_part3プロンプト生成", async () => {
         expect.assertions(8);
-        const mockDomObj: Mocked<domein.NewQuestionInfo> = {
+        const mockDomObj: Mocked<domein.NewLQuestionInfo> = {
             sectionNumber: 3,
-            requestedNumOfQuizs: 5,
+            requestedNumOfLQuizs: 5,
             speakingRate: 1.0
         };
-        const result = service.generatePrompt(mockDomObj);
+        const result = await service.generatePrompt(mockDomObj);
         console.log(result);
         expect(result).toContain("TOEICリスニング Part3 の練習問題を5問生成してください。");
         expect(result).toContain("練習問題を5問生成");
-        expect(result).toContain("出題方法: 2人または3人の会話を聞き、設問に対する答えを4つの選択肢から選ぶ");
+        expect(result).toContain("**出題方法**: 2人または3人の会話を聞き、設問に対する答えを4つの選択肢から選ぶ");
         expect(result).toContain("問題1の話者:");
         expect(result).toContain("問題2の話者:");
         expect(result).toContain("問題3の話者:");
@@ -65,32 +65,50 @@ describe('B_generatePrompt', () => {
     });
     test("B02_part2プロンプト生成", async () => {
         expect.assertions(6);
-        const mockDomObj: Mocked<domein.NewQuestionInfo> = {
+        const mockDomObj: Mocked<domein.NewLQuestionInfo> = {
             sectionNumber: 2,
-            requestedNumOfQuizs: 10,
+            requestedNumOfLQuizs: 10,
             speakingRate: 1.0
         };
-        const result = service.generatePrompt(mockDomObj);
+        const result = await service.generatePrompt(mockDomObj);
         console.log(result);
         expect(result).toContain("TOEICリスニング Part2 の練習問題を10問生成してください。");
         expect(result).toContain("練習問題を10問生成");
-        expect(result).toContain("要件: 自然な会話の流れに沿った適切な応答");
+        expect(result).toContain("**要件**: 自然な会話の流れに沿った適切な応答");
         expect(result).toContain("問題1の話者:");
         expect(result).toContain("問題2の話者:");
         expect(result).toContain("問題3の話者:")
     });
     test("B03_part4プロンプト生成", async () => {
         expect.assertions(6);
-        const mockDomObj: Mocked<domein.NewQuestionInfo> = {
+        const mockDomObj: Mocked<domein.NewLQuestionInfo> = {
             sectionNumber: 4,
-            requestedNumOfQuizs: 5,
+            requestedNumOfLQuizs: 5,
             speakingRate: 1.0
         };
-        const result = service.generatePrompt(mockDomObj);
+        const result = await service.generatePrompt(mockDomObj);
         console.log(result);
         expect(result).toContain("TOEICリスニング Part4 の練習問題を5問生成してください。");
         expect(result).toContain("練習問題を5問生成");
-        expect(result).toContain("音声構造: トーク内容 + 設問文 + 4つの選択肢を連続して読み上げ（A, B, C, Dの順序で）");
+        expect(result).toContain("**音声構造**: トーク内容 + 設問文 + 4つの選択肢を連続して読み上げ（A, B, C, Dの順序で）");
+        expect(result).toContain("問題1の話者:");
+        expect(result).toContain("問題2の話者:");
+        expect(result).toContain("問題5の話者:")
+    });
+    test("B03_part4プロンプト生成_speakerAccent指定", async () => {
+        expect.assertions(7);
+        const mockDomObj: Mocked<domein.NewLQuestionInfo> = {
+            sectionNumber: 4,
+            requestedNumOfLQuizs: 5,
+            speakerAccent: 'British',
+            speakingRate: 1.0
+        };
+        const result = await service.generatePrompt(mockDomObj);
+        console.log(result);
+        expect(result).toContain("TOEICリスニング Part4 の練習問題を5問生成してください。");
+        expect(result).toContain("練習問題を5問生成");
+        expect(result).toContain("**音声構造**: トーク内容 + 設問文 + 4つの選択肢を連続して読み上げ（A, B, C, Dの順序で）");
+        expect(result).toContain("British");
         expect(result).toContain("問題1の話者:");
         expect(result).toContain("問題2の話者:");
         expect(result).toContain("問題5の話者:")

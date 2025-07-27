@@ -46,7 +46,8 @@ function TestScreen() {
     const navigate = useNavigate();
     const dispatch = useAppDispatch();
     const [fetchNewQuestions] = api.useFetchNewQuestionsMutation();
-    const {load, play} = useAudioPlayer();
+    const [fetchAnswer] = api.useFetchAnswerMutation();
+
     const [fetchAudio] = api.useLazyFetchAudioQuery();
     
     //クイズリクエスト用selector
@@ -214,50 +215,77 @@ function TestScreen() {
         }
     };
 
-    const handleAudioPlay = () => {
-        console.log("handleAudioPlay called");
-        console.log("isAudioReadyToPlay:", isAudioReadyToPlay);
-            if(!isAudioReadyToPlay){
-                throw new Error("音声データが準備されていません");
-            };
-            //BlobをオブジェクトURLに変換 windowでブラウザのURLを明示的に使用
-            const audioBlobURL = window.URL.createObjectURL(audioBlob);
-            console.log("audioBlobURL:", audioBlobURL);
-                //音声読み込み
-            load(audioBlobURL, {
-                html5: true,
-                format: 'mp3',
-                autoplay: true,
-                onend: () => {
-                    //再生終了時にURL解放
-                    window.URL.revokeObjectURL(audioBlobURL);
-                    //redux storeからもクリア
-                    dispatch(audioSlice.clearAudioData());
-                    console.log("audio play successfully ended");
+    //音声再生
+        const {load, error, isPlaying} = useAudioPlayer();
+        const handleAudioPlay = () => {
+            console.log("handleAudioPlay called");
+            console.log("isAudioReadyToPlay:", isAudioReadyToPlay);
+        
+            let audioBlobURL;
+                  
+            try{
+                if (error) {
+                    console.error("Audio player error:", error);
+                    throw new Error("Audio player error");
                 }
-            });
-                
-            /*} catch (error) {
-                //（後で実装）エラーボタン「自動再生に失敗しました」
-                window.URL.revokeObjectURL(audioBlobURL);
+                    
+                if (!isAudioReadyToPlay) {
+                    throw new Error("音声データが準備されていません");
+                };
+                //BlobをオブジェクトURLに変換 windowでブラウザのURLを明示的に使用
+                const audioBlobURL = window.URL.createObjectURL(audioBlob);  
+                console.log("audioBlobURL:", audioBlobURL);
+                //音声読み込み
+                load(audioBlobURL, {
+                    html5: true,
+                    format: 'mp3',
+                    autoplay: true,
+                    onend: () => {
+                        //再生終了時にURL解放
+                        window.URL.revokeObjectURL(audioBlobURL);
+                        //redux storeからもクリア
+                        dispatch(audioSlice.clearAudioData());
+                        console.log("audio play successfully ended");
+                    }
+                });
+            } catch (error) {
+                //audioBlobURLが作成されている場合のみ解放
+                if (audioBlobURL) {
+                    window.URL.revokeObjectURL(audioBlobURL);
+                };
                 dispatch(audioSlice.clearAudioData());
                 console.log("audio play failed");
-            }*/
+            }
         };
 
-    /* //lQuestionID[]のうち1問目の音声データ取得
-            dispatch(audioSlice.setAudioRequest(questionFetchResult.map.))
-            const lQuestionId = requestAudioParams.lQuestionId
-            const audioFetchResult = await fetchAudio(lQuestionId).unwrap();
-            //音声データをRedux storeに保存
-            dispatch(audioSlice.setAudioData(audioFetchResult))
-            //answer状態（answerScreen()）に遷移
-            setCurrentView('answer');*/
+    const handleAnswer = async () => {
+            //回答内容をAPIに送る
+            //回答レスポンスが届いたことを確認
+            //stateを結果状態に更新し、結果画面（Result.tsx）に遷移(Navigate)
+            //Redux stateからDTOを構築
+            const testAnswerReqDTO: dto.UserAnswerReqDTO[] = [{
+                lQuestionID: "listening-part4-q001",
+                userID: "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+                userAnswerOption: "A",
+                reviewTag: false,
+                answerDate: new Date()
+            }];
+            try{
+                //回答内容をAPIに送る
+                const answerResult = await fetchAnswer(testAnswerReqDTO);
+                console.log(answerResult);
+                //回答レスポンスをredux storeに保存
+                dispatch(answerSlice.setAnswerData(answerResult.data as dto.UserAnswerResDTO[]));
+    
+                //stateを'result'に更新し、結果状態に遷移
+                //dispatch(uiSlice.setCurrentScreen('result'));
+    
+            } catch (error) {
+                console.log("回答処理失敗:", error);
+            }
+            //dispatch(uiSlice.setCurrentScreen('result'));
+        };
 
-    const handleBack = () => {
-        dispatch(newQuestionSlice.resetRequest());
-        navigate('/main-menu')
-    };
     return (
     <Box 
         sx={{ 
@@ -287,6 +315,15 @@ function TestScreen() {
                             variant="outlined"
                             label="音声再生テスト"
                             onClick={handleAudioPlay}
+                            disabled={isPlaying}
+                            color="primary"
+                            size="medium"
+                            sx={{ width: '100%', py: 1 }}
+                        />
+                        <ButtonComponent 
+                            variant="outlined"
+                            label="回答テスト"
+                            onClick={handleAnswer}
                             color="primary"
                             size="medium"
                             sx={{ width: '100%', py: 1 }}

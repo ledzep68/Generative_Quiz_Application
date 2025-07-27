@@ -74,7 +74,7 @@ function StandByScreen() {
     //音声リクエスト用selector
     const requestAudioParams = useAppSelector(state => state.audioManagement.requestParams);
     const { currentLQuestionId } = requestAudioParams;
-    const isAudioReadyToPlay = useAppSelector(state => state.audioManagement.isAudioReadyToPlay);
+    const audioBlob = useAppSelector(state => state.audioManagement.audioData) as File;
     //問題番号管理用selector
     const indexParams = useAppSelector(state => state.indexManagement);
     const { lQuestionIdList, currentQuestionIndex } = indexParams;
@@ -131,6 +131,14 @@ function StandByScreen() {
                 dispatch(uiSlice.setCurrentScreen('answer'));
             };
 
+            //Redux storeの状態を確認
+            console.log("Audio fetch SUCCESS");
+            console.log("Audio data in store:", audioBlob);
+
+            dispatch(audioSlice.setIsAudioReadyToPlay(true));
+            
+            console.log("audio fetch SUCCESS");
+
         } catch (error) {
             //クイズリクエスト失敗の場合の処理
             dispatch(newQuestionSlice.setRequestStatus('failed'));
@@ -143,8 +151,15 @@ function StandByScreen() {
         try {
             //Node.js BlobをブラウザBlob（File（ブラウザBlobを継承したクラス））に変換（URL生成のため必須）
             const audioData = await fetchAudio(lQuestionId).unwrap() as File;
+            console.log("Fetched audio data:", {
+                name: audioData.name,
+                size: audioData.size,
+                type: audioData.type,
+                lastModified: audioData.lastModified
+            });
             //音声データをredux storeに保存
             dispatch(audioSlice.setAudioData(audioData));
+            console.log("Audio data in store:", audioData);
         } catch (error) {
             //エラー処理
             dispatch(audioSlice.setAudioError('音声データの取得に失敗しました'));
@@ -285,7 +300,6 @@ function AnswerScreen() {
 
     const navigate = useNavigate();
     const dispatch = useAppDispatch();
-    const {load, play} = useAudioPlayer();
     const [fetchAnswer] = api.useFetchAnswerMutation();
 
     const handleUserAnswerChange = (answer: string) => {
@@ -308,36 +322,45 @@ function AnswerScreen() {
     }, [userAnswerOption]);
 
     //音声再生
-    const handleAudioPlay = async () => {
-        if(!isAudioReadyToPlay){
-            throw new Error("音声データが準備されていません");
-        };
-        //BlobをオブジェクトURLに変換 windowでブラウザのURLを明示的に使用
-        const audioBlobURL = window.URL.createObjectURL(audioBlob);
-
-        //音声読み込み
-        await new Promise((resolve, reject) => {
+    const {load, error, isPlaying} = useAudioPlayer();
+    const handleAudioPlay = () => {
+        console.log("handleAudioPlay called");
+        console.log("isAudioReadyToPlay:", isAudioReadyToPlay);
+    
+        let audioBlobURL;
+              
+        try{
+            if (error) {
+                console.error("Audio player error:", error);
+                throw new Error("Audio player error");
+            }
+                
+            if (!isAudioReadyToPlay) {
+                throw new Error("音声データが準備されていません");
+            };
+            //BlobをオブジェクトURLに変換 windowでブラウザのURLを明示的に使用
+            const audioBlobURL = window.URL.createObjectURL(audioBlob);  
+            console.log("audioBlobURL:", audioBlobURL);
+            //音声読み込み
             load(audioBlobURL, {
                 html5: true,
                 format: 'mp3',
-                autoplay: false,
+                autoplay: true,
                 onend: () => {
                     //再生終了時にURL解放
                     window.URL.revokeObjectURL(audioBlobURL);
                     //redux storeからもクリア
                     dispatch(audioSlice.clearAudioData());
+                    console.log("audio play successfully ended");
                 }
             });
-        });
-
-        try{
-            //再生
-            await play();
         } catch (error) {
-            //（後で実装）エラーボタン「自動再生に失敗しました」
-            window.URL.revokeObjectURL(audioBlobURL);
+            //audioBlobURLが作成されている場合のみ解放
+            if (audioBlobURL) {
+                window.URL.revokeObjectURL(audioBlobURL);
+            };
             dispatch(audioSlice.clearAudioData());
-            console.log("音声再生に失敗しました");
+            console.log("audio play failed");
         }
     };
 
@@ -440,6 +463,7 @@ function AnswerScreen() {
                                 音声を再生して問題に答えてください
                             </Typography>
                             <ButtonComponent
+                                disabled={isPlaying}
                                 variant="contained"
                                 label="🔊 音声再生"
                                 onClick={handleAudioPlay}

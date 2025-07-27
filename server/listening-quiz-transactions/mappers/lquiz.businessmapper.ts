@@ -3,15 +3,20 @@
 lquiz.businessmapper.ts : ListeningQuiz用 controllers~models層におけるビジネスロジックのマッパー
 
 *********************************************/
-
+import { UUID } from "crypto";
 import * as dto from "../lquiz.dto.ts";
 import * as domein from "../lquiz.domeinobject.ts";
 import * as entity from "../lquiz.entity.ts";
 
 //新規クイズデータ　dto.RandomNewQuestionReqDTO→domein.NewQuestionInfo
-export class NewQuestionInfoMapper {
-    static toDomainObject(reqDTO: dto.RandomNewQuestionReqDTO): domein.NewQuestionInfo {
-        return new domein.NewQuestionInfo(reqDTO.sectionNumber, reqDTO.requestedNumOfLQuizs, reqDTO.speakingRate);
+export class NewLQuestionInfoMapper {
+    static toDomainObject(reqDTO: dto.RandomNewQuestionReqDTO): domein.NewLQuestionInfo {
+        return {
+            sectionNumber: reqDTO.sectionNumber,
+            requestedNumOfLQuizs: reqDTO.requestedNumOfLQuizs,
+            speakerAccent: reqDTO.speakerAccent,
+            speakingRate: reqDTO.speakingRate
+        };
     }
 };
 
@@ -38,24 +43,16 @@ export class NewQuestionResMapper {
                 
                 return {
                     lQuestionID: audioData.lQuestionID,
-                    audioScript: questionData.audioScript,
-                    jpnAudioScript: questionData.jpnAudioScript,
-                    answerOption: questionData.answerOption,
                     sectionNumber: questionData.sectionNumber,
-                    explanation: questionData.explanation,
                     speakerAccent: questionData.speakerAccent,
                     speakingRate: speakingRate,
-                    duration: audioData.duration,
-                    audioURL: audioData.audioURL
+                    duration: audioData.duration
                 };
             });
         }
 };
 
-
-
-
-
+/*
 //service 復習クイズデータID指定取得用
 export class LQuestionInfoMapper {
     static toDomainObject(reqDTOList: dto.ReviewQuestionReqDTO[]): domein.ReviewQuestionInfo[] {
@@ -79,9 +76,9 @@ export class RandomLQuestionInfoMapper {
             reqDTO.requestedNumOfLQuizs
         );
     }
-};
+};*/
 
-//service クイズ出題用　ドメインオブジェクト→DTOへのマッピング
+/*//service クイズ出題用　ドメインオブジェクト→DTOへのマッピング
 export class LQuestionDataDomObjToDTOMapper {
     static toDomainObject(domObjList: domein.LQuestionData[]): dto.QuestionResDTO[] {
         return domObjList.map(domObj => new dto.QuestionResDTO(
@@ -95,36 +92,37 @@ export class LQuestionDataDomObjToDTOMapper {
             domObj.duration
         ));
     }
-};
+};*/
 
 
 //service 正誤判定モジュール用　配列対応済
-export class TorFMapper {
-    static toDomainObject(reqDTOList: dto.UserAnswerReqDTO[]): domein.TorFData[] {
-        return reqDTOList.map(dto => new domein.TorFData(
-            dto.lQuestionID,
-            dto.userAnswerOption
-        ));
-    }
-};
+export class IsCorrectMapper {
+   static toDomainObject(reqDTOList: dto.UserAnswerReqDTO[]): domein.IsCorrectData[] {
+       return reqDTOList.map(dto => ({
+           lQuestionID: dto.lQuestionID,
+           userAnswerOption: dto.userAnswerOption
+       }));
+   }
+}
 
 //service 回答データ登録モジュール用 配列対応済
 export class LAnswerRecordMapper {
-    static toDomainObject(reqDTOList: dto.UserAnswerReqDTO[], TorFList: boolean[], lAnswerIDList: string[]): domein.LAnswerData[] {
-        const domObjs: domein.LAnswerData[] = [];
+    static toDomainObject(reqDTOList: dto.UserAnswerReqDTO[], isCorrectList: boolean[], lAnswerIDList: UUID[]): domein.NewLAnswerData[] {
+        const domObjs: domein.NewLAnswerData[] = [];
         for (let i = 0; i < reqDTOList.length; i++) {
-            domObjs.push(new domein.LAnswerData(
-                lAnswerIDList[i],
-                reqDTOList[i].lQuestionID, 
-                reqDTOList[i].userID, 
-                reqDTOList[i].userAnswerOption, 
-                reqDTOList[i].reviewTag, 
-                TorFList[i],
-                reqDTOList[i].answerDate));
-        }
+            domObjs.push({
+                lAnswerID: lAnswerIDList[i],
+                userID: reqDTOList[i].userID, 
+                lQuestionID: reqDTOList[i].lQuestionID, 
+                userAnswerOption: reqDTOList[i].userAnswerOption, 
+                isCorrect: isCorrectList[i],
+                reviewTag: reqDTOList[i].reviewTag, 
+                answerDate: reqDTOList[i].answerDate
+            });
+        };
         return domObjs;
     }
-}
+};
 
 //service userAnswerResDTOへのマッピング
 export class UserAnswerResDTOMapper {

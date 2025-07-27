@@ -2,6 +2,10 @@ import express from "express"
 import cors from "cors"
 import path from "path"
 import { fileURLToPath } from "url"
+import { config } from "dotenv"
+
+import session from 'express-session';
+
 import usersRouter from "./users/userroutes.ts"
 import lQuizRouter from "./listening-quiz-transactions/lquizroutes.ts"
 import audioRouter from "./audio-delivery/audio.routes.ts"
@@ -13,6 +17,14 @@ const port = 3000;
 const __filename = fileURLToPath(import.meta.url);
 //server.tsの親フォルダserverの絶対パス
 const __dirname = path.dirname(__filename);
+
+config({path: path.join(__dirname, '.env')});
+app.use(session({
+    secret: process.env.SESSION_SECRET as string,
+    resave: false,
+    saveUninitialized: false,
+    cookie: { maxAge: 3600000 }
+}));
 
 //ミドルウェア設定　CORS設定 Viteの開発サーバーとのコミュニケーション
 app.use(cors({

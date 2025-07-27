@@ -1,5 +1,8 @@
 import {z} from "zod";
 import * as dto from "../lquiz.dto.ts";
+import * as domein from "../lquiz.domeinobject.ts";
+import * as apierror from "../errors/lquiz.apierrors.ts";
+import { ZodError } from "zod/v4";
 
 //OpenAI APIからのレスポンスが期待される形式か検証するバリデーション
 export const openAIResponseSchema = z.object({
@@ -35,6 +38,8 @@ export const generatedQuestionDataResDTOSchema: z.ZodSchema<dto.GeneratedQuestio
 })
 );
 
+//音声データのバリデーション
+
 //GoogleTTSのレスポンスのバリデーション
 export const GoogleTTSResponseSchema = z.object({
     audioContent: z.string().min(1),
@@ -43,3 +48,22 @@ export const GoogleTTSResponseSchema = z.object({
         timeSeconds: z.number()
     })).optional()
 });
+
+export function validateAudioURLList(audioURLList: unknown): domein.AudioURL[] {
+    return z.array(z.object({
+        lQuestionID: z
+            .string()
+            .min(1, "lQuestionIDは必須です"),
+        audioFilePath: z
+            .string()
+            .min(1, "audioFilePathは必須です")
+            .regex(/\.mp3$/i, "audioFilePathはmp3ファイルである必要があります"),
+        audioURL: z
+            .string()
+            .url("不正なURL形式です")
+            .optional(),
+        duration: z.number()
+            .min(0.5, "durationは0.5秒以上である必要があります")
+            .max(2.0, "durationは2.0秒以下である必要があります")
+    })).parse(audioURLList);
+};

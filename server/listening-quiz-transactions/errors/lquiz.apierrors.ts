@@ -13,6 +13,17 @@ export interface BusinessLogicError extends Error {
     status: number;
 }
 
+// プロンプト生成エラー
+export class PromptGenerateError extends Error implements BusinessLogicError {
+    constructor(
+        message: string = "プロンプト生成エラー",
+        public status: number = response.externalAPIServicesResponses.PROMPT_GENERATE_ERROR.status
+    ) {
+        super(message);
+        this.name = "PromptGenerateError";
+        this.status = status;
+    }
+};
 // ChatGPT API関連エラー
 export class ChatGPTAPIError extends Error implements BusinessLogicError {
     constructor(

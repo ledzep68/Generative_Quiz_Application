@@ -10,7 +10,7 @@ import * as schema from "../listening-quiz-transactions/schemas/lquizapischema.t
 
 vi.mock('../listening-quiz-transactions/services/lquizapiservice', () => ({
     generateLQuestionContent: vi.fn().mockImplementation(
-        (domObj: domein.NewQuestionInfo) => {
+        (domObj: domein.NewLQuestionInfo) => {
             return [
                 {
                     audioScript: 'Good morning, passengers. This is a safety announcement for Flight 247 to Sydney. Please ensure your seatbelts are fastened and tray tables are in the upright position. We will be experiencing some turbulence shortly. [間] What is the purpose of this announcement? [短い間] To inform passengers about meal service. [短い間] To announce a flight delay. [短い間] To provide safety instructions. [短い間] To welcome passengers aboard.',

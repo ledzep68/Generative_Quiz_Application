@@ -10,111 +10,26 @@ lquizapiservice.tsの機能:
 import * as domein from "../lquiz.domeinobject.ts";
 import * as dto from "../lquiz.dto.ts";
 import * as apierror from "../errors/lquiz.apierrors.ts";
-//import fetch from "node-fetch";
 import * as schema from "../schemas/lquizapischema.ts";
+import {ACCENT_PATTERNS, TTS_VOICE_CONFIG} from "./services.types.ts";
+
 import { z } from "zod";
 import {GoogleAuth} from "google-auth-library";
 import { spawn } from 'child_process'; //ライブラリを通さず、直接他プログラムを実行するためのライブラリ
 import fs from "fs/promises"; //音声バッファデータをローカルファイルに書き込むためのライブラリ
 import path from "path";
 import os from "os";
+import { fileURLToPath } from "url";
 
 
 //==========================================================================
 //問題生成処理モジュール群
 //==========================================================================
-//発話パターン定義
-export const ACCENT_PATTERNS = {
-    American: {
-        description: "アメリカ英語",
-        characteristics: [
-            "Rhoticity: 語尾のrを明確に発音",
-            "Flat 'a': cat, hat等で平坦な'a'音", 
-            "T-flapping: better → 'bedder'のような音",
-            "語尾の't'の弱化: mountain → 'moun'in'"
-        ],
-        vocabulary: [
-            "elevator (not lift)",
-            "apartment (not flat)", 
-            "truck (not lorry)",
-            "gas (not petrol)"
-        ],
-        expressions: [
-            "I guess...",
-            "You bet!",
-            "Sure thing",
-            "No problem"
-        ]
-    },
-    Canadian: {
-        description: "カナダ英語", 
-        characteristics: [
-            "Canadian raising: about → 'aboot'のような音",
-            "アメリカ英語に近いがイギリス英語の影響も",
-            "語尾の'eh'の使用",
-            "'ou'音の特徴的な発音"
-        ],
-        vocabulary: [
-            "washroom (not bathroom/toilet)",
-            "toque (winter hat)",
-            "loonie (one dollar coin)",
-            "double-double (coffee with cream and sugar)"
-        ],
-        expressions: [
-            "How's it going, eh?",
-            "That's pretty good",
-            "No worries",
-            "Take care"
-        ]
-    },
-    British: {
-        description: "イギリス英語",
-        characteristics: [
-            "Non-rhotic: 語尾のrを発音しない",
-            "Received Pronunciation (RP)の特徴",
-            "'a'音の長さの違い: bath → 'baath'",
-            "Clear distinction of short and long vowels"
-        ],
-        vocabulary: [
-            "lift (not elevator)",
-            "flat (not apartment)",
-            "lorry (not truck)", 
-            "petrol (not gas)"
-        ],
-        expressions: [
-            "Brilliant!",
-            "Cheers",
-            "I reckon...",
-            "Quite right"
-        ]
-    },
-    Australian: {
-        description: "オーストラリア英語",
-        characteristics: [
-            "Vowel shifts: 'day' → 'die'のような音",
-            "Rising intonation: 平叙文でも語尾が上がる",
-            "Short vowel changes: 'bit' → 'bet'のような音",
-            "Consonant reduction: 'going' → 'goin''"
-        ],
-        vocabulary: [
-            "arvo (afternoon)",
-            "brekkie (breakfast)",
-            "uni (university)",
-            "mate (friend)"
-        ],
-        expressions: [
-            "No worries, mate",
-            "Fair dinkum",
-            "She'll be right",
-            "Good on ya"
-        ]
-    }
-};
 
 export type AccentType = keyof typeof ACCENT_PATTERNS; 
 export type SpeakerAccent = typeof ACCENT_PATTERNS[keyof typeof ACCENT_PATTERNS]; 
 
-// ランダム選択関数 リクエストされた問題数分のアクセントを返す
+//ランダム選択関数 リクエストされた問題数分のアクセントを返す
 export function getRandomSpeakerAccent(requestedNumOfQuizs: number): AccentType[] {
     const accents = Object.keys(ACCENT_PATTERNS) as AccentType[];
     return Array.from({ length: requestedNumOfQuizs }, () => 
@@ -123,17 +38,18 @@ export function getRandomSpeakerAccent(requestedNumOfQuizs: number): AccentType[
 };
 
 //問題生成関数 controllerで呼び出す
-export async function generateLQuestionContent(domObj: domein.NewQuestionInfo): Promise<dto.GeneratedQuestionDataResDTO[]> {
-     //プロンプト生成
+export async function generateLQuestionContent(domObj: domein.NewLQuestionInfo): Promise<dto.GeneratedQuestionDataResDTO[]> {
+    //プロンプト生成
     const prompt = await generatePrompt(domObj);
     //・(ChatGPT-4o API)クイズ生成プロンプト生成
     const generatedQuizDataList = await callChatGPT(prompt); //バリデーション済
+
     //似たような問題の生成をどうやって防止するか？
     return  generatedQuizDataList;
 };
 
 //問題生成プロンプトの生成
-export function generatePrompt(domObj: domein.NewQuestionInfo): string {
+export async function generatePrompt(domObj: domein.NewLQuestionInfo): Promise<string> {
 
     const sectionSpecs = {
         1: {
@@ -163,97 +79,71 @@ export function generatePrompt(domObj: domein.NewQuestionInfo): string {
     };
 
     const spec = sectionSpecs[domObj.sectionNumber as keyof typeof sectionSpecs];
+    
+    let speakerAccentList: AccentType[];
+    let accentPatternList: SpeakerAccent[];
+    if (domObj.speakerAccent) {
+        //固定選択
+        speakerAccentList = [domObj.speakerAccent];
+        accentPatternList = [ACCENT_PATTERNS[domObj.speakerAccent]];
+    } else {
+        //ランダム選択
+        speakerAccentList = getRandomSpeakerAccent(domObj.requestedNumOfLQuizs as number);
+        accentPatternList = speakerAccentList.map((accent: AccentType) => ACCENT_PATTERNS[accent]);
+    };
 
-    // 話者アクセントをランダム選択
-    const speakerAccentList: AccentType[] = getRandomSpeakerAccent(domObj.requestedNumOfQuizs as number);
-    const accentPatternList = speakerAccentList.map((accent: AccentType) => ACCENT_PATTERNS[accent]);
-
-    const speakerAccentAndPatternList = Array.from({ length: domObj.requestedNumOfQuizs as number }, (_, i) => {
+    const speakerAccentAndPatternList = Array.from({ length: domObj.requestedNumOfLQuizs as number }, (_, i) => {
         return ({
             accent: speakerAccentList[i % speakerAccentList.length],
             pattern: accentPatternList[i % accentPatternList.length]
         });
     });
-
-    return `
-TOEICリスニング Part${domObj.sectionNumber} の練習問題を${domObj.requestedNumOfQuizs}問生成してください。
-
-## Part${domObj.sectionNumber} 仕様
-- 問題形式: ${spec.description}
-- 出題方法: ${spec.format}
-- 要件: ${spec.requirements}
-- 音声構造: ${spec.audioStructure}
-
-${speakerAccentAndPatternList.map((speaker, index) => `
+    try{
+        const __filename = fileURLToPath(import.meta.url);
+        const __dirname = path.dirname(__filename);
+        const promptPath = path.join(__dirname, 'prompts', 'prompt.md');
+        const promptTemplate = await fs.readFile(promptPath, 'utf8');
+        
+        // 話者情報の生成
+        const speakerAccentAndPatternText = speakerAccentAndPatternList.map((speaker, index) => `
 **問題${index + 1}の話者:**
 - 英語種別: ${speaker.pattern.description} (${speaker.accent})
 - 発音特徴: ${speaker.pattern.characteristics.slice(0, 2).join(', ')}
 - 語彙の特徴: ${speaker.pattern.vocabulary.slice(0, 2).join(', ')}
 - 表現の特徴: ${speaker.pattern.expressions.slice(0, 2).join(', ')}
-`).join('')}
-
-## 生成要件
-
-### audioScript（音声読み上げ内容）の構成
-**Part 1の場合:**
-- 4つの選択肢のみを連続して読み上げ
-- 各選択肢の前に「A」「B」「C」「D」は付けない
-- 例: "A man is reading a newspaper. [短い間] Two women are walking. [短い間] Children are playing in the park. [短い間] A dog is running."
-
-**Part 2の場合:**
-- 質問文 + 短い間 + 3つの選択肢を連続して読み上げ
-- 質問文の後に適切な間を置く
-- 選択肢の前に「A」「B」「C」は付けない
-- 例: "Where is the meeting room? [間] Down the hallway to your right. [短い間] Yes, I'll attend the meeting. [短い間] The meeting starts at 3 PM."
-
-**Part 3の場合:**
-- 会話文 + 設問文 + 4つの選択肢を連続して読み上げ
-- 複数の話者がいる場合は自然な会話として構成
-- 例: "Good morning, Sarah. Did you finish the quarterly report? [間] Almost done, Mike. I just need to add the sales figures. [間] Great, we need to submit it by noon today."
-
-**Part 4の場合:**
-- トーク内容 + 設問文 + 4つの選択肢を連続して読み上げ
-- アナウンス、プレゼンテーション、広告などの形式
-- 例: "Welcome to City Bank. We are pleased to announce our new mobile banking service. Starting next month, you can access your account anytime, anywhere."
-
-### その他の生成項目
-- jpnAudioScript: audioScriptの日本語訳（必須）
-- answerOption: 正解選択肢（Part1,3,4の場合は"A", "B", "C", "D"のいずれか。Part2の場合だけ"A", "B", "C"のいずれか）（必須）
-- sectionNumber: 問題のセクション番号。Part1,2,3,4のいずれか（必須）
-- explanation: 解説（必須）
-- speakerAccent: 各問題ごとに指定されたアクセント
-
-## 出力形式
-必ずJSON形式で以下の構造で回答してください：
-
+`).join('');
+        console.log(speakerAccentAndPatternText);
+        // 出力フォーマットの生成
+        const outputFormat = `
 {
-  "questions": [
-  ${speakerAccentAndPatternList.map((speaker, index) => `    // 問題${index + 1}: ${speaker.accent}英語使用
-    {
-    "audioScript": "string (${domObj.sectionNumber === 2 ? '質問文' : domObj.sectionNumber === 4 ? 'トーク内容+設問文' : '問題文+設問文'}+選択肢の完全な読み上げ内容)",
-    "jpnAudioScript": "string",
-    "answerOption": ${domObj.sectionNumber === 2 ? '"A"|"B"|"C"' : '"A"|"B"|"C"|"D"'},
-    "sectionNumber": ${domObj.sectionNumber},
-    "explanation": "string",
-    "speakerAccent": "${speaker.accent}"
-    }`).join(',\n')}
-  ]
+    "questions": [
+        ${speakerAccentAndPatternList.map((speaker, index) => `    // 問題${index + 1}: ${speaker.accent}英語使用
+        {
+        "audioScript": "string (${domObj.sectionNumber === 2 ? '質問文' : domObj.sectionNumber === 4 ? 'トーク内容+設問文' : '問題文+設問文'}+選択肢の完全な読み上げ内容)",
+        "jpnAudioScript": "string",
+        "answerOption": ${domObj.sectionNumber === 2 ? '"A"|"B"|"C"' : '"A"|"B"|"C"|"D"'},
+        "sectionNumber": ${domObj.sectionNumber},
+        "explanation": "string",
+        "speakerAccent": "${speaker.accent}"
+        }`).join(',\n')}
+    ]
 }
-
-## 重要な注意事項
-1. **audioScript内での選択肢の順序**: 必ずA→B→C→(D)の順序で音声内容を構成
-2. **選択肢ラベルの省略**: audioScript内では「A」「B」「C」「D」のラベルは読み上げない
-3. **適切な間の配置**: 文と文の間、質問と回答の間に自然な間を想定した構成
-4. **Part別の音声構成の遵守**: 各Partの音声構造ルールを厳密に守る
-5. **読み上げ時間の考慮**: 1つの問題の音声は30秒以内に収まるよう調整
-
-## 品質基準
-- TOEIC公式問題集レベルの難易度
-- 各問題で指定されたアクセントの語彙・表現・発音特徴を自然に組み込む
-- 文法・語彙は中級~上級レベル（TOEIC 600-990点相当）
-- 音声として聞いた時の自然さを重視
-- 選択肢も実際のTOEIC試験レベルの紛らわしさを持つ
-`.trim();
+`;
+        console.log(outputFormat);
+        return promptTemplate
+            .replace(/\{\{sectionNumber\}\}/g, domObj.sectionNumber.toString())
+            .replace(/\{\{requestedNumOfQuizs\}\}/g, domObj.requestedNumOfLQuizs.toString())
+            .replace(/\{\{spec\.description\}\}/g, spec.description)
+            .replace(/\{\{spec\.format\}\}/g, spec.format)
+            .replace(/\{\{spec\.requirements\}\}/g, spec.requirements)
+            .replace(/\{\{spec\.audioStructure\}\}/g, spec.audioStructure)
+            .replace(/\{\{speakerAccentAndPatternList\}\}/g, speakerAccentAndPatternText)
+            .replace(/\{\{outputFormat\}\}/g, outputFormat);
+            
+    } catch (error) {
+        console.error('プロンプト生成失敗:', error);
+        throw new apierror.PromptGenerateError('Promptの生成に失敗しました');
+    }
 };
 
 //chatgpt
@@ -294,9 +184,9 @@ export async function callChatGPT(prompt: string): Promise<dto.GeneratedQuestion
         const validatedData = schema.openAIResponseSchema.parse(data);//パース② OpenAI APIの応答構造を検証（choices配列の存在確認など）
 
         if (validatedData.choices.length === 0) {
-            throw new apierror.ChatGPTAPIError('ChatGPT APIからの応答に問題があります');
             console.log('=== Step 4: 失敗 ===');
-        }
+            throw new apierror.ChatGPTAPIError('ChatGPT APIからの応答に問題があります');
+        };
 
         console.log('=== Step 5: content抽出 ===');
         const content = validatedData.choices[0].message.content; //ChatGPTが生成したクイズデータのJSON文字列を抽出
@@ -338,45 +228,7 @@ export async function generateAudioContent(dtoList: dto.NewAudioReqDTO[], lQuest
     //・(Google Cloud TTS)音声合成（ssmlバリデーションも含む）
     const generatedAudioURLList = await callGoogleCloudTTS(ssml, lQuestionIDList);
     return generatedAudioURLList;
-}
-
-//音声設定（話者アクセント）
-export const TTS_VOICE_CONFIG = {
-    American: {
-        languageCode: 'en-US',
-        voices: [
-            { name: 'en-US-Neural2-A', gender: 'FEMALE' },
-            { name: 'en-US-Neural2-C', gender: 'FEMALE' },
-            { name: 'en-US-Neural2-D', gender: 'MALE' },
-            { name: 'en-US-Neural2-F', gender: 'MALE' }
-        ]
-    },
-    Canadian: {
-        languageCode: 'en-US', // カナダ英語は en-US で代用
-        voices: [
-            { name: 'en-US-Neural2-A', gender: 'FEMALE' },
-            { name: 'en-US-Neural2-D', gender: 'MALE' }
-        ]
-    },
-    British: {
-        languageCode: 'en-GB',
-        voices: [
-            { name: 'en-GB-Neural2-A', gender: 'FEMALE' },
-            { name: 'en-GB-Neural2-B', gender: 'MALE' },
-            { name: 'en-GB-Neural2-C', gender: 'FEMALE' },
-            { name: 'en-GB-Neural2-D', gender: 'MALE' }
-        ]
-    },
-    Australian: {
-        languageCode: 'en-AU',
-        voices: [
-            { name: 'en-AU-Neural2-A', gender: 'FEMALE' },
-            { name: 'en-AU-Neural2-B', gender: 'MALE' },
-            { name: 'en-AU-Neural2-C', gender: 'FEMALE' },
-            { name: 'en-AU-Neural2-D', gender: 'MALE' }
-        ]
-    }
-} as const; //リテラル型の保持、readonlyによる値の変更防止 によって設定値の予期しない変更を防ぎ、より厳密な型チェックが可能になる
+};
 
 //SSML生成モジュール
 export class TOEICSSMLGenerator {
@@ -502,13 +354,14 @@ export async function callGoogleCloudTTS(ssml: string, lQuestionIDList: string[]
             data.timepoints || [],
             lQuestionIDList
         );
+        const validatedAudioURLList = await schema.validateAudioURLList(audioURLList);
 
-        const totalDuration = audioURLList.reduce((sum, segment) => sum + segment.duration, 0);
+        const totalDuration = validatedAudioURLList.reduce((sum, segment) => sum + segment.duration, 0);
 
         console.log(`音声生成完了: ${audioURLList.length}問, 総時間: ${totalDuration}秒`);
-        console.log(audioURLList);
+        console.log(validatedAudioURLList);
 
-        return audioURLList;
+        return  validatedAudioURLList;
 
     } catch (error) {
         console.error('TTS API呼び出しエラー:', error);

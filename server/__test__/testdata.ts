@@ -1,4 +1,6 @@
-import { GeneratedQuestionDataResDTO } from '../listening-quiz-transactions/lquiz.dto.ts';
+
+
+/*import { GeneratedQuestionDataResDTO } from '../listening-quiz-transactions/lquiz.dto.ts';
 import { AudioURL } from '../listening-quiz-transactions/lquiz.domeinobject.ts';
 import { newQuestionDataInsert } from '../listening-quiz-transactions/services/lquizbusinessservice.ts';
 
@@ -100,4 +102,4 @@ async function main() {
 }
 
 // スクリプト実行
-main().catch(console.error);
+main().catch(console.error);*/

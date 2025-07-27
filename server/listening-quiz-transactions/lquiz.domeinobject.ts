@@ -4,13 +4,14 @@ lquiz.domeinobject.ts : ListeningQuizドメイン内専用オブジェクト
 
 *********************************************/
 
+import { UUID } from "crypto";
+
 //新規問題生成用
-export class NewQuestionInfo {
-    constructor(
-        public sectionNumber: 1|2|3|4,
-        public requestedNumOfQuizs?: number,
-        public speakingRate?: number //新規生成時のみ使用
-    ){}
+export interface NewLQuestionInfo {
+    sectionNumber: 1|2|3|4,
+    requestedNumOfLQuizs: number,
+    speakerAccent?: 'American' | 'British' | 'Canadian' | 'Australian',
+    speakingRate: number //必須　デフォルト値は1.0
 };
 
 //復習問題取得用
@@ -24,8 +25,7 @@ export class ReviewQuestionInfo {
         public speakerAccent?: 'American' | 'British' | 'Canadian' | 'Australian', //新規生成時のみ使用
         public speakingRate?: number //新規生成時のみ使用
     ){}
-}
-
+};
 
 //音声URLデータ
 export interface AudioURL {
@@ -63,25 +63,21 @@ export class LQuestionData {
 };
 
 //　正誤判定用ドメインオブジェクト
-export class TorFData {
-    constructor(
-        public lQuestionID: string,
-        public userAnswerOption: "A"|"B"|"C"|"D"
-    ){}
-}
+export interface IsCorrectData {
+    lQuestionID: string,
+    userAnswerOption: "A"|"B"|"C"|"D"
+};
 
 //回答データ新規DB登録用ドメインオブジェクト
-export class LAnswerData {
-    constructor(
-        public lAnswerID?: string,
-        public lQuestionID?: string,
-        public userID?: string,
-        public userAnswerOption?: "A"|"B"|"C"|"D",
-        public trueOrFalse?: boolean,
-        public reviewTag?: boolean,
-        public answerDate?: Date
-    ){}
-}
+export interface NewLAnswerData {
+    lAnswerID: UUID,
+    userID: UUID,
+    lQuestionID: string,
+    userAnswerOption: "A"|"B"|"C"|"D",
+    isCorrect: boolean,
+    reviewTag: boolean,
+    answerDate: Date
+};
 
 //解答データ検索用ドメインオブジェクト
 export class AnswerScripts {

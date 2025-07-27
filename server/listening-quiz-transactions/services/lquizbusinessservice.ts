@@ -14,25 +14,30 @@ import * as domein from "../lquiz.domeinobject.ts";
 import * as dbmapper from "../mappers/lquiz.dbmapper.ts";
 import * as dto from "../lquiz.dto.ts";
 
+import crypto from 'crypto';
 
-/*
-//sectionNumberランダム選択関数
-export function sectionNumberRandomSelect(requestedNumOfLQuizs: number): number[] {
-    const sectionNumber = Math.floor(Math.random() * 4) + 1; 
-    const sectionNumberList = Array.from({ length: requestedNumOfLQuizs }, () => sectionNumber);
-    return sectionNumberList
+//問題ID用の8桁hashの生成
+export function generateHash(reqDTO: dto.RandomNewQuestionReqDTO): string[] {
+    const hashList: string[] = [];
+    for (let i = 0; i < reqDTO.requestedNumOfLQuizs; i++) {
+        const timestamp = Date.now();
+        const source = `${JSON.stringify(reqDTO)}_${timestamp}`;
+        const hash = crypto.createHash('sha256').update(source).digest('hex').substring(0, 8);
+        hashList.push(hash);
+    };
+    return hashList
 };
-*/
 
-//問題IDの生成
-export function generateLQuestionID(requestedNumOfLQuizs: number): UUID[] {
-    const lQuestionIDList: UUID[] = [];
-    for (let i = 0; i < requestedNumOfLQuizs; i++) {
-        const lQuestionID = randomUUID();
+//問題ID生成
+export function generateLQuestionID(reqDTO: dto.RandomNewQuestionReqDTO, hashList: string[]): string[] {
+    const lQuestionIDList: string[] = [];
+    for (let i = 0; i < reqDTO.requestedNumOfLQuizs; i++) {
+        const lQuestionID = `listening-part${reqDTO.sectionNumber}-${hashList[i]}`;
         lQuestionIDList.push(lQuestionID);
     };
     return lQuestionIDList
 };
+
 
 //新規問題の挿入　バッチ処理
 export async function newQuestionDataInsert(
@@ -105,6 +110,9 @@ export async function answeredQuestionDataRandomExtract(domObj: domein.ReviewQue
 };
 
 
+
+/* answerController */
+
 //回答IDの生成　配列対応済
 export function lAnswerIdGenerate(length: number /*配列の要素数*/): UUID[] {
     const lAnswerIDList: UUID[] = [];
@@ -116,7 +124,7 @@ export function lAnswerIdGenerate(length: number /*配列の要素数*/): UUID[]
 };
 
 //正誤判定（問題テーブル参照も行う） 配列対応済
-export async function trueOrFalseJudge(domObjList: domein.TorFData[]): Promise<boolean[]> {
+export async function trueOrFalseJudge(domObjList: domein.IsCorrectData[]): Promise<boolean[]> {
     const client = await model.dbGetConnect();
     try{
         // トランザクション開始
@@ -129,11 +137,12 @@ export async function trueOrFalseJudge(domObjList: domein.TorFData[]): Promise<b
 
         // コミット
         await client.query('COMMIT');
+        console.log(answerOptionQueryResult.rows);
 
         for (let i = 0; i < domObjList.length; i++) {
             const { userAnswerOption } = domObjList[i];
-            const { AnswerOption } = answerOptionQueryResult.rows[i];
-            results.push(userAnswerOption === AnswerOption ? true : false);
+            const { answer_option } = answerOptionQueryResult.rows[i];
+            results.push(userAnswerOption === answer_option ? true : false);
         }
         
         return results;
@@ -145,10 +154,10 @@ export async function trueOrFalseJudge(domObjList: domein.TorFData[]): Promise<b
     } finally {
         await model.dbRelease(client);
     }
-}
+};
 
 //回答結果データの挿入　バッチ処理
-export async function answerResultDataInsert(domObjList: domein.LAnswerData[]): Promise<boolean> {
+export async function answerResultDataInsert(domObjList: domein.NewLAnswerData[]): Promise<boolean> {
     const client = await model.dbGetConnect();
     try {
         // トランザクション開始

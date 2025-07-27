@@ -123,9 +123,11 @@ export async function answeredQuestionDataRandomSelect(client: PoolClient, domOb
 export async function answerOptionExtract(client: PoolClient, lQuestionIDList: string[]): Promise<QueryResult> { 
     try{
         //プレースホルダーを動的に生成
-        const placeholders = lQuestionIDList.map((_, index) => `($${index + 1}`).join(', ');
-        const sql = `SELECT l_question_id, answer_option FROM listening_questions WHERE l_question_id IN (${placeholders})`;
-        const values = lQuestionIDList;
+        const placeholders = lQuestionIDList.map((_, index) => `$${index + 1}`).join(', ');
+        const sql = `SELECT l_question_id, answer_option FROM listening_questions 
+                     WHERE l_question_id IN (${placeholders}) 
+                     ORDER BY CASE l_question_id ${lQuestionIDList.map((_, index) => `WHEN $${index + 1} THEN ${index}`).join(' ')} END`;
+        const values = [...lQuestionIDList];
         return await client.query(sql, values);
     } catch (error) {
         console.log('DB操作エラー (SELECT):', error);
@@ -156,29 +158,36 @@ export async function answerResultDataBatchInsert(client: PoolClient, insertAnsw
 
         // プレースホルダーを動的生成
         const placeholders = insertAnswerDataList.map((_, index) => {
-            const baseIndex = index * 7; // 7カラム分
-            return `($${baseIndex + 1}, $${baseIndex + 2}, $${baseIndex + 3}, $${baseIndex + 4}, $${baseIndex + 5}, $${baseIndex + 6}, $${baseIndex + 7})`;
+            const baseIndex = index * 10; // 10カラム分
+            return `($${baseIndex + 1}, $${baseIndex + 2}, $${baseIndex + 3}, $${baseIndex + 4}, $${baseIndex + 5}, $${baseIndex + 6}, $${baseIndex + 7}, $${baseIndex + 8}, $${baseIndex + 9}, $${baseIndex + 10})`;
         }).join(', ');
         
         const sql = `INSERT INTO listening_answer_results 
-                    (l_answer_id, l_question_id, user_id, user_answer_option, true_or_false, review_tag, answer_date) 
+                    (l_answer_id, user_id, l_question_id, latest_user_answer, latest_is_correct, total_attempts, correct_attempts, review_tag, first_answered_at, last_answered_at) 
                     VALUES ${placeholders}`;
         
         // 全データを平坦（一次元）な配列に変換
         const values = insertAnswerDataList.flatMap(insertAnswerData => [
             insertAnswerData.lAnswerID,
-            insertAnswerData.lQuestionID,
             insertAnswerData.userID,
-            insertAnswerData.userAnswerOption,
-            insertAnswerData.trueOrFalse,
+            insertAnswerData.lQuestionID,
+            insertAnswerData.latestUserAnswerOption,
+            insertAnswerData.latestIsCorrect,
+            insertAnswerData.totalAttempts ?? 1, //INSERT時点では必ず1
+            insertAnswerData.correctAttempts,
             insertAnswerData.reviewTag,
-            insertAnswerData.answerDate
+            insertAnswerData.firstAnsweredAt,
+            insertAnswerData.lastAnsweredAt
         ]);
         
         return await client.query(sql, values);
         
-        } catch (error) {
-            console.log('DB操作エラー (BATCH INSERT):', error);
-            throw new dberror.DBAnswerDataError("回答結果データの登録に失敗しました");
-        }
-}
+    } catch (error) {
+        console.log('DB操作エラー (BATCH INSERT):', error);
+        throw new dberror.DBAnswerDataError("回答結果データの登録に失敗しました");
+    }
+};
+
+//復習時回答データ処理
+//userIDとlQuestionIDの複合indexでanswer_resultsから回答データをSELECT
+//latestIsCorrect、totalAttempts、correctAttemptsをUPDATE

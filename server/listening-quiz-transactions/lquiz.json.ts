@@ -90,7 +90,12 @@ export const externalAPIServicesResponses = {
         title: "音声生成処理成功",
         status: 200
     },
-    
+    // プロンプト生成エラー
+    PROMPT_GENERATE_ERROR: {
+        type: "PROMPT_GENERATE_ERROR",
+        title: "プロンプト生成エラー",
+        status: 500
+    },
     // ChatGPT API関連エラー
     CHATGPT_API_ERROR: {
         type: "CHATGPT_API_ERROR",

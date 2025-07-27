@@ -8,6 +8,8 @@ export function randomNewQuestionReqValidate(reqDTO: dto.RandomNewQuestionReqDTO
                 .union([z.literal(1), z.literal(2), z.literal(3), z.literal(4)]),
             requestedNumOfLQuizs: z
                 .number(),
+            speakerAccent: z //任意
+                .union([z.literal("American"), z.literal("Canadian"), z.literal("British"), z.literal("Australian")]).optional(),
             speakingRate: z
                 .number()
             }
@@ -21,8 +23,7 @@ export function questionReqValidate(reqDTO: dto.ReviewQuestionReqDTO){
         z.object(
             {
             lQuestionID: z
-                .string()
-                .uuid(),
+                .string(),
             userID: z
                 .string()
                 .uuid(),
@@ -56,26 +57,24 @@ export function randomQuestionReqValidate(reqDTO: dto.RandomReviewQuestionReqDTO
 };
 
 //ユーザーの入力値　UserAnswerReqDTOのバリデーション関数
-export function userAnswerReqValidate(reqDTO: dto.UserAnswerReqDTO[]){
-    const userAnswerReqValidationSchema: z.ZodSchema<dto.UserAnswerReqDTO[]> = z.array(
+export function userAnswerReqValidate(reqDTO: unknown){
+    const userAnswerReqValidationSchema = z.array(
         z.object(
             {
             lQuestionID: z
-                .string()
-                .uuid(),
+                .string(),
             userID: z
                 .string()
                 .uuid(),
             userAnswerOption: z
                 .enum(["A", "B", "C", "D"]),
-            answerDate: z
-                .date(),
             reviewTag: z
-                .boolean()
-                .optional() //空も許可
+                .boolean(),
+            answerDate: z
+                .string().datetime().transform(str => new Date(str))
             }
         )
     );
-    return userAnswerReqValidationSchema.parse(reqDTO);
+    return userAnswerReqValidationSchema.parse(reqDTO) as dto.UserAnswerReqDTO[];
 }
 

@@ -1,3 +1,5 @@
+import {UUID} from "crypto";
+
 //新規クイズリクエストスキーマ（ランダム生成、ID非指定）
 export interface RandomNewQuestionReqDTO {
     sectionNumber :1|2|3|4,
@@ -28,15 +30,15 @@ export interface ReviewQuestionReqDTO {
 //サーバーからのクイズレスポンスDTO 新規・既存共通
 export interface QuestionResDTO {
     lQuestionID: string,
-    audioScript: string,
-    jpnAudioScript: string,
-    answerOption: "A"|"B"|"C"|"D",
+    //audioScript: string,
+    //jpnAudioScript: string,
+    //answerOption: "A"|"B"|"C"|"D",
     sectionNumber: 1|2|3|4,
-    explanation: string,
+    //explanation: string,
     speakerAccent: "American" | "British" | "Canadian" | "Australian",
     speakingRate: number,
-    duration: number,
-    audioURL: string
+    duration: number
+    //audioURL: string
 };
 /*
 //OpenAI APIへのクイズリクエストプロンプト
@@ -91,17 +93,17 @@ export class ExistingLQuizReqDTO {
 */
 
 
-//回答データリクエスト
-export interface AnswerReqDTO {
-    lQuestionID?: string, 
-    userID?: string, 
-    userAnswerOption?: "A"|"B"|"C"|"D", 
-    answerDate?: Date,
-    reviewTag?: boolean
+//回答データPOST（リクエスト）
+export interface UserAnswerReqDTO {
+    lQuestionID: string,
+    userID: UUID,
+    userAnswerOption: "A"|"B"|"C"|"D",
+    reviewTag: boolean,
+    answerDate: Date
 };
 
 //正誤・解答データレスポンス
-export interface AnswerResDTO {
+export interface UserAnswerResDTO {
     lQuestionID: string,
     isCorrect: boolean,
     audioScript: string,

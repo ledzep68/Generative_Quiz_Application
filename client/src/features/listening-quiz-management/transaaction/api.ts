@@ -27,7 +27,7 @@ const newQuizApi = createApi({
                 }
             )
         }),
-        fetchAnswer: builder.mutation<dto.AnswerResDTO, dto.AnswerReqDTO>({
+        fetchAnswer: builder.mutation<dto.UserAnswerResDTO[], dto.UserAnswerReqDTO[]>({
             query: (data) => (
                 {
                     url: `/lquiz/answer`,

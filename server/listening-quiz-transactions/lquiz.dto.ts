@@ -5,15 +5,15 @@ lquiz.dto.ts : requestとresponse用のデータ構造定義
 
 *********************************************/
 
+import { UUID } from "crypto";
 import { SpeakerAccent } from "./services/lquizapiservice.ts";
 
 //ユーザーからの新規クイズリクエストスキーマ（ランダム生成、ID非指定）
-export class RandomNewQuestionReqDTO {
-    constructor(
-        public sectionNumber: 1|2|3|4,
-        public requestedNumOfLQuizs?: number,
-        public speakingRate?: number //発話速度
-    ){}
+export interface RandomNewQuestionReqDTO {
+    sectionNumber: 1|2|3|4,
+    requestedNumOfLQuizs: number,
+    speakerAccent?: 'American' | 'British' | 'Canadian' | 'Australian',
+    speakingRate: number //必須　デフォルト値1.0
 };
 
 //ユーザーからの復習クイズリクエストスキーマ（ランダム、ID非指定）
@@ -44,15 +44,14 @@ export class ReviewQuestionReqDTO {
 export class QuestionResDTO {
     constructor(
         public lQuestionID: string,
-        public audioScript: string,
-        public jpnAudioScript: string,
-        public answerOption: "A"|"B"|"C"|"D",
+        //public audioScript: string,
+        //public jpnAudioScript: string,
+        //public answerOption: "A"|"B"|"C"|"D",
         public sectionNumber: 1|2|3|4,
-        public explanation: string,
+        //public explanation: string,
         public speakerAccent: "American" | "British" | "Canadian" | "Australian",
         public speakingRate: number,
-        public duration: number,
-        public audioURL: string
+        public duration: number
     ){}
 };
 
@@ -65,16 +64,14 @@ export class NewQuizGenerateReqDTO {
 }
 
 //OpenAI APIからのres用のクイズデータスキーマ
-export class GeneratedQuestionDataResDTO {
-    constructor(
-        public audioScript: string,
-        public jpnAudioScript: string,
-        public answerOption: "A"|"B"|"C"|"D",
-        public sectionNumber: 1|2|3|4,
-        public explanation: string,
-        public speakerAccent: "American" | "British" | "Canadian" | "Australian"
-       // public lQuestionID?: string
-    ){}
+//lQuestionIdは生成対象ではなく、AIにも渡さない（セキュリティリスク考慮）ので除外
+export interface GeneratedQuestionDataResDTO {
+    audioScript: string,
+    jpnAudioScript: string,
+    answerOption: "A"|"B"|"C"|"D",
+    sectionNumber: 1|2|3|4,
+    explanation: string,
+    speakerAccent: "American" | "British" | "Canadian" | "Australian"
 };
 
 //TTS APIへの音声データリクエスト
@@ -108,14 +105,12 @@ export class ExistingLQuizReqDTO {
 
 
 //ユーザーからの回答データPOST（リクエスト）
-export class UserAnswerReqDTO {
-    constructor(
-        public lQuestionID: string, 
-        public userID: string, 
-        public userAnswerOption: "A"|"B"|"C"|"D", 
-        public answerDate: Date,
-        public reviewTag?: boolean
-    ){}
+export interface UserAnswerReqDTO {
+    lQuestionID: string,
+    userID: UUID,
+    userAnswerOption: "A"|"B"|"C"|"D",
+    reviewTag: boolean,
+    answerDate: Date
 };
 
 //ユーザーへの正誤・解答データ送信（レスポンス）

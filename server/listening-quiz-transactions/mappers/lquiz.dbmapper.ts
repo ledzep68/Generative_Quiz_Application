@@ -56,17 +56,18 @@ export class LQuestionExtractedDataMapper {
 
 //回答結果データ登録用のクラス　entityインターフェース
 export class AnswerDataToEntityMapper {
-    static toDomeinObject(domObj: domein.LAnswerData): entity.LAnswerResultEntity {
+    static toDomeinObject(domObj: domein.NewLAnswerData): entity.LAnswerResultEntity {
         return {
             lAnswerID: domObj.lAnswerID,
             lQuestionID: domObj.lQuestionID,
             userID: domObj.userID,
-            userAnswerOption: domObj.userAnswerOption,
-            trueOrFalse: domObj.trueOrFalse,
+            latestUserAnswerOption: domObj.userAnswerOption,
+            latestIsCorrect: domObj.isCorrect,
             reviewTag: domObj.reviewTag,
-            answerDate: domObj.answerDate,
-            createdAt: undefined, //DB登録時に自動生成
-            updatedAt: undefined //DB登録時に自動生成
+            totalAttempts: 1,
+            correctAttempts: domObj.isCorrect ? 1 : 0,
+            firstAnsweredAt: domObj.answerDate,
+            lastAnsweredAt: domObj.answerDate
         };
     } 
 }
