@@ -283,7 +283,7 @@ function AnswerScreen() {
     if (!currentQuestion) {
         return <div>クイズデータを読み込み中...</div>; // 早期リターン
     };
-    //const { lQuestionID, sectionNumber, speakerAccent, duration } = currentQuestion;
+    const { lQuestionID/*, sectionNumber, speakerAccent, duration*/ } = currentQuestion;
 
     //音声データselector
     const audioBlob = useAppSelector(state => state.audioManagement.audioData) as File;
@@ -293,25 +293,27 @@ function AnswerScreen() {
     const isAudioReadyToPlay = useAppSelector(state => state.audioManagement.isAudioReadyToPlay);
 
     //回答リクエスト用selector
-    const requestAnswerParams = useAppSelector(state => {
+    const requestAnswerParamsList = useAppSelector(state => {
         return state.answerManagement.requestParams
-    });
-    const { /*lQuestionID,*/ userID, userAnswerOption, answerDate, reviewTag } = requestAnswerParams;
+    }) as dto.UserAnswerReqDTO[];
+    const { userID, reviewTag, userAnswerOption } = requestAnswerParamsList[0];
 
     const navigate = useNavigate();
     const dispatch = useAppDispatch();
     const [fetchAnswer] = api.useFetchAnswerMutation();
 
     const handleUserAnswerChange = (answer: string) => {
-        dispatch(answerSlice.setRequestParams({
-            userAnswerOption: answer as 'A' | 'B' | 'C' | 'D'
+        dispatch(answerSlice.updateRequestParam({
+            index: 0,
+            data: { userAnswerOption: answer as 'A'|'B'|'C'|'D' }
         }));
     };
 
     const handleReviewTagChange = (checked: boolean) => {
-        dispatch(answerSlice.setRequestParams({
-            reviewTag: checked
-        }));
+        dispatch(answerSlice.updateRequestParam({
+            index: 0,
+            data: { reviewTag: checked }
+        }))
     };
 
     //デバッグ用
@@ -319,6 +321,7 @@ function AnswerScreen() {
         console.log('=== 実際の更新後確認 ===');
         console.log('userAnswerOption:', userAnswerOption);
         console.log('disabled状態:', !userAnswerOption);
+        console.log('reviewTag:', reviewTag);
     }, [userAnswerOption]);
 
     //音声再生
@@ -349,8 +352,8 @@ function AnswerScreen() {
                 onend: () => {
                     //再生終了時にURL解放
                     window.URL.revokeObjectURL(audioBlobURL);
-                    //redux storeからもクリア
-                    dispatch(audioSlice.clearAudioData());
+                    //redux storeからもクリア（result画面から次問題遷移時にクリア）
+                    //dispatch(audioSlice.clearAudioData());
                     console.log("audio play successfully ended");
                 }
             });
@@ -364,32 +367,52 @@ function AnswerScreen() {
         }
     };
 
-    const handleAnswer = async () => {
-        /*//回答内容をAPIに送る
-        //回答レスポンスが届いたことを確認
-        //stateを結果状態に更新し、結果画面（Result.tsx）に遷移(Navigate)
-        //Redux stateからDTOを構築
-        const answerReqDTO: dto.AnswerReqDTO = {
-            lQuestionID,
-            userID,
-            userAnswerOption,
-            answerDate,
-            reviewTag
+    const createTestAudioFile = async (): Promise<File> => {
+            const response = await fetch('/audio_segment.mp3');
+            const blob = await response.blob();
+            
+            return new File([blob], 'audio_segment.mp3', {
+                type: 'audio/mpeg',
+                lastModified: Date.now()
+            });
         };
-        try{
-            //回答内容をAPIに送る
-            const answerResult = await fetchAnswer(answerReqDTO);
-            //回答レスポンスをredux storeに保存
-            dispatch(answerSlice.setAnswerData(answerResult.data as dto.AnswerResDTO));
-
-            //stateを'result'に更新し、結果状態に遷移
-            dispatch(uiSlice.setCurrentScreen('result'));
-
-        } catch (error) {
-            console.log(error);
-        }*/
-        dispatch(uiSlice.setCurrentScreen('result'));
+    const dispatchTestAudio = async () => {
+        const testBlob = await createTestAudioFile();
+        dispatch(audioSlice.setAudioData(testBlob));
     };
+    const handleAnswer = async () => {
+                //回答内容をAPIに送る
+                //回答レスポンスが届いたことを確認
+                //stateを結果状態に更新し、結果画面（Result.tsx）に遷移(Navigate)
+                //Redux stateからDTOを構築
+                try{
+                    await dispatchTestAudio();
+                    if (!lQuestionID || !userID || !userAnswerOption || !reviewTag) {
+                        throw new Error("必須パラメータが不足しています");
+                    }
+                    const answerReqDTO: dto.UserAnswerReqDTO[] = [{
+                        lQuestionID: lQuestionID,
+                        userID: userID,
+                        userAnswerOption: userAnswerOption,
+                        reviewTag: reviewTag,
+                        answerDate: new Date()
+                    }];
+
+                    console.log("=== 回答リクエスト開始 ===: ", answerReqDTO);
+                    //回答内容をAPIに送る
+                    const answerResult = await fetchAnswer(answerReqDTO);
+                    console.log(answerResult);
+                    //回答レスポンスをredux storeに保存
+                    dispatch(answerSlice.setAnswerData(answerResult.data as dto.UserAnswerResDTO[]));
+        
+                    //stateを'result'に更新し、結果状態に遷移
+                    dispatch(uiSlice.setCurrentScreen('result'));
+        
+                } catch (error) {
+                    console.log("回答処理失敗:", error);
+                }
+                dispatch(uiSlice.setCurrentScreen('result'));
+            };
 
     //中断ポップアップ
     const [showInterruptPopup, setShowInterruptPopup] = useState(false);
@@ -545,36 +568,26 @@ function ResultScreen() {
     if (!currentQuestion) {
         return <div>クイズデータを読み込み中...</div>; // 早期リターン
     };
-    const { lQuestionID, audioScript, jpnAudioScript, answerOption, sectionNumber, explanation, speakerAccent, speakingRate, duration, audioURL } = currentQuestion;
+    const { lQuestionID/*, sectionNumber, speakerAccent, speakingRate, duration*/ } = currentQuestion;
 
     //音声データselector
+    const isAudioReadyToPlay = useAppSelector(state => state.audioManagement.isAudioReadyToPlay);
     const audioBlob = useAppSelector(state => state.audioManagement.audioData) as File;
-    if (!audioBlob || !questionDataList || questionDataList.length === 0) {
+    if (!audioBlob) {
         return <div>音声データを読み込み中...</div>;
     };
 
-    //回答リクエスト用selector
-    const requestAnswerParams = useAppSelector(state => {
-        return state.answerManagement.requestParams
-    });
-    const { /*lQuestionID,*/ userID, userAnswerOption, answerDate, reviewTag } = requestAnswerParams;
-    const answerData = useAppSelector(state => {
+    //回答データ取得用selector
+    const answerParamList = useAppSelector(state => state.answerManagement.requestParams) as dto.UserAnswerReqDTO[];
+    const { userAnswerOption, reviewTag } = answerParamList[0];
+    const answerDataList = useAppSelector(state => {
         return state.answerManagement.answerData
-    }) as dto.AnswerResDTO;
-    const { isCorrect } = answerData;
-
-    //正誤・解答データレスポンス
-    /*export interface AnswerResDTO {
-        lQuestionID: string,
-        isCorrect: boolean,
-        audioScript: string,
-        jpnAudioScript: string,
-        explanation: string
-    }*/
+    }) as dto.UserAnswerResDTO[];
+    const { audioScript, jpnAudioScript, explanation, answerOption, isCorrect } = answerDataList[0];
 
     const navigate = useNavigate();
     const dispatch = useAppDispatch();
-    const {load, play} = useAudioPlayer();
+    const {load, error, isPlaying} = useAudioPlayer();
 
     const [fetchAudio] = api.useLazyFetchAudioQuery();
 
@@ -584,14 +597,56 @@ function ResultScreen() {
     // 音声再生（解説用）
     const handleAudioPlay = async () => {
         // 音声データの取得と再生ロジック
-        // 既存のhandleAudioPlayと同様の実装
-        try {
-            const audioData = await fetchAudio(lQuestionID).unwrap() as File;
-            dispatch(audioSlice.setAudioData(audioData));
-            play();
+        console.log("handleAudioPlay called");
+        console.log("isAudioReadyToPlay:", isAudioReadyToPlay);
+    
+        let audioBlobURL;
+              
+        try{
+            if (error) {
+                console.error("Audio player error:", error);
+                throw new Error("Audio player error");
+            }
+                
+            if (!isAudioReadyToPlay) {
+                throw new Error("音声データが準備されていません");
+            };
+            //BlobをオブジェクトURLに変換 windowでブラウザのURLを明示的に使用
+            const audioBlobURL = window.URL.createObjectURL(audioBlob);  
+            console.log("audioBlobURL:", audioBlobURL);
+            //音声読み込み
+            load(audioBlobURL, {
+                html5: true,
+                format: 'mp3',
+                autoplay: true,
+                onend: () => {
+                    //再生終了時にURL解放
+                    window.URL.revokeObjectURL(audioBlobURL);
+                    console.log("audio play successfully ended");
+                }
+            });
         } catch (error) {
-            console.error('音声取得に失敗:', error);
+            //audioBlobURLが作成されている場合のみ解放
+            if (audioBlobURL) {
+                window.URL.revokeObjectURL(audioBlobURL);
+            };
+            dispatch(audioSlice.clearAudioData());
+            console.log("audio play failed");
         }
+    };
+
+    // 結果一覧を見る
+    const handleViewResults = () => {
+        // 結果一覧画面に遷移（別途実装が必要）
+        navigate('/quiz-results');
+    };
+
+    //復習タグの変更
+    const handleReviewTagChange = (checked: boolean) => {
+        dispatch(answerSlice.updateRequestParam({
+            index: 0,
+            data: { reviewTag: checked }
+        }))
     };
 
     // 次の問題に進む
@@ -603,6 +658,8 @@ function ResultScreen() {
             const nextLQuestionId = lQuestionIdList[nextIndex];
             
             try {
+                //現在の音声データをクリア
+                dispatch(audioSlice.clearAudioData());
                 // 音声データ取得
                 const audioData = await fetchAudio(nextLQuestionId).unwrap() as File;
                 dispatch(audioSlice.setAudioData(audioData));
@@ -618,30 +675,6 @@ function ResultScreen() {
             }
         }
     };
-
-    // 結果一覧を見る
-    const handleViewResults = () => {
-        // 結果一覧画面に遷移（別途実装が必要）
-        navigate('/quiz-results');
-    };
-
-    // 復習タグの変更
-    const handleReviewTagChange = (checked: boolean) => {
-        dispatch(answerSlice.setRequestParams({
-            reviewTag: checked
-        }));
-    };
-
-    /* 
-    //正誤・解答データレスポンス
-    export interface AnswerResDTO {
-        lQuestionID: string,
-        isCorrect: boolean,
-        audioScript: string,
-        jpnAudioScript: string,
-        explanation: string
-    }
-    */
 
     // 中断ポップアップ
     const [showInterruptPopup, setShowInterruptPopup] = useState(false);

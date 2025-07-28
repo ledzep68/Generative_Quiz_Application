@@ -4,25 +4,18 @@ import z, { set } from "zod";
 import * as dto from "./dto.ts";
 import * as type from "./types.ts";
 
-const createDummyAudioBlob = (): File => {
-    const dummyData = new ArrayBuffer(1024); // 1KB のダミーデータ
-    const blob = new Blob([dummyData], { type: 'audio/mpeg' });
-    return new File([blob], 'dummy-audio.mp3', { 
-        type: 'audio/mpeg',
-        lastModified: Date.now() 
-    });
-};
 
-const testBlob = createDummyAudioBlob();
+const testBlob = new File([], 'audio_segment.mp3', { type: 'audio/mpeg' });
+
 
 const initialState: type.AudioState = {
     requestParams: {
         currentLQuestionId: undefined
     },
 
-    audioData: undefined,
+    audioData: testBlob,
 
-    isAudioReadyToPlay: false,
+    isAudioReadyToPlay: true,//false,
 
     audioStart: false,
 

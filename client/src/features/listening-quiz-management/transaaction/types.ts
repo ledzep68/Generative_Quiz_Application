@@ -47,7 +47,7 @@ export interface QuestionIndexState extends stateManagementParameters {
 
 //正誤判定および解答データリクエストの状態管理
 export interface AnswerRequestState extends stateManagementParameters {
-    requestParams: dto.UserAnswerReqDTO[],
+    requestParams?: dto.UserAnswerReqDTO[],
     answerData?: dto.UserAnswerResDTO[]
 };
 

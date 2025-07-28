@@ -124,10 +124,9 @@ export async function answerOptionExtract(client: PoolClient, lQuestionIDList: s
     try{
         //プレースホルダーを動的に生成
         const placeholders = lQuestionIDList.map((_, index) => `$${index + 1}`).join(', ');
-        const sql = `SELECT l_question_id, answer_option FROM listening_questions 
-                     WHERE l_question_id IN (${placeholders}) 
-                     ORDER BY CASE l_question_id ${lQuestionIDList.map((_, index) => `WHEN $${index + 1} THEN ${index}`).join(' ')} END`;
-        const values = [...lQuestionIDList];
+        console.log("placeholders: ", placeholders);
+        const sql = `SELECT l_question_id, answer_option FROM listening_questions WHERE l_question_id IN (${placeholders})`;
+        const values = lQuestionIDList;
         return await client.query(sql, values);
     } catch (error) {
         console.log('DB操作エラー (SELECT):', error);
@@ -140,7 +139,7 @@ export async function answerDataBatchExtract(client: PoolClient, lQuestionIDList
     try{
         //プレースホルダーを動的に生成
         const placeholders = lQuestionIDList.map((_, index) => `$${index + 1}`).join(', ');
-        const sql = `SELECT l_question_id, audio_script, jpn_audio_script, explanation FROM listening_questions WHERE l_question_id IN (${placeholders})`;
+        const sql = `SELECT l_question_id, answer_option, audio_script, jpn_audio_script, explanation FROM listening_questions WHERE l_question_id IN (${placeholders})`;
         const values = lQuestionIDList;
         return await client.query(sql, values);
     } catch (error) {

@@ -110,16 +110,15 @@ export interface UserAnswerReqDTO {
     userID: UUID,
     userAnswerOption: "A"|"B"|"C"|"D",
     reviewTag: boolean,
-    answerDate: Date
+    answerDate?: Date
 };
 
 //ユーザーへの正誤・解答データ送信（レスポンス）
-export class UserAnswerResDTO {
-    constructor(
-        public lQuestionID: string,
-        public trueOrFalse: boolean,
-        public audioScript: string,
-        public jpnAudioScript: string,
-        public explanation: string
-    ){}
-}
+export interface UserAnswerResDTO {
+    //lQuestionID: string,
+    isCorrect: boolean,
+    answerOption: "A"|"B"|"C"|"D",
+    audioScript: string,
+    jpnAudioScript: string,
+    explanation: string
+};

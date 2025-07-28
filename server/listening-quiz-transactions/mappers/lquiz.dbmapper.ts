@@ -75,11 +75,12 @@ export class AnswerDataToEntityMapper {
 //得られた解答データQueryResultをドメインオブジェクトにマッピング
 export class AnswerScriptsListMapper {
     static toDomainObject(queryResult: QueryResult): domein.AnswerScripts[] {
-        return queryResult.rows.map(row => new domein.AnswerScripts(
-                row.l_question_id,
-                row.audio_script,
-                row.jpn_audio_script,
-                row.explanation
-            ))
-        }
+        return queryResult.rows.map((row)=>({
+            lQuestionID: row.l_question_id,
+            answerOption: row.answer_option,
+            audioScript: row.audio_script,
+            jpnAudioScript: row.jpn_audio_script,
+            explanation: row.explanation
+        }))
+    }
 }

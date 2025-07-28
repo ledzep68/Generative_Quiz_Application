@@ -116,12 +116,15 @@ export async function answerController(req: Request, res: Response): Promise<voi
     try{
         //バリデーション　失敗時z.ZodErrorをthrow
         const validatedUserAnswerReqDTO = businessschema.userAnswerReqValidate(req.body);
+        console.log("validation success: ", validatedUserAnswerReqDTO);
 
         //正誤処理用ドメインオブジェクト作成
         const isCorrectDomObjList = mapper.IsCorrectMapper.toDomainObject(validatedUserAnswerReqDTO);
+        console.log("mapping success: ", isCorrectDomObjList);
 
         //正誤判定 LQuestionIDからListeningQuestions参照、UserAnswerOptionとAnswerOptionを比較しTrueOrFalseに正誤を登録
         const isCorrectList = await businessservice.trueOrFalseJudge(isCorrectDomObjList);
+        console.log("true or false judge success: ", isCorrectList);
         //lAnswerIDを新規生成
         const lAnswerIDList: UUID[] = businessservice.lAnswerIdGenerate(validatedUserAnswerReqDTO.length);
         //回答記録用ドメインオブジェクトlAnswerDataDomObjに結果マッピング

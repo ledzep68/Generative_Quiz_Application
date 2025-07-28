@@ -92,20 +92,20 @@ export class ExistingLQuizReqDTO {
 }
 */
 
-
 //回答データPOST（リクエスト）
 export interface UserAnswerReqDTO {
     lQuestionID: string,
     userID: UUID,
-    userAnswerOption: "A"|"B"|"C"|"D",
+    userAnswerOption?: "A"|"B"|"C"|"D",
     reviewTag: boolean,
-    answerDate: Date
+    answerDate?: Date
 };
 
 //正誤・解答データレスポンス
 export interface UserAnswerResDTO {
-    lQuestionID: string,
+    //lQuestionID: string,
     isCorrect: boolean,
+    answerOption: "A"|"B"|"C"|"D",
     audioScript: string,
     jpnAudioScript: string,
     explanation: string

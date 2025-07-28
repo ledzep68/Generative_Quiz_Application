@@ -125,19 +125,21 @@ export function lAnswerIdGenerate(length: number /*配列の要素数*/): UUID[]
 
 //正誤判定（問題テーブル参照も行う） 配列対応済
 export async function trueOrFalseJudge(domObjList: domein.IsCorrectData[]): Promise<boolean[]> {
+    //domObjList = [ { lQuestionID: 'test-question-001', userAnswerOption: 'A' } ]
     const client = await model.dbGetConnect();
     try{
         // トランザクション開始
         await client.query('BEGIN');
 
         const results: boolean[] = [];
-        const lQuestionIDList = domObjList.map(domObj => domObj.lQuestionID);
+        const lQuestionIDList = domObjList.map(domObj => domObj.lQuestionID); //['test-question-001']
+        console.log("lQuestionIDList: ",lQuestionIDList);
         // クエリ実行
         const answerOptionQueryResult = await model.answerOptionExtract(client, lQuestionIDList);
 
         // コミット
         await client.query('COMMIT');
-        console.log(answerOptionQueryResult.rows);
+        console.log("query result: ", answerOptionQueryResult.rows);
 
         for (let i = 0; i < domObjList.length; i++) {
             const { userAnswerOption } = domObjList[i];

@@ -7,28 +7,18 @@ import * as type from "./types.ts";
     // 複数問題のテストデータ配列
 const testQuestionDataList: dto.QuestionResDTO[] = [
     {
-        lQuestionID: "test-question-001",
-        audioScript: "What time does the meeting start tomorrow?",
-        jpnAudioScript: "明日の会議は何時に始まりますか？",
-        answerOption: "A",
+        lQuestionID: "listening-part4-q002",
         sectionNumber: 2,
-        explanation: "会議の開始時刻に関する問題です。正解はA「9:00 AM」です。",
         speakerAccent: "American",
         speakingRate: 150,
-        duration: 12,
-        audioURL: "https://example.com/audio/test-001.mp3"
+        duration: 12
     },
     {
-        lQuestionID: "test-question-002", 
-        audioScript: "Where should I submit the application form?",
-        jpnAudioScript: "申請書はどこに提出すればよいですか？",
-        answerOption: "B",
+        lQuestionID: "listening-part4-q003", 
         sectionNumber: 2,
-        explanation: "申請書の提出場所に関する問題です。正解はB「Human Resources Department」です。",
         speakerAccent: "British",
         speakingRate: 140,
-        duration: 15,
-        audioURL: "https://example.com/audio/test-002.mp3"
+        duration: 15
     }
 ];
 

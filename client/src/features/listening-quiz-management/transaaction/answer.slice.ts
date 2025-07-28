@@ -2,24 +2,28 @@ import {createSlice, PayloadAction} from "@reduxjs/toolkit";
 import z from "zod";
 
 import * as dto from "./dto.ts";
+import {UUID} from "crypto";
 import * as type from "./types.ts";
 
-const testAnswerData: dto.AnswerResDTO = {
-    lQuestionID: "test",
+const testRequestParams: dto.UserAnswerReqDTO[] = [{
+    lQuestionID: "listening-part4-q002",
+    userID: "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+    userAnswerOption: undefined,
+    reviewTag: false,
+    answerDate: undefined
+}];
+
+const testAnswerData: dto.UserAnswerResDTO[] = [{
+    //lQuestionID: "test",
+    answerOption: "A",
     isCorrect: true,
     audioScript: "test",
     jpnAudioScript: "test",
     explanation: "test"
-};
+}];
 
 const initialState: type.AnswerRequestState = {
-    requestParams: {
-        lQuestionID: undefined,
-        userID: "test",//undefined,
-        userAnswerOption: undefined,
-        answerDate: undefined,
-        reviewTag: undefined
-    },
+    requestParams: testRequestParams,//[],
 
     answerData: testAnswerData,//undefined,
 
@@ -30,14 +34,14 @@ const initialState: type.AnswerRequestState = {
 };
 
 //バリデーション
-const RequestValidationSchema = z.object({
+const RequestValidationSchema = z.array(z.object({
     lQuestionID: z.string(),
-    userID: z.string(),
+    userID: z.string().regex(/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i) as z.ZodType<UUID>,
     userAnswerOption: z.union([z.literal("A"), z.literal("B"), z.literal("C"), z.literal("D")]),
-    answerDate: z.date(),
-    reviewTag: z.boolean().optional()
-});
-const validateParams = (state: type.AnswerRequestState): z.ZodSafeParseResult<dto.AnswerReqDTO> => {
+    reviewTag: z.boolean(),
+    answerDate: z.date()
+}));
+const validateParams = (state: type.AnswerRequestState): z.ZodSafeParseResult<dto.UserAnswerReqDTO[]> => {
     return RequestValidationSchema.safeParse(state.requestParams);
 };
 
@@ -45,30 +49,32 @@ export const answerSlice = createSlice({
     name: "answerManagement",
     initialState,
     reducers: {
-        setRequestParams: (state, action: PayloadAction<Partial<dto.AnswerReqDTO>>) => {
-            console.log('reducer呼び出し:', action.payload);
-            if(action.payload.lQuestionID !== undefined) {
-                state.requestParams.lQuestionID = action.payload.lQuestionID;
-            };
-            if(action.payload.userID !== undefined) {
-                state.requestParams.userID = action.payload.userID;
-            };
-            if(action.payload.userAnswerOption !== undefined) {
-                state.requestParams.userAnswerOption = action.payload.userAnswerOption;
-            };
-            if(action.payload.answerDate !== undefined) {
-                state.requestParams.answerDate = action.payload.answerDate;
-            };
-            if(action.payload.reviewTag !== undefined) {
-                state.requestParams.reviewTag = action.payload.reviewTag;
-            };
+        setRequestParams: (state, action: PayloadAction<dto.UserAnswerReqDTO[]>) => {
+            console.log('setRequestParams:', action.payload);
+            state.requestParams = action.payload;
+            
             const validationResult = validateParams(state);
             state.isValid = validationResult.success;
             state.validationErrors = validationResult.success 
                 ? [] 
                 : validationResult.error.issues.map((issue) => issue.message);
         },
-        setAnswerData: (state, action: PayloadAction<dto.AnswerResDTO>) => {
+        //特定インデックスの回答を更新
+        updateRequestParam: (state, action: PayloadAction<{index: number, data: Partial<dto.UserAnswerReqDTO>}>) => {
+            const { index, data } = action.payload;
+            if (!state.requestParams) {
+                state.requestParams = [];
+            };
+            if (state.requestParams[index]) {
+                state.requestParams[index] = { ...state.requestParams[index], ...data };
+                const validationResult = validateParams(state);
+                state.isValid = validationResult.success;
+                state.validationErrors = validationResult.success 
+                    ? [] 
+                    : validationResult.error.issues.map((issue) => issue.message);
+            };
+        },
+        setAnswerData: (state, action: PayloadAction<dto.UserAnswerResDTO[]>) => { 
             state.answerData = action.payload;
         },
         setRequestStatus: (state, action: PayloadAction<'idle' | 'pending' | 'success' | 'failed'>) => {
@@ -91,6 +97,14 @@ export const answerSlice = createSlice({
                     state.submittedAt = undefined;
                     break;
             }
+        },
+        clearRequestParams: (state) => {
+            state.requestParams = [];
+            state.isValid = false;
+            state.validationErrors = [];
+        },
+        clearAnswerData: (state) => {
+            state.answerData = [];
         }
     }
 });
@@ -98,7 +112,10 @@ export const answerSlice = createSlice({
 export const {
     setRequestParams,
     setAnswerData,
-    setRequestStatus
+    updateRequestParam,
+    setRequestStatus,
+    clearRequestParams,
+    clearAnswerData
 } = answerSlice.actions;
 
 export default answerSlice.reducer;

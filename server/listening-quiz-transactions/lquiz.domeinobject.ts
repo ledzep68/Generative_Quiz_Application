@@ -80,11 +80,10 @@ export interface NewLAnswerData {
 };
 
 //解答データ検索用ドメインオブジェクト
-export class AnswerScripts {
-    constructor(
-        public lQuestionID: string,
-        public audioScript: string,
-        public jpnAudioScript: string,
-        public explanation: string
-    ){}
+export interface AnswerScripts {
+    lQuestionID: string,
+    answerOption: "A"|"B"|"C"|"D",
+    audioScript: string,
+    jpnAudioScript: string,
+    explanation: string
 };

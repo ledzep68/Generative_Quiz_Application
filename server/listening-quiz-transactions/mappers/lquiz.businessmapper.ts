@@ -126,15 +126,17 @@ export class LAnswerRecordMapper {
 
 //service userAnswerResDTOへのマッピング
 export class UserAnswerResDTOMapper {
-    static toDomainObject(lQuestionIDList: string[], trueOrFalseList: boolean[], domObjList: domein.AnswerScripts[]): dto.UserAnswerResDTO[] {
+    static toDomainObject(lQuestionIDList: string[], isCorrectList: boolean[], domObjList: domein.AnswerScripts[]): dto.UserAnswerResDTO[] {
         const resDTOs: dto.UserAnswerResDTO[] = [];
         for (let i = 0; i < lQuestionIDList.length; i++) {
-            resDTOs.push(new dto.UserAnswerResDTO(
-                lQuestionIDList[i],
-                trueOrFalseList[i],
-                domObjList[i].audioScript,
-                domObjList[i].jpnAudioScript,
-                domObjList[i].explanation));
+            resDTOs.push({
+                //lQuestionIDList[i],
+                answerOption: domObjList[i].answerOption,
+                isCorrect: isCorrectList[i],
+                audioScript: domObjList[i].audioScript,
+                jpnAudioScript: domObjList[i].jpnAudioScript,
+                explanation: domObjList[i].explanation
+            });
         };
         return resDTOs;
     }
