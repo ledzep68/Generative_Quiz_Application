@@ -386,8 +386,9 @@ function AnswerScreen() {
                 //stateを結果状態に更新し、結果画面（Result.tsx）に遷移(Navigate)
                 //Redux stateからDTOを構築
                 try{
-                    await dispatchTestAudio();
-                    if (!lQuestionID || !userID || !userAnswerOption || !reviewTag) {
+                    //await dispatchTestAudio();
+                    console.log(lQuestionID, userID, userAnswerOption, reviewTag);
+                    if (!lQuestionID || !userID || !userAnswerOption || reviewTag === undefined) {
                         throw new Error("必須パラメータが不足しています");
                     }
                     const answerReqDTO: dto.UserAnswerReqDTO[] = [{
@@ -559,7 +560,7 @@ function ResultScreen() {
 
     //問題番号管理用selector
     const indexParams = useAppSelector(state => state.indexManagement);
-    const { lQuestionIdList, currentQuestionIndex=0 } = indexParams;
+    const { lQuestionIdList, currentQuestionIndex } = indexParams;
 
     //クイズデータselector（現在のindexの問題だけ取得）
     const requestedNumOfLQuizs = useAppSelector(state => state.newRandomQuestionRequest.requestParams.requestedNumOfLQuizs);
@@ -658,11 +659,11 @@ function ResultScreen() {
             const nextLQuestionId = lQuestionIdList[nextIndex];
             
             try {
-                //現在の音声データをクリア
+                /*//現在の音声データをクリア
                 dispatch(audioSlice.clearAudioData());
                 // 音声データ取得
                 const audioData = await fetchAudio(nextLQuestionId).unwrap() as File;
-                dispatch(audioSlice.setAudioData(audioData));
+                dispatch(audioSlice.setAudioData(audioData));*/
                 
                 // インデックス更新
                 dispatch(indexSlice.setCurrentIndex(nextIndex as 0|1|2|3|4|5|6|7|8|9));
@@ -696,6 +697,10 @@ function ResultScreen() {
         setShowInterruptPopup(false);
         navigate('/login');
     };
+
+    useEffect(() => {
+        console.log("isLastQuestion:", isLastQuestion);
+    });
 
     return (
         <Box 

@@ -21,7 +21,7 @@ const newQuizApi = createApi({
         fetchAudio: builder.query<Blob, string>({
             query: (lQuestionId: string) => (
                 {
-                    url: `/audio/question/${lQuestionId}?t=${Date.now()}`,
+                    url: `/audio/question/${lQuestionId}`,//?t=${Date.now()}`,
                     method: 'GET',
                     responseHandler: (response) => response.blob()
                 }

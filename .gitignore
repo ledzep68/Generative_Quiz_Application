@@ -3,3 +3,7 @@ node_modules/
 dist/
 
 .env
+
+credentials/
+
+listening-quiz-audio-generator-b5d3be486e8f.json

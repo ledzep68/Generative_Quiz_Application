@@ -7,15 +7,17 @@
 //音声は音声再生ボタンを押したタイミングで再生
 
 //===========================================================================
-import {use, useState, useEffect} from "react";
+import {use, useState, useEffect, SyntheticEvent, useRef} from "react";
 import { useNavigate } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 
 import {useAudioPlayer} from "react-use-audio-player";
+import ReactAudioPlayer from 'react-audio-player';
 import {URL} from "url";
 
-import { Container, Box, Typography, Paper, SelectChangeEvent } from "@mui/material";
+import { Container, Box, Typography, Paper, SelectChangeEvent, Slider, IconButton } from "@mui/material";
 import { ContentCutOutlined, Settings } from "@mui/icons-material";
+import { PlayArrow, Pause } from '@mui/icons-material';
 
 //共通コンポーネント
 import ButtonComponent from "../src/shared/components/Button";
@@ -93,7 +95,7 @@ function TestScreen() {
         try {
             const testQuestionData = [
                 {
-                    lQuestionID: 'toeic-part4-q001',
+                    lQuestionID: 'listening-part4-q001',
                     audioScript: 'A woman is watering plants in the garden.',
                     jpnAudioScript: '女性が庭で植物に水をやっています。',
                     answerOption: 'A',
@@ -163,7 +165,7 @@ function TestScreen() {
                     updatedAt: undefined
                 }
                 ];
-            const testLQuestionIdList = ['toeic-part4-q001', 'toeic-part4-q002', 'toeic-part4-q003', 'toeic-part4-q004', 'toeic-part4-q005'];
+            const testLQuestionIdList = ['listening-part4-q001', 'toeic-part4-q002', 'toeic-part4-q003', 'toeic-part4-q004', 'toeic-part4-q005'];
             dispatch(indexSlice.setCurrentIndex(0));
             //クイズデータをredux storeに保存
             dispatch(newQuestionSlice.setQuestions(testQuestionData));
@@ -215,8 +217,9 @@ function TestScreen() {
         }
     };
 
+
     //音声再生
-        const {load, error, isPlaying} = useAudioPlayer();
+        const {load, error, duration, getPosition, seek, isPlaying, togglePlayPause } = useAudioPlayer();
         const handleAudioPlay = () => {
             console.log("handleAudioPlay called");
             console.log("isAudioReadyToPlay:", isAudioReadyToPlay);
@@ -257,7 +260,6 @@ function TestScreen() {
                 console.log("audio play failed");
             }
         };
-
     const handleAnswer = async () => {
             //回答内容をAPIに送る
             //回答レスポンスが届いたことを確認
@@ -285,6 +287,7 @@ function TestScreen() {
             }
             //dispatch(uiSlice.setCurrentScreen('result'));
         };
+
 
     return (
     <Box 
@@ -328,6 +331,10 @@ function TestScreen() {
                             size="medium"
                             sx={{ width: '100%', py: 1 }}
                         />
+                        <Box sx={{ width: '100%', px: 2 }}>
+
+                        
+        </Box>
                     </Box>
             </Box>
 );

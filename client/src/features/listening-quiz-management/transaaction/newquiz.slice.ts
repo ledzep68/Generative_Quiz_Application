@@ -7,6 +7,13 @@ import * as type from "./types.ts";
     // 複数問題のテストデータ配列
 const testQuestionDataList: dto.QuestionResDTO[] = [
     {
+        lQuestionID: "listening-part4-q001",
+        sectionNumber: 2,
+        speakerAccent: "American",
+        speakingRate: 150,
+        duration: 12
+    },
+    {
         lQuestionID: "listening-part4-q002",
         sectionNumber: 2,
         speakerAccent: "American",
@@ -25,7 +32,7 @@ const testQuestionDataList: dto.QuestionResDTO[] = [
 const initialState: type.RandomNewQuestionRequestState = {
     requestParams: {
         sectionNumber: 2,
-        requestedNumOfLQuizs: 1,
+        requestedNumOfLQuizs: 3,
         speakingRate: undefined,
         speakerAccent: undefined
     },
@@ -35,19 +42,6 @@ const initialState: type.RandomNewQuestionRequestState = {
     requestStatus: 'idle',
     submittedAt: undefined 
 };
-/*//サーバーからのクイズレスポンスDTO 新規・既存共通
-export interface QuestionResDTO {
-    lQuestionID: string,
-    audioScript: string,
-    jpnAudioScript: string,
-    answerOption: "A"|"B"|"C"|"D",
-    sectionNumber: 1|2|3|4,
-    explanation: string,
-    speakerAccent: "American" | "British" | "Canadian" | "Australian",
-    speakingRate: number,
-    duration: number,
-    audioURL: string
-}; */
 
 //バリデーション
 const RequestValidationSchema = z.object({

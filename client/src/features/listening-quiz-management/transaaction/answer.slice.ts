@@ -6,7 +6,7 @@ import {UUID} from "crypto";
 import * as type from "./types.ts";
 
 const testRequestParams: dto.UserAnswerReqDTO[] = [{
-    lQuestionID: "listening-part4-q002",
+    lQuestionID: "",
     userID: "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
     userAnswerOption: undefined,
     reviewTag: false,
@@ -23,9 +23,9 @@ const testAnswerData: dto.UserAnswerResDTO[] = [{
 }];
 
 const initialState: type.AnswerRequestState = {
-    requestParams: testRequestParams,//[],
+    requestParams: testRequestParams,
 
-    answerData: testAnswerData,//undefined,
+    answerData: [],
 
     isValid: false,
     validationErrors: [],
