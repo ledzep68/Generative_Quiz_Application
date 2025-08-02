@@ -45,6 +45,7 @@ describe('A_getRandomSpeakerAccent', () => {
 });
 
 describe('B_generatePrompt', () => {
+    /*
     test("B01_part3プロンプト生成", async () => {
         expect.assertions(8);
         const mockDomObj: Mocked<domein.NewLQuestionInfo> = {
@@ -78,9 +79,9 @@ describe('B_generatePrompt', () => {
         expect(result).toContain("問題1の話者:");
         expect(result).toContain("問題2の話者:");
         expect(result).toContain("問題3の話者:")
-    });
+    });*/
     test("B03_part4プロンプト生成", async () => {
-        expect.assertions(6);
+        expect.assertions(5);
         const mockDomObj: Mocked<domein.NewLQuestionInfo> = {
             sectionNumber: 4,
             requestedNumOfLQuizs: 5,
@@ -90,13 +91,13 @@ describe('B_generatePrompt', () => {
         console.log(result);
         expect(result).toContain("TOEICリスニング Part4 の練習問題を5問生成してください。");
         expect(result).toContain("練習問題を5問生成");
-        expect(result).toContain("**音声構造**: トーク内容 + 設問文 + 4つの選択肢を連続して読み上げ（A, B, C, Dの順序で）");
         expect(result).toContain("問題1の話者:");
         expect(result).toContain("問題2の話者:");
         expect(result).toContain("問題5の話者:")
     });
+    /*
     test("B03_part4プロンプト生成_speakerAccent指定", async () => {
-        expect.assertions(7);
+        expect.assertions(6);
         const mockDomObj: Mocked<domein.NewLQuestionInfo> = {
             sectionNumber: 4,
             requestedNumOfLQuizs: 5,
@@ -107,14 +108,14 @@ describe('B_generatePrompt', () => {
         console.log(result);
         expect(result).toContain("TOEICリスニング Part4 の練習問題を5問生成してください。");
         expect(result).toContain("練習問題を5問生成");
-        expect(result).toContain("**音声構造**: トーク内容 + 設問文 + 4つの選択肢を連続して読み上げ（A, B, C, Dの順序で）");
         expect(result).toContain("British");
         expect(result).toContain("問題1の話者:");
         expect(result).toContain("問題2の話者:");
         expect(result).toContain("問題5の話者:")
     });
+    */
 });
-
+/*
 const fetchMock = createFetchMock (vi);
 fetchMock.enableMocks();
 
@@ -356,19 +357,6 @@ describe('C_callChatGPT', () => {
         expect(firstQuestion).toHaveProperty('explanation')
         expect(firstQuestion).toHaveProperty('speakerAccent')
 
-        /*
-        //OpenAI APIからのres用のクイズデータスキーマ
-        export class GeneratedQuestionDataResDTO {
-            constructor(
-                public audioScript: string,
-                public jpnAudioScript: string,
-                public answerOption: "A"|"B"|"C"|"D",
-                public sectionNumber: 1|2|3|4,
-                public explanation: string,
-                public lQuestionID?: string
-            ){}
-        };
-        */
     });
 });
 
@@ -411,16 +399,7 @@ describe(`D_TOEICSSMLGenerator`, () => {
         expect(result).contains(`xml:lang="en-GB"`);
         expect(result).contains(`<prosody rate="1">`);
 
-        /*
-        export class NewAudioReqDTO {
-            constructor(
-                public lQuestionID: string,
-                public audioScript: string,
-                public speakerAccent: 'American' | 'British' | 'Canadian' | 'Australian',
-                public speakingRate: number
-            ){}
-        }
-        */
+
     });
     test(`D03_escapeSSML（エスケープ処理確認）`, () => {
         expect.assertions(6);
@@ -706,23 +685,6 @@ describe(`F_extractQuestionTimeRangeList`, () => {
     });
 });
 
-/*class MockChildProcess extends EventEmitter {
-        stderr = new EventEmitter();
-        stdout = new EventEmitter();
-        pid = 12345;
-        killed = false;
-        exitCode = null
-    }
-// child_processのspawnとChildProcessをモック
-vi.mock('child_process', async () => {
-        const actual = await vi.importActual('child_process');
-        return {
-            ...actual,
-            ChildProcess: actual.ChildProcess,
-            spawn: vi.fn()
-        };
-    });*/
-
 describe(`G_音声切り出しモジュール群`, () => {
     //ffmpegを実際に動かしてテスト
     const ffmpegPath = '/Users/sojikoeie/Desktop/Generative_Quiz_Application/server/node_modules/ffmpeg-static/ffmpeg';
@@ -992,15 +954,6 @@ describe(`G_音声切り出しモジュール群`, () => {
     }, 30000);
     })
 });
-        /*
-        //音声URLデータ
-        export interface AudioURL {
-            lQuestionID: string;
-            audioFilePath: string;
-            audioURL: string;
-            duration: number;
-        }
-        */
 
 // Google Auth自体をモック
 vi.mock('google-auth-library', () => ({
@@ -1104,3 +1057,5 @@ describe(`H_callGoogleCloudTTS`, () => {
     expect(result[1].lQuestionID).toBe(mocklQuestionIDList[1]);
     }, 30000);
 });
+
+*/

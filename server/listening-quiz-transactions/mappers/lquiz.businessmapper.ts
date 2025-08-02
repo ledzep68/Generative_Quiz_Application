@@ -117,7 +117,7 @@ export class LAnswerRecordMapper {
                 userAnswerOption: reqDTOList[i].userAnswerOption, 
                 isCorrect: isCorrectList[i],
                 reviewTag: reqDTOList[i].reviewTag, 
-                answerDate: reqDTOList[i].answerDate
+                answerDate: reqDTOList[i].answerDate as Date
             });
         };
         return domObjs;

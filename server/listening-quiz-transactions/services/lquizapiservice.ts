@@ -60,26 +60,22 @@ export async function generatePrompt(domObj: domein.NewLQuestionInfo): Promise<s
         1: {
             description: "写真描写問題",
             format: "1枚の写真について4つの短い説明文が読まれ、写真を最も適切に描写しているものを選ぶ",
-            requirements: "写真に写っている人物の動作、物の状態、場所の様子を正確に描写",
-            audioStructure: "4つの選択肢のみを読み上げ（A, B, C, Dの順序で）"
+            requirements: "写真に写っている人物の動作、物の状態、場所の様子を正確に描写"
         },
         2: {
             description: "応答問題", 
             format: "質問や文章に対する最も適切な応答を3つの選択肢から選ぶ",
-            requirements: "自然な会話の流れに沿った適切な応答",
-            audioStructure: "まず質問文、その後3つの選択肢を読み上げ（A, B, Cの順序で）"
+            requirements: "自然な会話の流れに沿った適切な応答"
         },
         3: {
             description: "会話問題",
             format: "2人または3人の会話を聞き、設問に対する答えを4つの選択肢から選ぶ",
-            requirements: "ビジネスや日常生活の場面での自然な会話",
-            audioStructure: "会話文 + 設問文 + 4つの選択肢を連続して読み上げ（A, B, C, Dの順序で）"
+            requirements: "ビジネスや日常生活の場面での自然な会話"
         },
         4: {
             description: "説明文問題",
             format: "短いトークを聞き、設問に対する答えを4つの選択肢から選ぶ", 
-            requirements: "アナウンス、広告、会議、講演などの実用的な内容",
-            audioStructure: "トーク内容 + 設問文 + 4つの選択肢を連続して読み上げ（A, B, C, Dの順序で）"
+            requirements: "アナウンス、広告、会議、講演などの実用的な内容"
         }
     };
 
@@ -120,19 +116,17 @@ export async function generatePrompt(domObj: domein.NewLQuestionInfo): Promise<s
         console.log(speakerAccentAndPatternText);
         // 出力フォーマットの生成
         const outputFormat = `
-{
-    "questions": [
-        ${speakerAccentAndPatternList.map((speaker, index) => `    // 問題${index + 1}: ${speaker.accent}英語使用
-        {
+[
+    ${speakerAccentAndPatternList.map((speaker, index) => `    // 問題${index + 1}: ${speaker.accent}英語使用
+    {
         "audioScript": "string (${domObj.sectionNumber === 2 ? '質問文' : domObj.sectionNumber === 4 ? 'トーク内容+設問文' : '問題文+設問文'}+選択肢の完全な読み上げ内容)",
         "jpnAudioScript": "string",
         "answerOption": ${domObj.sectionNumber === 2 ? '"A"|"B"|"C"' : '"A"|"B"|"C"|"D"'},
         "sectionNumber": ${domObj.sectionNumber},
         "explanation": "string",
         "speakerAccent": "${speaker.accent}"
-        }`).join(',\n')}
-    ]
-}
+    }`).join(',\n')}
+]
 `;
         console.log(outputFormat);
         return promptTemplate
@@ -141,7 +135,6 @@ export async function generatePrompt(domObj: domein.NewLQuestionInfo): Promise<s
             .replace(/\{\{spec\.description\}\}/g, spec.description)
             .replace(/\{\{spec\.format\}\}/g, spec.format)
             .replace(/\{\{spec\.requirements\}\}/g, spec.requirements)
-            .replace(/\{\{spec\.audioStructure\}\}/g, spec.audioStructure)
             .replace(/\{\{speakerAccentAndPatternList\}\}/g, speakerAccentAndPatternText)
             .replace(/\{\{outputFormat\}\}/g, outputFormat);
             
@@ -174,10 +167,12 @@ export async function callChatGPT(prompt: string): Promise<dto.GeneratedQuestion
                     }
                 ],
                 temperature: 0,
-                max_tokens: 2000,
-                response_format: { type: "json_object" }
-            })
+                max_tokens: 4000
+                //response_format: { type: "json_object" }
+            }),
+            signal: AbortSignal.timeout(200000)
         });
+        console.log("response: ", response);
         console.log('=== Step 2: response確認 ===');
         if (!response.ok) {
             throw new apierror.ChatGPTAPIError(`ChatGPT API Error: ${response.status} ${response.statusText}`);
@@ -185,8 +180,10 @@ export async function callChatGPT(prompt: string): Promise<dto.GeneratedQuestion
         
         console.log('=== Step 3: JSON parse開始 ===');
         const data = await response.json();//パース① HTTPレスポンスボディ（バイトストリーム）→ JavaScriptオブジェクト
+        console.log("parsed response: ", data);
         console.log('=== Step 4: OpenAI APIの応答構造検証 ===');
         const validatedData = schema.openAIResponseSchema.parse(data);//パース② OpenAI APIの応答構造を検証（choices配列の存在確認など）
+        console.log("validated data: ", validatedData);
 
         if (validatedData.choices.length === 0) {
             console.log('=== Step 4: 失敗 ===');
@@ -195,14 +192,23 @@ export async function callChatGPT(prompt: string): Promise<dto.GeneratedQuestion
 
         console.log('=== Step 5: content抽出 ===');
         const content = validatedData.choices[0].message.content; //ChatGPTが生成したクイズデータのJSON文字列を抽出
+        console.log("extraced quiz content: ", content);
+        
+        //文頭の「```json」 と 文末の「```」 を除去
+        let cleanedContent = content;
+        cleanedContent = cleanedContent.replace(/^```json\n?/, ''); // 先頭の```jsonを削除
+        cleanedContent = cleanedContent.replace(/\n?```$/, '');     // 末尾の```を削除
+
         console.log('=== Step 6: content JSON parse ===');
-        const parsedContent = JSON.parse(content);//パース③ 文字列をJSONオブジェクトに変換
+        const parsedContent = JSON.parse(cleanedContent);//パース③ 文字列をJSONオブジェクトに変換
+        console.log("parsed content: ", parsedContent);
 
         const dtoValidationResult = schema.generatedQuestionDataResDTOSchema.safeParse(parsedContent); //パース④ 予期されるDTO形式になっているか検証
         if (!dtoValidationResult.success) {
             console.error('DTO Validation Error:', dtoValidationResult.error);
             throw new apierror.ChatGPTAPIError('生成された問題データが期待する形式と一致しません');
         }
+        console.log("dto validation result: ", dtoValidationResult);
 
         return dtoValidationResult.data;
     } catch (error) {
