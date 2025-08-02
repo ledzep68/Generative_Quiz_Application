@@ -11,7 +11,7 @@ import * as domein from "../lquiz.domeinobject.ts";
 import * as dto from "../lquiz.dto.ts";
 import * as apierror from "../errors/lquiz.apierrors.ts";
 import * as schema from "../schemas/lquizapischema.ts";
-import {ACCENT_PATTERNS, TTS_VOICE_CONFIG} from "./services.types.ts";
+import {ACCENT_PATTERNS, TTS_VOICE_CONFIG, partSpecificScenarios} from "./services.types.ts";
 
 import { z } from "zod";
 import {GoogleAuth} from "google-auth-library";
@@ -36,10 +36,34 @@ export type SpeakerAccent = typeof ACCENT_PATTERNS[keyof typeof ACCENT_PATTERNS]
 
 //ランダム選択関数 リクエストされた問題数分のアクセントを返す
 export function getRandomSpeakerAccent(requestedNumOfQuizs: number): AccentType[] {
-    const accents = Object.keys(ACCENT_PATTERNS) as AccentType[];
-    return Array.from({ length: requestedNumOfQuizs }, () => 
-        accents[Math.floor(Math.random() * accents.length)]
-    );
+    // TOEIC実際の出題頻度を反映した重み設定
+    const accentWeights: Record<AccentType, number> = {
+        'American': 0.5,    // 50% - 最も高頻度
+        'British': 0.25,    // 25% - 中頻度
+        'Australian': 0.15, // 15% - 低頻度
+        'Canadian': 0.1     // 10% - 最低頻度
+    };
+    
+    // 累積重みの配列を作成
+    const accents = Object.keys(accentWeights) as AccentType[];
+    const weights = accents.map(accent => accentWeights[accent]);
+    const cumulativeWeights: number[] = [];
+    
+    weights.reduce((sum, weight) => {
+        sum += weight;
+        cumulativeWeights.push(sum);
+        return sum;
+    }, 0);
+    
+    // 重み付きランダム選択関数
+    function selectWeightedRandom(): AccentType {
+        const random = Math.random();
+        const index = cumulativeWeights.findIndex(weight => random <= weight);
+        return accents[index];
+    }
+    
+    // 指定された問題数分のアクセントを選択
+    return Array.from({ length: requestedNumOfQuizs }, () => selectWeightedRandom());
 };
 
 //問題生成関数 controllerで呼び出す
@@ -53,6 +77,7 @@ export async function generateLQuestionContent(domObj: domein.NewLQuestionInfo):
     return  generatedQuizDataList;
 };
 
+/*
 //問題生成プロンプトの生成
 export async function generatePrompt(domObj: domein.NewLQuestionInfo): Promise<string> {
 
@@ -136,6 +161,247 @@ export async function generatePrompt(domObj: domein.NewLQuestionInfo): Promise<s
             .replace(/\{\{spec\.format\}\}/g, spec.format)
             .replace(/\{\{spec\.requirements\}\}/g, spec.requirements)
             .replace(/\{\{speakerAccentAndPatternList\}\}/g, speakerAccentAndPatternText)
+            .replace(/\{\{outputFormat\}\}/g, outputFormat);
+            
+    } catch (error) {
+        console.error('プロンプト生成失敗:', error);
+        throw new apierror.PromptGenerateError('Promptの生成に失敗しました');
+    }
+};
+*/
+
+//状況設定のランダム選択関数
+function getRandomSettings(requestedNumOfLQuizs: number, sectionNumber: number) {
+   const scenarios = partSpecificScenarios[sectionNumber as keyof typeof partSpecificScenarios];
+   const shuffledScenarios = [...scenarios].sort(() => 0.5 - Math.random());
+   
+   return Array.from({ length: requestedNumOfLQuizs }, (_, i) => 
+       shuffledScenarios[i % shuffledScenarios.length]
+   );
+};
+
+export async function generatePrompt(domObj: domein.NewLQuestionInfo): Promise<string> {
+
+    const sectionSpecs = {
+        1: {
+            description: "写真描写問題",
+            format: "写真を最も適切に描写しているものを選ぶ",
+            requirements: "人物の動作、物の状態、場所の様子を正確に描写"
+        },
+        2: {
+            description: "応答問題", 
+            format: "質問に対する最も適切な応答を選ぶ",
+            requirements: "自然な会話の流れに沿った適切な応答"
+        },
+        3: {
+            description: "会話問題",
+            format: "会話を聞き、設問に答える",
+            requirements: "ビジネスや日常生活の場面での自然な会話"
+        },
+        4: {
+            description: "説明文問題",
+            format: "短いトークを聞き、設問に答える", 
+            requirements: "アナウンス、広告、会議、講演などの実用的な内容"
+        }
+    };
+
+    //audioScript構成の定義
+    const audioScriptStructures = {
+        1: {
+            structure: "4つの選択肢のみを連続して読み上げ",
+            rules: [
+                "各選択肢の前に「A」「B」「C」「D」は付けない",
+                "各選択肢の間には[短い間]を挿入"
+            ],
+            example: "A man is reading a newspaper. [短い間] Two women are walking. [短い間] Children are playing in the park. [短い間] A dog is running."
+        },
+        2: {
+            structure: "質問文 + [間] + 3つの選択肢を連続して読み上げ",
+            rules: [
+                "質問文と選択肢は異なる話者が担当",
+                "質問文: [Speaker1]が読み上げ",
+                "選択肢: [Speaker2]が読み上げ",
+                "選択肢の前に「A」「B」「C」は付けない",
+                "各選択肢の間には[短い間]を挿入"
+            ],
+            example: "[Speaker1] Where is the meeting room? [間] [Speaker2] Down the hallway to your right. [短い間] Yes, I'll attend the meeting. [短い間] The meeting starts at 3 PM."
+        },
+        3: {
+            structure: "会話文 + [間] + 設問文 + [間] + 4つの選択肢を連続して読み上げ",
+            rules: [
+                "複数の話者がいる場合は各発言に話者識別タグを挿入",
+                "話者交代時と各選択肢の間には適切な間隔を挿入",
+                "話者タグ形式: [Speaker1], [Speaker2], [Speaker3] など",
+                "設問文と選択肢: ナレーター（話者タグなし）が読み上げ"
+            ],
+            example: "[Speaker1] Good morning, Sarah. Did you finish the quarterly report? [間] [Speaker2] Almost done, Mike. I just need to add the sales figures. [間] [Speaker1] Great, we need to submit it by noon today. [間] What does Mike need to do? [間] Add the sales figures. [短い間] Submit the report. [短い間] Schedule a meeting. [短い間] Review the data."
+        },
+        4: {
+            structure: "トーク内容 + [間] + 設問文 + [間] + 4つの選択肢を連続して読み上げ",
+            rules: [
+                "アナウンス、プレゼンテーション、広告などの形式",
+                "トーク内容と設問・選択肢は異なる話者が担当",
+                "トーク内容: [Speaker1]が読み上げ",
+                "設問文と選択肢: [Speaker2]が読み上げ",
+                "各選択肢の間には[短い間]を挿入"
+            ],
+            example: "[Speaker1] Welcome to City Bank. We are pleased to announce our new mobile banking service. Starting next month, you can access your account anytime, anywhere. [間] [Speaker2] What is the main topic of this announcement? [間] A new mobile banking service. [短い間] A branch opening. [短い間] A customer survey. [短い間] A system maintenance."
+        }
+    };
+
+    //Part別ジャンル定義
+    const partGenres = {
+        1: [
+            "職場シーン: オフィス、会議室、工場での人物描写",
+            "交通・移動: 駅、空港、バス停、道路での場面",
+            "商業施設: 店舗、レストラン、銀行での活動",
+            "屋外活動: 公園、建設現場、イベント会場",
+            "日常生活: 家庭、病院、学校での様子"
+        ],
+        2: [
+            "業務確認: スケジュール、タスク、進捗に関する質問",
+            "場所・方向: 位置、道順、施設に関する質問",
+            "提案・依頼: 協力、参加、変更に関する質問",
+            "情報確認: 時間、費用、条件に関する質問",
+            "意見・評価: 感想、判断、選択に関する質問"
+        ],
+        3: [
+            "ビジネス会話: 会議、商談、プロジェクト相談",
+            "顧客対応: 苦情処理、注文、予約、問い合わせ",
+            "同僚間対話: 協力、情報共有、スケジュール調整",
+            "サービス利用: 修理依頼、予約変更、相談",
+            "学術・研修: 講義、セミナー、研究に関する会話"
+        ],
+        4: [
+            "アナウンス: 交通機関、施設、緊急事態",
+            "広告: 商品、サービス、イベント宣伝",
+            "会議・プレゼン: ビジネス報告、企画提案",
+            "講演: 学術、研修、セミナー",
+            "レポート: ニュース、調査結果、進捗報告",
+            "説明: 手順、ルール、システム解説",
+            "インタビュー: 専門家、経験者への質問",
+            "案内: 施設、イベント、サービスガイド"
+        ]
+    };
+
+    //jpnAudioScript形式定義
+    const jpnAudioScriptFormats = {
+        1: "選択肢: A. [選択肢1の日本語] B. [選択肢2の日本語] C. [選択肢3の日本語] D. [選択肢4の日本語]",
+        2: "質問文: [質問の日本語] 選択肢: A. [選択肢1の日本語] B. [選択肢2の日本語] C. [選択肢3の日本語]",
+        3: "会話文: [会話の日本語] 設問文: [設問の日本語] 選択肢: A. [選択肢1の日本語] B. [選択肢2の日本語] C. [選択肢3の日本語] D. [選択肢4の日本語]",
+        4: "トーク内容: [トークの日本語] 設問文: [設問の日本語] 選択肢: A. [選択肢1の日本語] B. [選択肢2の日本語] C. [選択肢3の日本語] D. [選択肢4の日本語]"
+    };
+
+    const answerDistributionRules = {
+        1: "制限なし",
+        2: "各選択肢は最大1問まで",
+        3: "各選択肢は最大2問まで",
+        4: "各選択肢は最大2問まで",
+        5: "各選択肢は最大2問まで",
+        6: "各選択肢は最大2問まで",
+        7: "各選択肢は最大2問まで",
+        8: "各選択肢は最大2問まで",
+        9: "各選択肢は2-3問まで",
+        10: "各選択肢は2-3問まで（A:3, B:3, C:2, D:2 のような分散）"
+    };
+
+    //単語数制約定義
+    const wordConstraints = {
+        1: { choices: "4-10語", total: "20-40語" },
+        2: { question: "5-12語", choices: "3-10語", total: "20-50語" },
+        3: { conversation: "60-100語", question: "8-12語", choices: "3-8語", total: "110-180語" },
+        4: { talk: "80-120語", question: "8-12語", choices: "3-8語", total: "130-200語" }
+    };
+
+    //話者の状況設定
+    const settings = getRandomSettings(domObj.requestedNumOfLQuizs, domObj.sectionNumber);
+    const settingVariationsText = settings.map((settings, index) => 
+        `**問題${index + 1}**: 場所「${settings.location}」、話者「${settings.speaker}」、状況「${settings.situation}」`
+    ).join('\n');
+
+    const answerDistributionRulesText = `- **${domObj.requestedNumOfLQuizs}問の場合**: ${answerDistributionRules[domObj.requestedNumOfLQuizs as keyof typeof answerDistributionRules]}` +
+   (domObj.sectionNumber === 2 ? `\n- **Part2（3選択肢）の場合**: 各選択肢（A、B、C）は上記ルールに準拠` : '');
+
+
+    const sectionNumber = domObj.sectionNumber as keyof typeof sectionSpecs;
+    const spec = sectionSpecs[sectionNumber];
+    const audioStructure = audioScriptStructures[sectionNumber];
+    const genres = partGenres[sectionNumber];
+    const jpnFormat = jpnAudioScriptFormats[sectionNumber];
+    const constraints = wordConstraints[sectionNumber];
+
+    //既存のspeaker処理
+    let speakerAccentList: AccentType[];
+    let accentPatternList: SpeakerAccent[];
+    if (domObj.speakerAccent) {
+        speakerAccentList = [domObj.speakerAccent];
+        accentPatternList = [ACCENT_PATTERNS[domObj.speakerAccent]];
+    } else {
+        speakerAccentList = getRandomSpeakerAccent(domObj.requestedNumOfLQuizs as number);
+        accentPatternList = speakerAccentList.map((accent: AccentType) => ACCENT_PATTERNS[accent]);
+    }
+
+    const speakerAccentAndPatternList = Array.from({ length: domObj.requestedNumOfLQuizs as number }, (_, i) => {
+        return ({
+            accent: speakerAccentList[i % speakerAccentList.length],
+            pattern: accentPatternList[i % accentPatternList.length]
+        });
+    });
+
+    try {
+        const __filename = fileURLToPath(import.meta.url);
+        const __dirname = path.dirname(__filename);
+        const promptPath = path.join(__dirname, 'prompts', 'prompt.md');
+        const promptTemplate = await fs.readFile(promptPath, 'utf8');
+
+        const speakerAccentAndPatternText = speakerAccentAndPatternList.map((speaker, index) => `
+            **問題${index + 1}の話者:**
+            - 英語種別: ${speaker.pattern.description} (${speaker.accent})
+            - 発音特徴: ${speaker.pattern.characteristics.slice(0, 2).join(', ')}(explanation生成用)
+            - 語彙の特徴: ${speaker.pattern.vocabulary.slice(0, 2).join(', ')}
+            - 表現の特徴: ${speaker.pattern.expressions.slice(0, 2).join(', ')}
+            `).join('');
+
+        const audioStructureText = `
+            - **構成**: ${audioStructure.structure}
+            - **ルール**: 
+            ${audioStructure.rules.map(rule => `  - ${rule}`).join('\n')}
+            - **例**: "${audioStructure.example}"
+            `;
+
+        const genresText = genres.map((genre, index) => `${index + 1}. **${genre}`).join('\n');
+
+        const constraintsText = Object.entries(constraints)
+            .map(([key, value]) => `- **${key}**: ${value}`)
+            .join('\n');
+
+        const outputFormat = `
+[
+    ${speakerAccentAndPatternList.map((speaker, index) => `    // 問題${index + 1}: ${speaker.accent}英語使用
+    {
+        "audioScript": "string (${sectionNumber === 2 ? '質問文' : sectionNumber === 4 ? 'トーク内容+設問文' : '問題文+設問文'}+選択肢の完全な読み上げ内容)",
+        "jpnAudioScript": "string",
+        "answerOption": ${sectionNumber === 2 ? '"A"|"B"|"C"' : '"A"|"B"|"C"|"D"'},
+        "sectionNumber": ${sectionNumber},
+        "explanation": "string",
+        "speakerAccent": "${speaker.accent}"
+    }`).join(',\n')}
+]
+`;
+
+        return promptTemplate
+            .replace(/\{\{sectionNumber\}\}/g, sectionNumber.toString())
+            .replace(/\{\{requestedNumOfQuizs\}\}/g, domObj.requestedNumOfLQuizs.toString())
+            .replace(/\{\{spec\.description\}\}/g, spec.description)
+            .replace(/\{\{spec\.format\}\}/g, spec.format)
+            .replace(/\{\{spec\.requirements\}\}/g, spec.requirements)
+            .replace(/\{\{speakerAccentAndPatternList\}\}/g, speakerAccentAndPatternText)
+            .replace(/\{\{audioStructure\}\}/g, audioStructureText)
+            .replace(/\{\{partGenres\}\}/g, genresText)
+            .replace(/\{\{jpnAudioScriptFormat\}\}/g, jpnFormat)
+            .replace(/\{\{wordConstraints\}\}/g, constraintsText)
+            .replace(/\{\{settingVariations\}\}/g, settingVariationsText)
+            .replace(/\{\{answerDistributionRules\}\}/g, answerDistributionRulesText)
             .replace(/\{\{outputFormat\}\}/g, outputFormat);
             
     } catch (error) {
