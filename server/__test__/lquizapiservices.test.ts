@@ -55,14 +55,14 @@ describe('B_generatePrompt', () => {
         };
         const result = await service.generatePrompt(mockDomObj);
         console.log(result);
-        expect(result).toContain("TOEICリスニング Part3 の練習問題を5問生成してください。");
-        expect(result).toContain("練習問題を5問生成");
-        expect(result).toContain("**出題方法**: 2人または3人の会話を聞き、設問に対する答えを4つの選択肢から選ぶ");
-        expect(result).toContain("問題1の話者:");
-        expect(result).toContain("問題2の話者:");
-        expect(result).toContain("問題3の話者:");
-        expect(result).toContain("問題4の話者:");
-        expect(result).toContain("問題5の話者:");
+        expect(result).toContain("Generate 5 practice problems for TOEIC Listening Part 3.");
+        expect(result).toContain("Generate 5 practice problems");
+        expect(result).toContain("**Question Method**: Listen to conversations and answer questions");
+        expect(result).toContain("Speaker for Question 1:");
+        expect(result).toContain("Speaker for Question 2:");
+        expect(result).toContain("Speaker for Question 3:");
+        expect(result).toContain("Speaker for Question 4:");
+        expect(result).toContain("Speaker for Question 5:");
     });
     test("B02_part2プロンプト生成", async () => {
         expect.assertions(6);
@@ -73,12 +73,12 @@ describe('B_generatePrompt', () => {
         };
         const result = await service.generatePrompt(mockDomObj);
         console.log(result);
-        expect(result).toContain("TOEICリスニング Part2 の練習問題を10問生成してください。");
-        expect(result).toContain("練習問題を10問生成");
-        expect(result).toContain("**要件**: 自然な会話の流れに沿った適切な応答");
-        expect(result).toContain("問題1の話者:");
-        expect(result).toContain("問題2の話者:");
-        expect(result).toContain("問題3の話者:")
+        expect(result).toContain("Generate 10 practice problems for TOEIC Listening Part 2.");
+        expect(result).toContain("Generate 10 practice problems");
+        expect(result).toContain("**Requirements**: Appropriate responses that follow natural conversation flow");
+        expect(result).toContain("Speaker for Question 1:");
+        expect(result).toContain("Speaker for Question 2:");
+        expect(result).toContain("Speaker for Question 3:")
     });*/
     test("B03_part4プロンプト生成", async () => {
         expect.assertions(5);
@@ -89,11 +89,11 @@ describe('B_generatePrompt', () => {
         };
         const result = await service.generatePrompt(mockDomObj);
         console.log(result);
-        expect(result).toContain("TOEICリスニング Part4 の練習問題を5問生成してください。");
-        expect(result).toContain("練習問題を5問生成");
-        expect(result).toContain("問題1の話者:");
-        expect(result).toContain("問題2の話者:");
-        expect(result).toContain("問題5の話者:")
+        expect(result).toContain("Generate 5 practice problems for TOEIC Listening Part 4.");
+        expect(result).toContain("Generate 5 practice problems");
+        expect(result).toContain("Speaker for Question 1:");
+        expect(result).toContain("Speaker for Question 2:");
+        expect(result).toContain("Speaker for Question 5:")
     });
     /*
     test("B03_part4プロンプト生成_speakerAccent指定", async () => {
@@ -106,12 +106,12 @@ describe('B_generatePrompt', () => {
         };
         const result = await service.generatePrompt(mockDomObj);
         console.log(result);
-        expect(result).toContain("TOEICリスニング Part4 の練習問題を5問生成してください。");
-        expect(result).toContain("練習問題を5問生成");
+        expect(result).toContain("Generate 5 practice problems for TOEIC Listening Part 4.");
+        expect(result).toContain("Generate 5 practice problems");
         expect(result).toContain("British");
-        expect(result).toContain("問題1の話者:");
-        expect(result).toContain("問題2の話者:");
-        expect(result).toContain("問題5の話者:")
+        expect(result).toContain("Speaker for Question 1:");
+        expect(result).toContain("Speaker for Question 2:");
+        expect(result).toContain("Speaker for Question 5:")
     });
     */
 });

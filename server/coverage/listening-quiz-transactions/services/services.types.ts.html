@@ -677,16 +677,16 @@
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span></td><td class="text"><pre class="prettyprint lang-js">export const ACCENT_PATTERNS = {
    American: {
-       description: "アメリカ英語",
+       description: "American English",
        characteristics: [
-           "Rhoticity: 語尾のrを明確に発音 (car, better, quarter)",
-           "Flat 'a': cat, hat, last等で平坦な'a'音",
-           "T-flapping: better → 'bedder', water → 'wadder'のような音",
-           "語尾の't'の弱化: mountain → 'moun'in', important → 'impor'ant'",
-           "Cot-caught merger: hotとhaughtが同じ音に聞こえる",
-           "Dark L: 語尾のLが暗い音になる (call, will)",
-           "Schwa reduction: unstressed syllablesで母音が曖昧音に",
-           "Stress-timed rhythm: 強勢のある音節を基準とするリズム"
+           "Rhoticity: Clear pronunciation of final 'r' (car, better, quarter)",
+           "Flat 'a': Flat 'a' sound in cat, hat, last, etc.",
+           "T-flapping: Sounds like better → 'bedder', water → 'wadder'",
+           "Final 't' weakening: mountain → 'moun'in', important → 'impor'ant'",
+           "Cot-caught merger: Hot and haught sound the same",
+           "Dark L: Final L becomes a dark sound (call, will)",
+           "Schwa reduction: Vowels become schwa in unstressed syllables",
+           "Stress-timed rhythm: Rhythm based on stressed syllables"
        ],
        vocabulary: [
            "elevator (not lift)", "apartment (not flat)", "truck (not lorry)", "gas (not petrol)",
@@ -703,16 +703,16 @@
        ]
    },
    Canadian: {
-       description: "カナダ英語",
+       description: "Canadian English",
        characteristics: [
-           "Canadian raising: about → 'aboot', house → 'hoose'のような音",
-           "アメリカ英語に近いがイギリス英語の語彙・スペルも使用",
-           "語尾の'eh'の使用: It's cold, eh?",
-           "'ou'音の特徴的な発音: out, about, house",
-           "Bag vowel: bag → 'bayg'のような音",
-           "Canadian shift: bit → 'bet', bet → 'bat'の方向への音変化",
-           "Moderate rhoticity: アメリカほど強くないR音",
-           "Mixed spelling: colour, centre等のイギリス式スペル使用"
+           "Canadian raising: Sounds like about → 'aboot', house → 'hoose'",
+           "Similar to American English but uses British vocabulary and spelling",
+           "Use of final 'eh': It's cold, eh?",
+           "Distinctive 'ou' pronunciation: out, about, house",
+           "Bag vowel: Sounds like bag → 'bayg'",
+           "Canadian shift: Sound changes toward bit → 'bet', bet → 'bat'",
+           "Moderate rhoticity: R sound not as strong as American",
+           "Mixed spelling: Uses British spelling like colour, centre"
        ],
        vocabulary: [
            "washroom (not bathroom/toilet)", "toque (winter hat)", "loonie (one dollar coin)",
@@ -730,14 +730,14 @@
        ]
    },
    British: {
-       description: "イギリス英語",
+       description: "British English",
        characteristics: [
-           "Non-rhotic: 語尾のrを発音しない (car, better, quarter)",
-           "Received Pronunciation (RP)の特徴: clear articulation",
-           "'a'音の長さの違い: bath → 'baath', dance → 'daance'",
+           "Non-rhotic: Final 'r' not pronounced (car, better, quarter)",
+           "Received Pronunciation (RP) features: clear articulation",
+           "'a' sound length differences: bath → 'baath', dance → 'daance'",
            "Clear distinction of short and long vowels",
            "Glottal stop: better → 'be'er', water → 'wa'er'",
-           "Dark L weakening: 語尾のLが弱くなる、時に消失",
+           "Dark L weakening: Final L weakens, sometimes disappears",
            "Linking R: idea of → 'idea-r-of'",
            "Yod coalescence: tune → 'chune', duke → 'juke'"
        ],
@@ -757,16 +757,16 @@
        ]
    },
    Australian: {
-       description: "オーストラリア英語",
+       description: "Australian English",
        characteristics: [
-           "Vowel shifts: 'day' → 'die', 'night' → 'noight'のような音",
-           "Rising intonation: 平叙文でも語尾が上がる (High Rising Terminal)",
-           "Short vowel changes: 'bit' → 'bet', 'bet' → 'bat'のような音変化",
+           "Vowel shifts: Sounds like 'day' → 'die', 'night' → 'noight'",
+           "Rising intonation: Even declarative sentences end with rising tone (High Rising Terminal)",
+           "Short vowel changes: Sound changes like 'bit' → 'bet', 'bet' → 'bat'",
            "Consonant reduction: 'going' → 'goin'', 'nothing' → 'nothin''",
-           "Broad, General, Cultivated の3つのアクセントレベル",
+           "Three accent levels: Broad, General, Cultivated",
            "Yod-dropping: tune → 'toon', duke → 'dook'",
-           "L-vocalization: 語尾のLが母音化 (milk → 'miok')",
-           "Non-rhotic tendency: イギリス英語的な特徴"
+           "L-vocalization: Final L becomes vowel-like (milk → 'miok')",
+           "Non-rhotic tendency: British English-like features"
        ],
        vocabulary: [
            "arvo (afternoon)", "brekkie (breakfast)", "uni (university)", "mate (friend)",
@@ -825,161 +825,161 @@ export const TTS_VOICE_CONFIG = {
 export const partSpecificScenarios = {
    1: [ // 写真描写問題
        // 職場シーン: オフィス、会議室、工場での人物描写
-       { location: "オフィス", speaker: "社員", situation: "デスクワーク中" },
-       { location: "オフィス", speaker: "管理職", situation: "書類確認中" },
-       { location: "会議室", speaker: "社員", situation: "プレゼン準備中" },
-       { location: "会議室", speaker: "役員", situation: "会議参加中" },
-       { location: "工場", speaker: "技術者", situation: "機械点検中" },
-       { location: "工場", speaker: "作業員", situation: "製造作業中" },
+       { location: "Office", speaker: "Employee", situation: "Working at desk" },
+       { location: "Office", speaker: "Manager", situation: "Reviewing documents" },
+       { location: "Meeting room", speaker: "Employee", situation: "Preparing presentation" },
+       { location: "Meeting room", speaker: "Executive", situation: "Participating in meeting" },
+       { location: "Factory", speaker: "Technician", situation: "Inspecting machinery" },
+       { location: "Factory", speaker: "Worker", situation: "Manufacturing work" },
        
        // 交通・移動: 駅、空港、バス停、道路での場面
-       { location: "駅", speaker: "乗客", situation: "電車待ち中" },
-       { location: "駅", speaker: "駅員", situation: "案内業務中" },
-       { location: "空港", speaker: "乗客", situation: "搭乗待ち中" },
-       { location: "空港", speaker: "案内係", situation: "チェックイン対応中" },
-       { location: "バス停", speaker: "乗客", situation: "バス待ち中" },
-       { location: "道路", speaker: "歩行者", situation: "横断中" },
+       { location: "Station", speaker: "Passenger", situation: "Waiting for train" },
+       { location: "Station", speaker: "Station staff", situation: "Providing guidance" },
+       { location: "Airport", speaker: "Passenger", situation: "Waiting for boarding" },
+       { location: "Airport", speaker: "Information desk", situation: "Handling check-in" },
+       { location: "Bus stop", speaker: "Passenger", situation: "Waiting for bus" },
+       { location: "Road", speaker: "Pedestrian", situation: "Crossing" },
        
        // 商業施設: 店舗、レストラン、銀行での活動
-       { location: "デパート", speaker: "客", situation: "買い物中" },
-       { location: "デパート", speaker: "店員", situation: "接客中" },
-       { location: "レストラン", speaker: "客", situation: "食事中" },
-       { location: "レストラン", speaker: "ウェイター", situation: "注文受付中" },
-       { location: "銀行", speaker: "客", situation: "手続き中" },
-       { location: "銀行", speaker: "窓口係", situation: "応対中" },
+       { location: "Department store", speaker: "Customer", situation: "Shopping" },
+       { location: "Department store", speaker: "Staff", situation: "Customer service" },
+       { location: "Restaurant", speaker: "Customer", situation: "Dining" },
+       { location: "Restaurant", speaker: "Waiter", situation: "Taking orders" },
+       { location: "Bank", speaker: "Customer", situation: "Processing procedures" },
+       { location: "Bank", speaker: "Teller", situation: "Customer service" },
        
        // 屋外活動: 公園、建設現場、イベント会場
-       { location: "公園", speaker: "来園者", situation: "散歩中" },
-       { location: "公園", speaker: "子供", situation: "遊具使用中" },
-       { location: "建設現場", speaker: "作業員", situation: "建設作業中" },
-       { location: "建設現場", speaker: "監督", situation: "現場確認中" },
-       { location: "イベント会場", speaker: "参加者", situation: "イベント参加中" },
-       { location: "イベント会場", speaker: "スタッフ", situation: "会場準備中" },
+       { location: "Park", speaker: "Visitor", situation: "Walking" },
+       { location: "Park", speaker: "Child", situation: "Using playground equipment" },
+       { location: "Construction site", speaker: "Worker", situation: "Construction work" },
+       { location: "Construction site", speaker: "Supervisor", situation: "Site inspection" },
+       { location: "Event venue", speaker: "Participant", situation: "Attending event" },
+       { location: "Event venue", speaker: "Staff", situation: "Venue preparation" },
        
-       // 日常生活: 家庭、病院、学校での様子
-       { location: "病院", speaker: "患者", situation: "診察待ち中" },
-       { location: "病院", speaker: "医師", situation: "診察中" },
-       { location: "学校", speaker: "学生", situation: "授業受講中" },
-       { location: "学校", speaker: "教師", situation: "授業中" }
+       // Daily life: Home, hospital, school situations
+       { location: "Hospital", speaker: "Patient", situation: "Waiting for examination" },
+       { location: "Hospital", speaker: "Doctor", situation: "Conducting examination" },
+       { location: "School", speaker: "Student", situation: "Attending class" },
+       { location: "School", speaker: "Teacher", situation: "Teaching class" }
    ],
    
-   2: [ // 応答問題
-       // 業務確認: スケジュール、タスク、進捗に関する質問
-       { location: "オフィス", speaker: "社員", situation: "スケジュール確認" },
-       { location: "オフィス", speaker: "管理職", situation: "タスク確認" },
-       { location: "会議室", speaker: "チームリーダー", situation: "進捗確認" },
-       { location: "工場", speaker: "現場監督", situation: "作業進捗確認" },
+   2: [ // Response problems
+       // Work confirmation: Schedule, task, progress-related questions
+       { location: "Office", speaker: "Employee", situation: "Schedule confirmation" },
+       { location: "Office", speaker: "Manager", situation: "Task confirmation" },
+       { location: "Meeting room", speaker: "Team leader", situation: "Progress confirmation" },
+       { location: "Factory", speaker: "Site supervisor", situation: "Work progress confirmation" },
        
-       // 場所・方向: 位置、道順、施設に関する質問
-       { location: "駅", speaker: "乗客", situation: "道順質問" },
-       { location: "空港", speaker: "旅行者", situation: "施設案内質問" },
-       { location: "病院", speaker: "来院者", situation: "場所確認" },
-       { location: "大学", speaker: "学生", situation: "教室案内質問" },
-       { location: "ホテル", speaker: "宿泊客", situation: "施設案内質問" },
+       // Location/Direction: Position, directions, facility-related questions
+       { location: "Station", speaker: "Passenger", situation: "Asking for directions" },
+       { location: "Airport", speaker: "Traveler", situation: "Facility information inquiry" },
+       { location: "Hospital", speaker: "Visitor", situation: "Location confirmation" },
+       { location: "University", speaker: "Student", situation: "Classroom direction inquiry" },
+       { location: "Hotel", speaker: "Guest", situation: "Facility information inquiry" },
        
-       // 提案・依頼: 協力、参加、変更に関する質問
-       { location: "オフィス", speaker: "同僚", situation: "協力依頼" },
-       { location: "会議室", speaker: "管理職", situation: "参加依頼" },
-       { location: "大学", speaker: "教授", situation: "研究協力依頼" },
-       { location: "イベント会場", speaker: "主催者", situation: "参加依頼" },
+       // Suggestions/Requests: Cooperation, participation, change-related questions
+       { location: "Office", speaker: "Colleague", situation: "Request for cooperation" },
+       { location: "Meeting room", speaker: "Manager", situation: "Participation request" },
+       { location: "University", speaker: "Professor", situation: "Research cooperation request" },
+       { location: "Event venue", speaker: "Organizer", situation: "Participation invitation" },
        
-       // 情報確認: 時間、費用、条件に関する質問
-       { location: "レストラン", speaker: "客", situation: "料金確認" },
-       { location: "ホテル", speaker: "宿泊客", situation: "チェックイン時間確認" },
-       { location: "銀行", speaker: "客", situation: "手数料確認" },
-       { location: "薬局", speaker: "患者", situation: "服薬条件確認" },
+       // Information confirmation: Time, cost, condition-related questions
+       { location: "Restaurant", speaker: "Customer", situation: "Price confirmation" },
+       { location: "Hotel", speaker: "Guest", situation: "Check-in time confirmation" },
+       { location: "Bank", speaker: "Customer", situation: "Fee confirmation" },
+       { location: "Pharmacy", speaker: "Patient", situation: "Medication condition confirmation" },
        
-       // 意見・評価: 感想、判断、選択に関する質問
-       { location: "レストラン", speaker: "友人", situation: "料理評価質問" },
-       { location: "映画館", speaker: "友人", situation: "映画感想質問" },
-       { location: "オフィス", speaker: "上司", situation: "提案評価質問" },
-       { location: "大学", speaker: "教授", situation: "研究評価質問" }
+       // Opinions/Evaluation: Impressions, judgment, choice-related questions
+       { location: "Restaurant", speaker: "Friend", situation: "Food evaluation question" },
+       { location: "Movie theater", speaker: "Friend", situation: "Movie impression question" },
+       { location: "Office", speaker: "Boss", situation: "Proposal evaluation question" },
+       { location: "University", speaker: "Professor", situation: "Research evaluation question" }
    ],
    
-   3: [ // 会話問題
-       // ビジネス会話: 会議、商談、プロジェクト相談
-       { location: "会議室", speaker: "管理職", situation: "定例会議" },
-       { location: "オフィス", speaker: "営業", situation: "商談" },
-       { location: "会議室", speaker: "プロジェクトマネージャー", situation: "プロジェクト相談" },
-       { location: "銀行", speaker: "融資担当", situation: "融資相談" },
+   3: [ // Conversation problems
+       // Business conversations: Meetings, negotiations, project consultations
+       { location: "Meeting room", speaker: "Manager", situation: "Regular meeting" },
+       { location: "Office", speaker: "Sales", situation: "Business negotiation" },
+       { location: "Meeting room", speaker: "Project manager", situation: "Project consultation" },
+       { location: "Bank", speaker: "Loan officer", situation: "Loan consultation" },
        
-       // 顧客対応: 苦情処理、注文、予約、問い合わせ
-       { location: "コールセンター", speaker: "オペレーター", situation: "苦情処理" },
-       { location: "レストラン", speaker: "店員", situation: "注文受付" },
-       { location: "ホテル", speaker: "受付", situation: "予約対応" },
-       { location: "病院", speaker: "受付", situation: "診察予約" },
-       { location: "旅行代理店", speaker: "スタッフ", situation: "旅行相談" },
+       // Customer service: Complaint handling, orders, reservations, inquiries
+       { location: "Call center", speaker: "Operator", situation: "Complaint handling" },
+       { location: "Restaurant", speaker: "Staff", situation: "Order taking" },
+       { location: "Hotel", speaker: "Reception", situation: "Reservation handling" },
+       { location: "Hospital", speaker: "Reception", situation: "Appointment booking" },
+       { location: "Travel agency", speaker: "Staff", situation: "Travel consultation" },
        
-       // 同僚間対話: 協力、情報共有、スケジュール調整
-       { location: "オフィス", speaker: "同僚", situation: "協力相談" },
-       { location: "オフィス", speaker: "チームメンバー", situation: "情報共有" },
-       { location: "会議室", speaker: "プロジェクトメンバー", situation: "スケジュール調整" },
-       { location: "研究所", speaker: "研究員", situation: "研究情報共有" },
+       // Colleague dialogue: Cooperation, information sharing, schedule coordination
+       { location: "Office", speaker: "Colleague", situation: "Cooperation consultation" },
+       { location: "Office", speaker: "Team member", situation: "Information sharing" },
+       { location: "Meeting room", speaker: "Project member", situation: "Schedule coordination" },
+       { location: "Research lab", speaker: "Researcher", situation: "Research information sharing" },
        
-       // サービス利用: 修理依頼、予約変更、相談
-       { location: "修理工場", speaker: "客", situation: "修理依頼" },
-       { location: "病院", speaker: "患者", situation: "予約変更" },
-       { location: "法律事務所", speaker: "相談者", situation: "法律相談" },
-       { location: "不動産会社", speaker: "顧客", situation: "物件相談" },
+       // Service usage: Repair requests, reservation changes, consultations
+       { location: "Repair shop", speaker: "Customer", situation: "Repair request" },
+       { location: "Hospital", speaker: "Patient", situation: "Appointment change" },
+       { location: "Law firm", speaker: "Client", situation: "Legal consultation" },
+       { location: "Real estate office", speaker: "Customer", situation: "Property consultation" },
        
-       // 学術・研修: 講義、セミナー、研究に関する会話
-       { location: "大学", speaker: "教授", situation: "講義討論" },
-       { location: "セミナー会場", speaker: "講師", situation: "研修指導" },
-       { location: "研究所", speaker: "研究者", situation: "研究討論" },
-       { location: "図書館", speaker: "司書", situation: "資料相談" }
+       // Academic/Training: Lectures, seminars, research-related conversations
+       { location: "University", speaker: "Professor", situation: "Lecture discussion" },
+       { location: "Seminar venue", speaker: "Instructor", situation: "Training guidance" },
+       { location: "Research lab", speaker: "Researcher", situation: "Research discussion" },
+       { location: "Library", speaker: "Librarian", situation: "Reference consultation" }
    ],
    
-   4: [ // 説明文問題
-       // アナウンス: 交通機関、施設、緊急事態
-       { location: "空港", speaker: "空港職員", situation: "搭乗案内" },
-       { location: "駅", speaker: "駅員", situation: "運行情報" },
-       { location: "病院", speaker: "看護師", situation: "診察案内" },
-       { location: "デパート", speaker: "店内放送", situation: "営業案内" },
-       { location: "オフィス", speaker: "防災担当", situation: "避難訓練案内" },
-       { location: "学校", speaker: "事務員", situation: "緊急連絡" },
+   4: [ // Explanatory text problems
+       // Announcements: Transportation, facilities, emergencies
+       { location: "Airport", speaker: "Airport staff", situation: "Boarding announcement" },
+       { location: "Station", speaker: "Station staff", situation: "Service information" },
+       { location: "Hospital", speaker: "Nurse", situation: "Examination guidance" },
+       { location: "Department store", speaker: "Store announcement", situation: "Business hours information" },
+       { location: "Office", speaker: "Disaster prevention officer", situation: "Evacuation drill announcement" },
+       { location: "School", speaker: "Administrative staff", situation: "Emergency notice" },
        
-       // 広告: 商品、サービス、イベント宣伝
-       { location: "ラジオ局", speaker: "アナウンサー", situation: "商品広告" },
-       { location: "テレビ局", speaker: "ナレーター", situation: "サービス紹介" },
-       { location: "イベント会場", speaker: "司会者", situation: "イベント宣伝" },
-       { location: "展示会場", speaker: "説明員", situation: "製品紹介" },
+       // Advertising: Product, service, event promotion
+       { location: "Radio station", speaker: "Announcer", situation: "Product advertisement" },
+       { location: "TV station", speaker: "Narrator", situation: "Service introduction" },
+       { location: "Event venue", speaker: "Host", situation: "Event promotion" },
+       { location: "Exhibition hall", speaker: "Demonstrator", situation: "Product introduction" },
        
-       // 会議・プレゼン: ビジネス報告、企画提案
-       { location: "会議室", speaker: "部長", situation: "四半期報告" },
-       { location: "プレゼン会場", speaker: "営業部", situation: "企画提案" },
-       { location: "株主総会会場", speaker: "社長", situation: "業績報告" },
-       { location: "オフィス", speaker: "プロジェクトリーダー", situation: "進捗報告" },
+       // Meetings/Presentations: Business reports, project proposals
+       { location: "Meeting room", speaker: "Department head", situation: "Quarterly report" },
+       { location: "Presentation venue", speaker: "Sales department", situation: "Project proposal" },
+       { location: "Shareholders meeting venue", speaker: "CEO", situation: "Performance report" },
+       { location: "Office", speaker: "Project leader", situation: "Progress report" },
        
-       // 講演: 学術、研修、セミナー
-       { location: "大学", speaker: "教授", situation: "学術講演" },
-       { location: "研修センター", speaker: "講師", situation: "技術研修" },
-       { location: "セミナー会場", speaker: "専門家", situation: "専門セミナー" },
-       { location: "コンベンションセンター", speaker: "基調講演者", situation: "基調講演" },
+       // Lectures: Academic, training, seminars
+       { location: "University", speaker: "Professor", situation: "Academic lecture" },
+       { location: "Training center", speaker: "Instructor", situation: "Technical training" },
+       { location: "Seminar venue", speaker: "Expert", situation: "Professional seminar" },
+       { location: "Convention center", speaker: "Keynote speaker", situation: "Keynote speech" },
        
-       // レポート: ニュース、調査結果、進捗報告
-       { location: "放送局", speaker: "記者", situation: "ニュース報告" },
-       { location: "研究所", speaker: "研究員", situation: "調査結果発表" },
-       { location: "会議室", speaker: "調査担当", situation: "市場調査報告" },
-       { location: "オフィス", speaker: "マネージャー", situation: "月次報告" },
+       // Reports: News, survey results, progress reports
+       { location: "Broadcasting station", speaker: "Reporter", situation: "News report" },
+       { location: "Research lab", speaker: "Researcher", situation: "Survey results presentation" },
+       { location: "Meeting room", speaker: "Survey officer", situation: "Market research report" },
+       { location: "Office", speaker: "Manager", situation: "Monthly report" },
        
-       // 説明: 手順、ルール、システム解説
-       { location: "研修室", speaker: "インストラクター", situation: "操作手順説明" },
-       { location: "オフィス", speaker: "システム管理者", situation: "システム説明" },
-       { location: "銀行", speaker: "窓口係", situation: "手続き説明" },
-       { location: "病院", speaker: "薬剤師", situation: "服薬指導" },
+       // Explanations: Procedures, rules, system explanations
+       { location: "Training room", speaker: "Instructor", situation: "Procedure explanation" },
+       { location: "Office", speaker: "System administrator", situation: "System explanation" },
+       { location: "Bank", speaker: "Teller", situation: "Procedure explanation" },
+       { location: "Hospital", speaker: "Pharmacist", situation: "Medication guidance" },
        
-       // インタビュー: 専門家、経験者への質問
-       { location: "テレビ局", speaker: "インタビュアー", situation: "専門家インタビュー" },
-       { location: "ラジオ局", speaker: "司会者", situation: "ゲストインタビュー" },
-       { location: "雑誌社", speaker: "編集者", situation: "取材インタビュー" },
-       { location: "大学", speaker: "学生記者", situation: "教授インタビュー" },
+       // Interviews: Questions to experts, experienced persons
+       { location: "TV station", speaker: "Interviewer", situation: "Expert interview" },
+       { location: "Radio station", speaker: "Host", situation: "Guest interview" },
+       { location: "Magazine company", speaker: "Editor", situation: "News interview" },
+       { location: "University", speaker: "Student reporter", situation: "Professor interview" },
        
-       // 案内: 施設、イベント、サービスガイド
-       { location: "博物館", speaker: "ガイド", situation: "展示案内" },
-       { location: "観光地", speaker: "観光ガイド", situation: "観光案内" },
-       { location: "ホテル", speaker: "コンシェルジュ", situation: "施設案内" },
-       { location: "空港", speaker: "案内係", situation: "空港サービス案内" },
-       { location: "病院", speaker: "案内係", situation: "病院施設案内" }
+       // Guidance: Facility, event, service guides
+       { location: "Museum", speaker: "Guide", situation: "Exhibition guidance" },
+       { location: "Tourist site", speaker: "Tour guide", situation: "Tourism guidance" },
+       { location: "Hotel", speaker: "Concierge", situation: "Facility guidance" },
+       { location: "Airport", speaker: "Information staff", situation: "Airport service guidance" },
+       { location: "Hospital", speaker: "Information staff", situation: "Hospital facility guidance" }
    ]
 };</pre></td></tr></table></pre>
 
@@ -988,7 +988,7 @@ export const partSpecificScenarios = {
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2025-08-02T11:04:02.871Z
+                at 2025-08-03T07:41:38.262Z
             </div>
         <script src="../../prettify.js"></script>
         <script>

@@ -1,227 +1,302 @@
-# リスニング問題生成プロンプト
+# TOEIC Listening Problem Generation Prompt (Content-First Integrated Version)
 
-TOEICリスニング Part{{sectionNumber}} の練習問題を{{requestedNumOfQuizs}}問生成してください。
+Generate {{requestedNumOfQuizs}} practice problems for TOEIC Listening Part {{sectionNumber}}.
 
-## Part{{sectionNumber}} 仕様
+## Part {{sectionNumber}} Specifications
 
-- **問題形式**: {{spec.description}}
-- **出題方法**: {{spec.format}}
-- **要件**: {{spec.requirements}}
+- **Problem Format**: {{spec.description}}
+- **Question Method**: {{spec.format}}
+- **Requirements**: {{spec.requirements}}
 
 {{speakerAccentAndPatternList}}
 
-## audioScript構成
+## Content Topics and Answer Option Specification (CRITICAL - MUST FOLLOW EXACTLY)
 
+{{contentTopicInstruction}}
+
+### Critical Generation Procedure (MANDATORY)
+1. **FIRST**: Generate speech content focusing on the specified topic above
+2. **SECOND**: Create the question that naturally relates to that content
+3. **THIRD**: Design the correct choice to directly answer the question based on the content
+4. **FOURTH**: Place the correct choice content in the specified position ({{answerOptionPattern}})
+5. **FIFTH**: Create 3 misleading but plausible incorrect choices for other positions
+6. **SIXTH**: Verify that content and correct answer are logically aligned
+
+### Logical Consistency Verification (MANDATORY)
+**Before finalizing each problem, verify:**
+- ✅ Does the speech content actually discuss the specified topic?
+- ✅ Does the question naturally arise from the content?
+- ✅ Does the correct choice accurately reflect what was discussed in the content?
+- ✅ Are the incorrect choices plausible but clearly wrong based on the content?
+
+**Reject and regenerate if any verification fails**
+
+## Answer Option (answerOption) Specification
+
+{{answerOptionInstruction}}
+
+### Important Notes
+- The above correct answer choices cannot be changed
+- Choice order in audioScript is always generated as A→B→C→D
+- Place correct content in the specified choice position
+- Place appropriate incorrect answers in other choices
+
+## AudioScript Structure
+
+- **Generate choices to match the specified correct answer option (answerOption)**
 {{audioStructure}}
 
-## 対応ジャンル
+## Required Content Frameworks (Part {{sectionNumber}} Specific)
+
+{{contentFrameworks}}
+
+## Supported Genres
 
 {{partGenres}}
 
-## jpnAudioScript形式
+## JpnAudioScript Format (Strict Compliance Required)
 
 {{jpnAudioScriptFormat}}
 
-## 単語数制約（必須遵守・違反時は即座に修正）
+**Critical Format Rules:**
+- No line breaks within jpnAudioScript content (single line)
+- Exact spacing: Single space after colons
+- Choice format: "A. [content] B. [content] C. [content] D. [content]"
+- Remove all placeholder brackets [ ] from actual output
+- Use consistent terminology as specified in format
+
+## Word Count Constraints (Mandatory Compliance - Immediate Correction Required for Violations)
 
 {{wordConstraints}}
 
-**以下を厳格に守ること。範囲外の場合は必ず修正してから出力する：**
-- 各項目は指定された語数範囲内（範囲外は禁止）
-- 範囲を1語でも超える場合は即座に修正
+**Important**: You have difficulty accurately counting words.
+Therefore, you must execute the following:
+1. Be mindful of approximate word count while generating
+2. Count strictly after completion
+3. Modify without question if outside range
+4. Do not output until perfectly within range
 
-### 必須検証プロセス
-1. 各問題生成後、単語数をカウントする
-2. 範囲外の場合は即座に内容を調整する
-3. すべての問題が範囲内になるまで修正を繰り返す
+**Absolute Compliance Requirements:**
+- Each item must be within the specified word count range (outside range is prohibited)
+- If even one word short or over the range, correct immediately
+- Output prohibited until correction is complete
 
-## その他の生成項目
+### Mandatory Verification Process
+1. Count words for each item after generation
+2. Immediately adjust content if outside range
+3. Repeat corrections until all items are within range
+4. Output only after verification is complete
 
-- **answerOption**: 正解選択肢（必須）
-- **sectionNumber**: 問題のセクション番号。Part{{sectionNumber}}（必須）
-- **explanation**: 詳細解説（必須・以下の要素を含む）
-  - **正解の根拠**: なぜその選択肢が正解なのかの明確な理由
-  - **不正解選択肢の分析**: 他の選択肢がなぜ間違いなのかの説明
-  - **語彙・文法のポイント**: 問題で使用された重要な語彙や文法事項の解説
-  - **発音・リスニングのコツ**: 
-    * 当該アクセントの聞き取りポイント
-    * 日本人学習者が注意すべき音の違い
-    * 音の変化やリンキングの解説
-  - **アクセント特有の表現**: 
-    * 使用した地域特有語彙の説明
-    * 発音特徴が聞き取りに与える影響
-    * 類似するが異なる他地域の表現との比較
-  - **類似問題への応用**: 同じパターンの問題を解くためのコツやポイント
-- **speakerAccent**: 各問題ごとに指定されたアクセント
+### Correction Methods
+- **When exceeding**: Remove unnecessary modifiers, simplify sentences
+- **When insufficient**: Add specific examples, expand detailed explanations
 
-## 多様性要件（必須）
+## Quality Assurance Process (MANDATORY)
 
-### 動的多様性要件
-- **1問の場合**: 制限なし
-- **2問の場合**: 異なるジャンル2種類
-- **3問の場合**: 異なるジャンル3種類  
-- **4問の場合**: 異なるジャンル4種類
-- **5問以上の場合**: 最低5種類の異なるジャンルを含む
+### Pre-Generation Checklist
+- [ ] Confirm the required content topic for each question
+- [ ] Understand the logical connection: Content → Question → Correct Answer
+- [ ] Plan speech content that naturally leads to the specified correct choice
 
-### 設定の多様性
+### Post-Generation Verification
+- [ ] Content actually discusses the specified topic
+- [ ] Question naturally arises from the content
+- [ ] Correct choice accurately reflects the content discussion
+- [ ] Incorrect choices are plausible but clearly wrong
+- [ ] Word counts are within specified ranges
+- [ ] Accent features are appropriately reflected
+
+**Do not proceed to next question until all checks pass**
+
+## Other Generation Items
+
+- **answerOption**: Correct answer choice ({{answerOptionPattern}} respectively)
+- **sectionNumber**: Problem section number. Part{{sectionNumber}} (required)
+- **explanation**: Detailed explanation in Japanese (required - must include the following elements)
+  - **Basis for correct answer**: Clear reasoning why that choice is correct
+  - **Analysis of incorrect choices**: Explanation of why other choices are wrong
+  - **Vocabulary and grammar points**: Commentary on important vocabulary and grammar used in the problem
+  - **Pronunciation and listening tips**: 
+    * Listening points for the relevant accent
+    * Sound differences Japanese learners should note
+    * Explanation of sound changes and linking
+  - **Accent-specific expressions**: 
+    * Explanation of region-specific vocabulary used
+    * Impact of pronunciation features on listening comprehension
+    * Comparison with similar but different expressions from other regions
+  - **Application to similar problems**: Tips and points for solving problems with the same pattern
+- **speakerAccent**: Accent specified for each problem
+
+## Diversity Requirements (Mandatory)
+
+### Dynamic Diversity Requirements
+- **1 problem**: No restrictions
+- **2 problems**: 2 different genres
+- **3 problems**: 3 different genres  
+- **4 problems**: 4 different genres
+- **5+ problems**: Include at least 5 different genres
+
+### Setting Diversity
 
 {{settingVariations}}
 
-### 重複回避ルール
-- **同一ジャンル**: 最大2問まで（10問の場合）
-- **同一設定**: 同じ場所は最大1問
-- **同一パターン**: 似た構造の問題は連続禁止
+### Duplication Avoidance Rules
+- **Same genre**: Maximum 2 problems (for 10 problems)
+- **Same setting**: Maximum 1 problem per location
+- **Same pattern**: Consecutive problems with similar structure prohibited
 
-## 難易度要件（TOEIC 600-990点レベル）
+## Difficulty Requirements (TOEIC 600-990 point level)
 
-### 難易度設定
-- **難易度レベル**: TOEIC公式問題集レベル（600-990点相当）
+### Difficulty Setting
+- **Difficulty Level**: TOEIC official test level (equivalent to 600-990 points)
 
-### 間接的表現の使用
-- **直接的表現禁止**: 答えをそのまま言わない
-- **推論要素**: 文脈から判断が必要な設問
-- **暗示的情報**: "We might consider..." "It would be advisable..." などの表現
+### Use of Indirect Expressions
+- **Direct expression prohibited**: Don't state answers directly
+- **Inference elements**: Questions requiring judgment from context
+- **Implicit information**: Expressions like "We might consider..." "It would be advisable..."
 
-### 複雑な語彙・文法
-- **専門用語**: 各分野の業界用語を適切に使用
-- **同義語・類義語**: 混乱を招く似た意味の語彙
-- **複合時制**: 過去完了、未来完了、仮定法過去
-- **分詞構文**: Having completed, Being unable to など
+### Complex Vocabulary and Grammar
+- **Technical terms**: Appropriate use of industry terminology for each field
+- **Synonyms and similar words**: Confusing vocabulary with similar meanings
+- **Complex tenses**: Past perfect, future perfect, subjunctive past
+- **Participial constructions**: Having completed, Being unable to, etc.
 
-### 紛らわしい選択肢
-- **部分的正解**: 一部は正しいが全体として間違い
-- **文脈のずれ**: 関連があるが質問に対応しない
-- **数値・日時の混乱**: 似た数字や日付での引っかけ
+### Misleading Choices
+- **Partial correct answers**: Partially correct but wrong overall
+- **Context misalignment**: Related but not corresponding to the question
+- **Numerical/date confusion**: Tricky similar numbers or dates
 
-## 正解分散の絶対要件（最優先事項・例外なし）
+## Choice Creation Procedure (Mandatory)
 
-**5問生成時の正解分散ルール（これ以外は一切受け入れない）：**
+1. First determine the correct content based on specified topic
+2. Place that correct answer in the specified position ({{answerOptionPattern}})
+3. Place incorrect choices in other positions
+4. In audioScript, read in A→B→C→D order
+5. Specify actual correct position with answerOption
 
-### 許可される分散パターン（以下のいずれかのみ）
-- A:2問, B:1問, C:1問, D:1問
-- A:1問, B:2問, C:1問, D:1問  
-- A:1問, B:1問, C:2問, D:1問
-- A:1問, B:1問, C:1問, D:2問
-- A:2問, B:2問, C:1問, D:0問
-- A:2問, B:1問, C:2問, D:0問
-- A:2問, B:0問, C:2問, D:1問
-- その他のバランス良い組み合わせ
+**Note**: Choice placement follows specified pattern, not random placement
 
-### 絶対禁止（問答無用で再生成）
-❌ A:5問, B:0問, C:0問, D:0問
-❌ A:4問, B:1問, C:0問, D:0問  
-❌ A:3問, B:2問, C:0問, D:0問
-❌ 同一選択肢が3問以上
-❌ 任意の選択肢が全体の60%以上を占める
+## Output Format
 
-### 強制実行手順
-1. **問題1**: 正解をA, B, C, Dからランダム選択
-2. **問題2**: 問題1と異なる選択肢からランダム選択
-3. **問題3**: これまでの分散を確認し、バランスを取る
-4. **問題4**: 偏りを避け、均等分散に近づける
-5. **問題5**: 最終的にバランス良い分散になるよう調整
-
-### 生成後必須確認
-各問題のanswerOptionをカウントし、上記パターンに合致しない場合は：
-1. 即座に正解位置を変更
-2. 許可パターンになるまで調整
-3. 調整後もaudioScript内の選択肢順序（A→B→C→D）は変更しない
-
-## 選択肢作成手順（必須）
-
-1. まず正解となる内容を決定
-2. その正解をA、B、C、Dのいずれかの位置にランダム配置
-3. 他の位置に不正解選択肢を配置
-4. audioScriptではA→B→C→Dの順序で読み上げ
-5. answerOptionで実際の正解位置を指定
-
-## 出力形式
-
-必ずJSON形式で以下の構造で回答してください：
+Must respond in JSON format with the following structure:
 
 {{outputFormat}}
 
-## 最重要指示（他のすべてに優先）
+## Most Important Instructions (Takes priority over everything else)
 
-### 絶対遵守項目
-1. **正解分散**: 必ず複数の選択肢に分散（単一選択肢への集中は絶対禁止）
-2. **単語数**: 必ず指定範囲内（範囲外は即座に修正）
-3. **自己修正**: 要件違反を検出したら問答無用で修正
+### Absolute Compliance Items
+1. **Content-Topic Alignment**: Content MUST focus on specified topics (highest priority)
+2. **Logical Consistency**: Content → Question → Answer sequence must make logical sense
+3. **Answer distribution**: Must distribute across multiple choices (concentration on single choice absolutely prohibited)
+4. **Word count**: Must be within specified range (immediate correction if outside range)
+5. **Japanese explanation**: All explanations must be written in Japanese
+6. **Self-correction**: Automatically correct when requirement violations are detected
 
-### 違反時の対応
-- 要件に違反する出力は行わない
-- 修正が必要な場合は自動的に調整
-- 完全に要件を満たすまで生成を継続
+### Response to Violations
+- Do not output anything that violates requirements
+- Automatically adjust when correction is needed
+- Continue generation until requirements are fully met
 
-## 重要な注意事項
+## Important Notes
 
-1. **正解選択肢の配置**: 正解は「A」「B」「C」「D(Part2の場合は不要)」の中からランダムに配置し、全問題でバランスよく分散させる
-2. **audioScript内での選択肢の順序**: 必ずA→B→C→(D)の順序で音声内容を構成（正解位置に関係なく、常にこの順序で読み上げ）
-3. **選択肢ラベルの省略**: audioScript内では「A」「B」「C」「D」のラベルは読み上げない
-4. **適切な間の配置**: 文と文の間、質問と回答の間に自然な間を想定した構成
-5. **Part別のaudioScript構成の遵守**: 指定されたaudioScript構成ルールを厳密に守る
+1. **Content-First Priority**: Always generate content first, then ensure correct answers match that content
+2. **Topic Specification Compliance**: Strictly follow the specified content topics for each question
+3. **Correct answer choice placement**: Place correct answers in specified positions for each problem
+4. **Choice order in audioScript**: Always structure audio content in A→B→C→D order (regardless of correct answer position, always read in this order)
+5. **Omission of choice labels**: Do not read "A", "B", "C", "D" labels in audioScript
+6. **Appropriate pause placement**: Structure with natural pauses between sentences and between questions and answers
+7. **Adherence to Part-specific audioScript structure**: Strictly follow specified audioScript structure rules
 
-## 絶対禁止事項
-❌ 全問題のanswerOptionを単一の選択肢に極端に偏らせること
-❌ 同じ選択肢が3問以上連続すること
-❌ {"questions": [...]} のような形式を使用すること
-❌ Markdownコードブロック（```json）の使用
-✅ 各選択肢をバランスよく分散させること
-✅ 各問題で異なる位置に正解を配置すること
-✅ 配列を直接返すこと
-✅ 純粋なJSONのみを出力
+## Absolutely Prohibited Items
+❌ Content that doesn't match the specified topic
+❌ Questions that don't relate to the speech content
+❌ Correct answers that contradict the speech content
+❌ Logical inconsistencies between content and choices
+❌ Extremely biasing all problem answerOptions to a single choice
+❌ Having the same choice for 3 or more consecutive problems
+❌ Using formats like {"questions": [...]}
+❌ Using Markdown code blocks (```json)
+❌ English explanations (must be Japanese)
 
-## 品質基準
+## Quality Standards
 
-### 問題内容の品質基準
-- **難易度**: TOEIC公式問題集レベル（600-990点相当）
-- **語彙レベル**: 中級~上級ビジネス英語、日常会話、アカデミック語彙を適切に配分
-- **文法事項**: 時制、仮定法、関係詞、分詞構文等の実用的文法を自然に組み込み
-- **文脈の一貫性**: 話者、場面、状況設定に矛盾がなく、リアルなシチュエーション
+### Problem Content Quality Standards
+- **Topic Alignment**: Perfect alignment between specified topics and actual content
+- **Logical Flow**: Natural progression from content to question to answer
+- **Difficulty**: TOEIC official test level (equivalent to 600-990 points)
+- **Vocabulary level**: Appropriate distribution of intermediate to advanced business English, daily conversation, and academic vocabulary
+- **Grammar items**: Natural incorporation of practical grammar such as tenses, subjunctive, relative clauses, participial constructions
+- **Context consistency**: Consistent speakers, scenes, and situation settings with realistic scenarios
 
-### 選択肢の品質基準
-- **紛らわしさ**: 実際のTOEIC試験レベルの巧妙な引っかけ要素
-- **誤答選択肢**: 単なるでたらめではなく、学習者が間違えやすい合理的な理由のある選択肢
-- **語彙の重複回避**: 正解に直結する単語の重複は避け、文脈理解を重視
-- **長さのバランス**: 選択肢の長さが正解を示唆しないよう適切に調整
+### Choice Quality Standards
+- **Answer Accuracy**: Correct choices must perfectly reflect the content discussion
+- **Misleading elements**: Sophisticated trap elements at actual TOEIC test level
+- **Incorrect answer choices**: Not random nonsense, but choices with rational reasons that learners might mistakenly select
+- **Vocabulary duplication avoidance**: Avoid duplication of words directly leading to correct answers, emphasizing context understanding
+- **Length balance**: Appropriately adjust choice lengths so they don't suggest the correct answer
 
-### アクセント別要件
-- **発音特徴の反映**: 各アクセントの音韻的特徴を語彙・表現選択に自然に反映
-- **語彙の地域性**: アメリカ「elevator」、イギリス「lift」等の地域的語彙を適切に使用
-- **表現パターン**: 各地域の慣用表現、丁寧さのレベル、会話パターンを反映
-- **発音指導要素**: 学習者が各アクセントの特徴を理解できる要素を含む
+### Accent-specific Requirements
+- **Reflection of pronunciation features**: Naturally reflect phonological characteristics of each accent in vocabulary and expression selection
+- **Regional vocabulary**: Appropriate use of regional vocabulary like American "elevator" vs. British "lift"
+- **Expression patterns**: Reflect idiomatic expressions, politeness levels, and conversation patterns of each region
+- **Pronunciation instruction elements**: Include elements that help learners understand characteristics of each accent
 
-### explanation品質基準
-- **学習者のレベル向上に直結する実用的な解説**
-- **単なる正解発表ではなく、英語力向上のための具体的指導**
-- **TOEIC対策として実践で活用できる解法テクニック**
-- **250-400文字程度の適切な分量での簡潔かつ充実した内容**
+### Explanation Quality Standards
+- **Practical commentary directly contributing to learner level improvement**
+- **Not mere correct answer announcement, but specific instruction for English proficiency improvement**
+- **Solution techniques practically applicable in TOEIC preparation**
+- **Comprehensive logical consistency verification in explanations**
+- **Clear reasoning that demonstrates the content-to-answer connection**
+- **Accent-specific learning points that help with listening comprehension**
+- **Strategic insights for approaching similar problem patterns**
+- **Concise yet comprehensive content (approximately 250-400 Japanese characters when output)**
 
-### 総合的品質要件
-- **実用性**: 実際のビジネス・学術・日常場面で遭遇する可能性の高い内容
-- **教育効果**: 解答後に学習者の英語力向上に寄与する学習要素
-- **文化的適切性**: 各英語圏の文化的背景を適切に反映した内容
-- **時代性**: 現代的な状況・技術・社会情勢を反映した設定
+### Overall Quality Requirements
+- **Practicality**: Content with high probability of encounter in actual business, academic, and daily situations
+- **Educational effect**: Learning elements that contribute to learner English proficiency improvement after answering
+- **Cultural appropriateness**: Content appropriately reflecting cultural backgrounds of each English-speaking region
+- **Contemporary relevance**: Settings reflecting modern situations, technology, and social conditions
 
-## 検証用チェックリスト（生成前に必ず確認）
+## Verification Checklist (Must check before generation)
 
-□ 正解がA, B, C, Dに適切に分散されているか？
-□ 同一選択肢が3問以上連続していないか？  
-□ 各talkが80-120語の範囲内か？
-□ 各questionが8-12語の範囲内か？
-□ 各choiceが3-8語の範囲内か？
-□ 総単語数が130-200語の範囲内か？
+{{checkList}}
 
-**すべてのチェック項目が✅になるまで修正を継続する**
+**Additional Content-First Verification:**
+- □ Does each problem's content focus on the specified topic?
+- □ Is there logical consistency between content, question, and correct answer?
+- □ Are all explanations written in Japanese?
+- □ Do the accent features naturally appear in the content?
 
-## 絶対遵守事項（最重要）
-1. レスポンスの最初の文字は必ず「[」
-2. レスポンスの最後の文字は必ず「]」
-3. {"questions": [...]} のような形式は絶対に禁止
-4. 配列を直接返す
-5. Markdownコードブロック（```json）は使用禁止
-6. 純粋なJSONのみを出力
+**Continue corrections until all checklist items are checked**
 
-正しい例: [{"audioScript": "..."}]
-間違った例: {"questions": [{"audioScript": "..."}]}
-間違った例: ```json [{"audioScript": "..."}] ```
+## CRITICAL SUCCESS FACTORS
+
+### 1. Topic-Content Alignment (HIGHEST PRIORITY)
+- Speech content MUST focus on the specified topic
+- Question MUST naturally arise from that content
+- Correct choice MUST accurately reflect the content discussion
+
+### 2. Logical Flow Verification
+- Verify: Does this content → question → answer sequence make logical sense?
+- Reject: Any combination that creates logical inconsistency
+
+### 3. Quality Over Speed
+- Take time to ensure logical consistency
+- Do not rush content generation
+- Verify each problem before moving to the next
+
+## Absolute Compliance Requirements (Most Important)
+1. First character of response must be "["
+2. Last character of response must be "]"
+3. Formats like {"questions": [...]} are absolutely prohibited
+4. Return arrays directly
+5. Markdown code blocks (```json) are prohibited
+6. Output pure JSON only
+7. Ensure complete logical consistency throughout all problems
+8. All explanations must be in Japanese
+
+**Success Metric**: Each problem must pass the logical consistency test: "Does the content naturally lead to this question and answer?"
+
+Correct example: [{"audioScript": "..."}]
+Wrong example: {"questions": [{"audioScript": "..."}]}
+Wrong example: ```json [{"audioScript": "..."}] ```
