@@ -856,6 +856,7 @@ ${speakerAccentAndPatternList.map((speaker, index) => `// Question ${index + 1}:
             .replace(/\{\{outputFormat\}\}/g, outputFormat)
             .replace(/\{\{checkList\}\}/g, generateChecklistForPart(sectionNumber))
             .replace(/\{\{answerOptionInstruction\}\}/g, answerOptionInstructionText)
+            .replace(/\{\{answerOptionInstruction\}\}/g, contentTopicInstruction)
             .replace(/\{\{contentFrameworks\}\}/g, contentFrameworksText);
             
     } catch (error) {
@@ -999,8 +1000,8 @@ export class TOEICSSMLGenerator {
         // [間]を<break>タグに変換するだけ
         const escapedScript = this.escapeSSML(question.audioScript);
         const processedScript = escapedScript
-            .replace(/\[間\]/g, '<break time="1.5s"/>')
-            .replace(/\[短い間\]/g, '<break time="0.8s"/>');
+            .replace(/\[pause\]/g, '<break time="1.5s"/>')
+            .replace(/\[short pause\]/g, '<break time="0.8s"/>');
 
         return `
 <!-- Question ${questionNumber}: ${question.lQuestionID} -->

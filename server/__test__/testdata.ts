@@ -2,6 +2,93 @@ import {callChatGPT} from '../listening-quiz-transactions/services/lquizapiservi
 import fs from 'fs/promises';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import os from 'os';
+import {config} from 'dotenv';
+import * as apierror from '../listening-quiz-transactions/errors/lquiz.apierrors.ts';
+import * as schema from '../listening-quiz-transactions/schemas/lquizapischema.ts';
+import z from 'zod';
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+config({path: path.join(__dirname, '../.env')});
+
+
+
+//chatgpt - audioScript generation only
+export async function callChatGPTForAudioScript(prompt: string): Promise<string> {
+    try {
+        console.log('=== Step 1: fetch開始 (AudioScript生成) ===');
+        const response = await fetch('https://api.openai.com/v1/chat/completions', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`
+            },
+            body: JSON.stringify({
+                model: "gpt-4o",
+                messages: [
+                    {
+                        role: "system",
+                        content: "You are an expert in TOEIC problem creation. Generate ONLY the audioScript as a plain string. Do not use JSON format or markdown code blocks."
+                    },
+                    {
+                        role: "user",
+                        content: prompt
+                    }
+                ],
+                temperature: 0,
+                max_tokens: 1000
+            }),
+            signal: AbortSignal.timeout(60000)
+        });
+        
+        console.log("response status:", response.status);
+        console.log('=== Step 2: response確認 ===');
+        
+        if (!response.ok) {
+            throw new apierror.ChatGPTAPIError(`ChatGPT API Error: ${response.status} ${response.statusText}`);
+        }
+        
+        console.log('=== Step 3: JSON parse開始 ===');
+        const data = await response.json();
+        
+        console.log('=== Step 4: OpenAI APIの応答構造検証 ===');
+        const validatedData = schema.openAIResponseSchema.parse(data);
+
+        if (validatedData.choices.length === 0) {
+            throw new apierror.ChatGPTAPIError('ChatGPT APIからの応答に問題があります');
+        }
+
+        console.log('=== Step 5: audioScript抽出 ===');
+        const audioScript = validatedData.choices[0].message.content;
+        
+        if (!audioScript || typeof audioScript !== 'string') {
+            throw new apierror.ChatGPTAPIError('生成されたaudioScriptが無効です');
+        }
+
+        // 不要な文字列の除去（markdown形式等）
+        let cleanedAudioScript = audioScript.trim();
+        cleanedAudioScript = cleanedAudioScript.replace(/^```.*\n?/, ''); // 先頭の```を削除
+        cleanedAudioScript = cleanedAudioScript.replace(/\n?```$/, '');   // 末尾の```を削除
+        cleanedAudioScript = cleanedAudioScript.replace(/^"|"$/g, '');   // 前後のクォートを削除
+
+        console.log('=== Step 6: audioScript検証完了 ===');
+        console.log("generated audioScript length:", cleanedAudioScript.length);
+        
+        return cleanedAudioScript;
+        
+    } catch (error) {
+        if (error instanceof z.ZodError) {
+            console.error(`OpenAI APIから予期しない形式のレスポンスを受信しました:`, error);
+            throw new apierror.ChatGPTAPIError(`OpenAI APIから予期しない形式のレスポンスを受信しました: ${error.message}`);
+        } else if (error instanceof apierror.ChatGPTAPIError) {
+            throw error;
+        } else {
+            console.error('Unexpected ChatGPT API Error:', error);
+            throw new apierror.ChatGPTAPIError('ChatGPT APIとの通信で予期しないエラーが発生しました');
+        }
+    }
+}
 
 async function main() {
     const __filename = fileURLToPath(import.meta.url);
@@ -9,56 +96,12 @@ async function main() {
     const promptPath = path.join(__dirname, 'testprompt.md');
     const testprompt = await fs.readFile(promptPath, 'utf8');
     console.log("testprompt: ", testprompt);
-    const response = await callChatGPT(testprompt);
+    //const response = await callChatGPT(testprompt);
+    const response = await callChatGPTForAudioScript(testprompt);
     console.log(response);
 };
 
 main().catch(console.error);
-
-
-const generatedQuestions = 
-[
-    {
-        "audioScript": "Good morning, everyone. This is an announcement for all employees. Due to maintenance work, the washrooms on the second floor will be closed today. Please use the facilities on the first or third floors. We apologize for any inconvenience this may cause. Thank you for your understanding. What is the main purpose of this announcement? The washrooms on the second floor are closed. The elevators are under maintenance. The cafeteria is closed today. The parking lot is full.",
-        "jpnAudioScript": "おはようございます、皆さん。これは全従業員へのお知らせです。メンテナンス作業のため、本日2階の洗面所は閉鎖されます。1階または3階の施設をご利用ください。ご不便をおかけして申し訳ありません。ご理解のほどよろしくお願いいたします。このアナウンスの主な目的は何ですか？2階の洗面所が閉鎖されている。エレベーターがメンテナンス中である。カフェテリアが本日閉鎖されている。駐車場が満車である。",
-        "answerOption": "B",
-        "sectionNumber": 4,
-        "explanation": "正解はBです。このアナウンスは、2階の洗面所がメンテナンスのため閉鎖されていることを伝えています。他の選択肢はアナウンスの内容と一致しません。'washrooms'という単語はカナダ英語でよく使われる表現です。リスニングの際には、'washrooms'や'closed'といったキーワードに注意を払いましょう。カナダ英語の特徴として、'about'が'aboot'のように聞こえることがあります。",
-        "speakerAccent": "Canadian"
-    },
-    {
-        "audioScript": "Attention shoppers! We are excited to announce a special sale happening this weekend at our downtown store. All winter clothing, including toques and jackets, will be 30% off. Don't miss this opportunity to update your wardrobe with the latest styles. What is being advertised in this announcement? A new store opening. A weekend sale on winter clothing. A special event for members. A clearance sale on electronics.",
-        "jpnAudioScript": "お客様にお知らせです！今週末、ダウンタウンの店舗で特別セールを開催します。トークやジャケットを含むすべての冬服が30％オフになります。この機会に最新のスタイルでワードローブを更新することをお見逃しなく。このアナウンスで宣伝されているのは何ですか？新しい店舗のオープン。冬服の週末セール。会員向けの特別イベント。電子機器のクリアランスセール。",
-        "answerOption": "D",
-        "sectionNumber": 4,
-        "explanation": "正解はDです。このアナウンスは、冬服の週末セールについての情報を提供しています。他の選択肢はアナウンスの内容と一致しません。'toques'はカナダ英語で冬用の帽子を指します。リスニングの際には、'sale'や'30% off'といったキーワードに注意を払いましょう。カナダ英語の特徴として、'about'が'aboot'のように聞こえることがあります。",
-        "speakerAccent": "Canadian"
-    },
-    {
-        "audioScript": "G'day everyone. This is a reminder that the company picnic will be held this Saturday at the local park. We'll start at 10 AM and go until 4 PM. Please bring your own brekkie and lunch. We'll provide drinks and snacks. What is the main topic of this announcement? A company picnic. A business meeting. A training session. A charity event.",
-        "jpnAudioScript": "皆さん、こんにちは。今週の土曜日に地元の公園で会社のピクニックが開催されることをお知らせします。午前10時から午後4時まで行います。朝食と昼食は各自でご持参ください。飲み物とスナックは提供します。このアナウンスの主なトピックは何ですか？会社のピクニック。ビジネス会議。トレーニングセッション。チャリティーイベント。",
-        "answerOption": "A",
-        "sectionNumber": 4,
-        "explanation": "正解はAです。このアナウンスは、会社のピクニックについての情報を提供しています。他の選択肢はアナウンスの内容と一致しません。'brekkie'はオーストラリア英語で朝食を指します。リスニングの際には、'picnic'や'local park'といったキーワードに注意を払いましょう。オーストラリア英語の特徴として、'day'が'die'のように聞こえることがあります。",
-        "speakerAccent": "Australian"
-    },
-    {
-        "audioScript": "Hello everyone. Just a quick note to let you know that the office will be closed next Monday for a public holiday. Please make sure to complete any urgent tasks by this Friday. Enjoy your long weekend! What is the speaker informing the listeners about? A change in office hours. A public holiday. A new office location. A staff meeting.",
-        "jpnAudioScript": "皆さん、こんにちは。来週の月曜日は祝日のためオフィスが閉鎖されることをお知らせします。金曜日までに緊急のタスクを完了してください。良い週末をお過ごしください！話者はリスナーに何を知らせていますか？オフィスの営業時間の変更。祝日。新しいオフィスの場所。スタッフ会議。",
-        "answerOption": "C",
-        "sectionNumber": 4,
-        "explanation": "正解はCです。このアナウンスは、祝日のためオフィスが閉鎖されることを伝えています。他の選択肢はアナウンスの内容と一致しません。'public holiday'は祝日を指します。リスニングの際には、'closed'や'public holiday'といったキーワードに注意を払いましょう。オーストラリア英語の特徴として、'night'が'noight'のように聞こえることがあります。",
-        "speakerAccent": "Australian"
-    },
-    {
-        "audioScript": "Good afternoon, passengers. This is your captain speaking. We are currently cruising at an altitude of 35,000 feet. The weather ahead looks pretty good, so we expect a smooth flight. Please sit back, relax, and enjoy the rest of the journey. What is the captain mainly talking about? The current altitude. The weather conditions. The flight duration. The destination city.",
-        "jpnAudioScript": "乗客の皆様、こんにちは。こちらは機長です。現在、35,000フィートの高度で巡航中です。前方の天候は良好で、順調な飛行が期待されます。どうぞおくつろぎいただき、旅をお楽しみください。機長は主に何について話していますか？現在の高度。天候の状況。飛行時間。目的地の都市。",
-        "answerOption": "B",
-        "sectionNumber": 4,
-        "explanation": "正解はBです。このアナウンスは、天候の状況についての情報を提供しています。他の選択肢はアナウンスの内容と一致しません。'cruising at an altitude'は飛行機が一定の高度で飛行していることを指します。リスニングの際には、'weather'や'smooth flight'といったキーワードに注意を払いましょう。カナダ英語の特徴として、'about'が'aboot'のように聞こえることがあります。",
-        "speakerAccent": "Canadian"
-    }
-]
 
 /*import { GeneratedQuestionDataResDTO } from '../listening-quiz-transactions/lquiz.dto.ts';
 import { AudioURL } from '../listening-quiz-transactions/lquiz.domeinobject.ts';
