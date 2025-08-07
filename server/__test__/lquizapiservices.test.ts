@@ -44,76 +44,431 @@ describe('A_getRandomSpeakerAccent', () => {
     });
 });
 
-describe('B_generatePrompt', () => {
-    /*
+describe('B_generateAudioScriptPrompt', () => {
     test("B01_part3プロンプト生成", async () => {
-        expect.assertions(8);
+        expect.assertions(6);
         const mockDomObj: Mocked<domein.NewLQuestionInfo> = {
             sectionNumber: 3,
-            requestedNumOfLQuizs: 5,
+            requestedNumOfLQuizs: 1, // 単一問題生成
             speakingRate: 1.0
         };
-        const result = await service.generatePrompt(mockDomObj);
+        const result = await service.generateSingleAudioScriptPrompt(mockDomObj, 0); // 関数名変更 + index指定
         console.log(result);
-        expect(result).toContain("Generate 5 practice problems for TOEIC Listening Part 3.");
-        expect(result).toContain("Generate 5 practice problems");
-        expect(result).toContain("**Question Method**: Listen to conversations and answer questions");
-        expect(result).toContain("Speaker for Question 1:");
-        expect(result).toContain("Speaker for Question 2:");
-        expect(result).toContain("Speaker for Question 3:");
-        expect(result).toContain("Speaker for Question 4:");
-        expect(result).toContain("Speaker for Question 5:");
+        expect(result).toContain("Generate a single TOEIC Part 3 question");
+        expect(result).toContain("Listen to conversations and answer questions");
+        expect(result).toContain("For Part 3-4:** Generate 3 questions with 4 choices each");
+        expect(result).toContain("Location");
+        expect(result).toContain("Speaker");
+        expect(result).toContain("Situation");
     });
+
     test("B02_part2プロンプト生成", async () => {
         expect.assertions(6);
         const mockDomObj: Mocked<domein.NewLQuestionInfo> = {
             sectionNumber: 2,
-            requestedNumOfLQuizs: 10,
+            requestedNumOfLQuizs: 1, // 単一問題生成
             speakingRate: 1.0
         };
-        const result = await service.generatePrompt(mockDomObj);
+        const result = await service.generateSingleAudioScriptPrompt(mockDomObj, 0); // 関数名変更 + index指定
         console.log(result);
-        expect(result).toContain("Generate 10 practice problems for TOEIC Listening Part 2.");
-        expect(result).toContain("Generate 10 practice problems");
-        expect(result).toContain("**Requirements**: Appropriate responses that follow natural conversation flow");
-        expect(result).toContain("Speaker for Question 1:");
-        expect(result).toContain("Speaker for Question 2:");
-        expect(result).toContain("Speaker for Question 3:")
-    });*/
-    test("B03_part4プロンプト生成", async () => {
-        expect.assertions(5);
-        const mockDomObj: Mocked<domein.NewLQuestionInfo> = {
-            sectionNumber: 4,
-            requestedNumOfLQuizs: 5,
-            speakingRate: 1.0
-        };
-        const result = await service.generatePrompt(mockDomObj);
-        console.log(result);
-        expect(result).toContain("Generate 5 practice problems for TOEIC Listening Part 4.");
-        expect(result).toContain("Generate 5 practice problems");
-        expect(result).toContain("Speaker for Question 1:");
-        expect(result).toContain("Speaker for Question 2:");
-        expect(result).toContain("Speaker for Question 5:")
+        expect(result).toContain("Generate a single TOEIC Part 2 question");
+        expect(result).toContain("Appropriate responses that follow natural conversation flow");
+        expect(result).toContain("For Part 1-2:** Generate 1 question with 4 choices (Part 2: 3 choices)");
+        expect(result).toContain("Location");
+        expect(result).toContain("Speaker");
+        expect(result).toContain("return array with 1 element");
     });
-    /*
-    test("B03_part4プロンプト生成_speakerAccent指定", async () => {
+
+    test("B03_part4プロンプト生成", async () => {
         expect.assertions(6);
         const mockDomObj: Mocked<domein.NewLQuestionInfo> = {
             sectionNumber: 4,
-            requestedNumOfLQuizs: 5,
-            speakerAccent: 'British',
+            requestedNumOfLQuizs: 1, // 単一問題生成
             speakingRate: 1.0
         };
-        const result = await service.generatePrompt(mockDomObj);
+        const result = await service.generateSingleAudioScriptPrompt(mockDomObj, 0); // 関数名変更 + index指定
         console.log(result);
-        expect(result).toContain("Generate 5 practice problems for TOEIC Listening Part 4.");
-        expect(result).toContain("Generate 5 practice problems");
-        expect(result).toContain("British");
-        expect(result).toContain("Speaker for Question 1:");
-        expect(result).toContain("Speaker for Question 2:");
-        expect(result).toContain("Speaker for Question 5:")
+        expect(result).toContain("Generate a single TOEIC Part 4 question");
+        expect(result).toContain("For Part 3-4:** Generate 3 questions with 4 choices each");
+        expect(result).toContain("Location");
+        expect(result).toContain("Speaker");
+        expect(result).toContain("Situation");
+        expect(result).toContain('return array with 3 elements');
     });
-    */
+
+    test("B04_part1プロンプト生成", async () => {
+        expect.assertions(5);
+        const mockDomObj: Mocked<domein.NewLQuestionInfo> = {
+            sectionNumber: 1,
+            requestedNumOfLQuizs: 1, // 単一問題生成
+            speakingRate: 1.0
+        };
+        const result = await service.generateSingleAudioScriptPrompt(mockDomObj, 0); // 関数名変更 + index指定
+        console.log(result);
+        expect(result).toContain("Generate a single TOEIC Part 1 question");
+        expect(result).toContain("For Part 1-2:** Generate 1 question with 4 choices");
+        expect(result).toContain("Location");
+        expect(result).toContain("Speaker");
+        expect(result).toContain("return array with 1 element");
+    });
+
+    test("B05_出力形式確認", async () => {
+        expect.assertions(4);
+        const mockDomObj: Mocked<domein.NewLQuestionInfo> = {
+            sectionNumber: 4,
+            requestedNumOfLQuizs: 1,
+            speakingRate: 1.0
+        };
+        const result = await service.generateSingleAudioScriptPrompt(mockDomObj, 0); // 関数名変更 + index指定
+        console.log(result);
+        expect(result).toContain('Return ONLY a JSON object');
+        expect(result).toContain('Do not use markdown code blocks');
+        expect(result).toContain('"audioScript"');
+        expect(result).toContain('"answerOption"');
+    });
+
+    test("B06_品質制約確認", async () => {
+        expect.assertions(5);
+        const mockDomObj: Mocked<domein.NewLQuestionInfo> = {
+            sectionNumber: 3,
+            requestedNumOfLQuizs: 1,
+            speakingRate: 1.0
+        };
+        const result = await service.generateSingleAudioScriptPrompt(mockDomObj, 0); // 関数名変更 + index指定
+        console.log(result);
+        expect(result).toContain('Word Count Constraints');
+        expect(result).toContain('TOEIC 600-990 points');
+        expect(result).toContain('Logical Consistency');
+        expect(result).toContain('Quality Verification Checklist');
+        expect(result).toContain('Generate the question now');
+    });
+});
+
+describe('C_generateExplanationPrompt', () => {
+    test("C01_American accent解説プロンプト生成", async () => {
+        expect.assertions(8);
+        const mockDomObj: Mocked<domein.NewLQuestionInfo> = {
+            sectionNumber: 4,
+            speakerAccent: "American",
+            requestedNumOfLQuizs: 1,
+            speakingRate: 1.0
+        };
+        const sampleAudioScript = "[Speaker1] Good morning, everyone. I'll walk you through our new elevator system.";
+        const sampleAnswerOptions: ("A" | "B" | "C" | "D")[] = ["A", "B", "A"];
+
+        const result = await service.generateSingleExplanationPrompt(
+            mockDomObj,
+            "スピーチ内容: [Japanese] 設問文: [Japanese]",
+            sampleAudioScript,
+            sampleAnswerOptions
+        );
+        console.log(result);
+        
+        expect(result).toContain("TOEIC Part 4 Explanation Generation");
+        expect(result).toContain("American");
+        expect(result).toContain("American English");
+        expect(result).toContain("Correct Answer Rationale");
+        expect(result).toContain("Incorrect Option Analysis");
+        expect(result).toContain("American Accent Listening Tips");
+        expect(result).toContain("Regional Expression Analysis");
+        expect(result).toContain("250-400 character explanation");
+    });
+
+    test("C02_British accent解説プロンプト生成", async () => {
+        expect.assertions(8);
+        const mockDomObj: Mocked<domein.NewLQuestionInfo> = {
+            sectionNumber: 3,
+            speakerAccent: "British",
+            requestedNumOfLQuizs: 1,
+            speakingRate: 1.0
+        };
+        const sampleAudioScript = "[Speaker1] I'm afraid we'll need to take the lift to the third floor.";
+        const sampleAnswerOptions: ("A" | "B" | "C" | "D")[] = ["B", "A", "D"];
+
+        const result = await service.generateSingleExplanationPrompt(
+            mockDomObj,
+            "会話内容: [Japanese] 設問文: [Japanese]",
+            sampleAudioScript,
+            sampleAnswerOptions
+        );
+        console.log(result);
+        
+        expect(result).toContain("TOEIC Part 3 Explanation Generation");
+        expect(result).toContain("British");
+        expect(result).toContain("British English");
+        expect(result).toContain("Vocabulary/Grammar Points");
+        expect(result).toContain("British Accent Listening Tips");
+        expect(result).toContain("Similar Question Application");
+        expect(result).toContain("lift");
+        expect(result).toContain("Non-rhotic");
+    });
+
+    test("C03_Canadian accent解説プロンプト生成", async () => {
+        expect.assertions(7);
+        const mockDomObj: Mocked<domein.NewLQuestionInfo> = {
+            sectionNumber: 2,
+            speakerAccent: "Canadian",
+            requestedNumOfLQuizs: 1,
+            speakingRate: 1.0
+        };
+        const sampleAudioScript = "[Speaker1] Could you tell me where the washroom is?";
+        const sampleAnswerOptions: ("A" | "B" | "C")[] = ["C"];
+
+        const result = await service.generateSingleExplanationPrompt(
+            mockDomObj,
+            "質問文: [Japanese] 選択肢: [Japanese]",
+            sampleAudioScript,
+            sampleAnswerOptions
+        );
+        console.log(result);
+        
+        expect(result).toContain("TOEIC Part 2 Explanation Generation");
+        expect(result).toContain("Canadian");
+        expect(result).toContain("Canadian English");
+        expect(result).toContain("Canadian raising");
+        expect(result).toContain("washroom");
+        expect(result).toContain("Canadian Accent Listening Tips");
+        expect(result).toContain("You betcha");
+    });
+
+    test("C04_Australian accent解説プロンプト生成", async () => {
+        expect.assertions(7);
+        const mockDomObj: Mocked<domein.NewLQuestionInfo> = {
+            sectionNumber: 1,
+            speakerAccent: "Australian",
+            requestedNumOfLQuizs: 1,
+            speakingRate: 1.0
+        };
+        const sampleAudioScript = "A man is having brekkie at the arvo.";
+        const sampleAnswerOptions: ("A" | "B" | "C" | "D")[] = ["B"];
+
+        const result = await service.generateSingleExplanationPrompt(
+            mockDomObj,
+            "選択肢: [Japanese]",
+            sampleAudioScript,
+            sampleAnswerOptions
+        );
+        console.log(result);
+        
+        expect(result).toContain("TOEIC Part 1 Explanation Generation");
+        expect(result).toContain("Australian");
+        expect(result).toContain("Australian English");
+        expect(result).toContain("Vowel shifts");
+        expect(result).toContain("brekkie");
+        expect(result).toContain("arvo");
+        expect(result).toContain("No worries");
+    });
+
+    test("C05_アクセント特徴確認", async () => {
+        expect.assertions(6);
+        const mockDomObj: Mocked<domein.NewLQuestionInfo> = {
+            sectionNumber: 4,
+            speakerAccent: "American",
+            requestedNumOfLQuizs: 1,
+            speakingRate: 1.0
+        };
+        const sampleAudioScript = "Better water quarter elevator apartment.";
+        const sampleAnswerOptions: ("A" | "B" | "C" | "D")[] = ["A", "C", "B"];
+
+        const result = await service.generateSingleExplanationPrompt(
+            mockDomObj,
+            "スピーチ内容: [Japanese] 設問文: [Japanese]",
+            sampleAudioScript,
+            sampleAnswerOptions
+        );
+        console.log(result);
+        
+        expect(result).toContain("Accent-Specific Context");
+        expect(result).toContain("Key Pronunciation Features");
+        expect(result).toContain("Regional Vocabulary Used");
+        expect(result).toContain("Typical Expressions");
+        expect(result).toContain("Rhoticity");
+        expect(result).toContain("elevator");
+    });
+
+    test("C06_テンプレート変数置換確認", async () => {
+        expect.assertions(4);
+        const mockDomObj: Mocked<domein.NewLQuestionInfo> = {
+            sectionNumber: 3,
+            speakerAccent: "British",
+            requestedNumOfLQuizs: 1,
+            speakingRate: 1.0
+        };
+        const sampleAudioScript = "Sample audio script content.";
+        const sampleAnswerOptions: ("A" | "B" | "C" | "D")[] = ["A", "B", "C"];
+
+        const result = await service.generateSingleExplanationPrompt(
+            mockDomObj,
+            "会話内容: [Japanese] 設問文: [Japanese]",
+            sampleAudioScript,
+            sampleAnswerOptions
+        );
+        console.log(result);
+        
+        // テンプレート変数が全て置換されていることを確認
+        expect(result).not.toContain("{{");
+        expect(result).not.toContain("}}");
+        expect(result).toContain("Sample audio script content");
+        expect(result).toContain("A,B,C");
+    });
+
+    test("C07_解説要件確認", async () => {
+        expect.assertions(6);
+        const mockDomObj: Mocked<domein.NewLQuestionInfo> = {
+            sectionNumber: 4,
+            speakerAccent: "American",
+            requestedNumOfLQuizs: 1,
+            speakingRate: 1.0
+        };
+        const sampleAudioScript = "Test audio script for requirements check.";
+        const sampleAnswerOptions: ("A" | "B" | "C" | "D")[] = ["D", "A", "B"];
+
+        const result = await service.generateSingleExplanationPrompt(
+            mockDomObj,
+            "スピーチ内容: [Japanese] 設問文: [Japanese]",
+            sampleAudioScript,
+            sampleAnswerOptions
+        );
+        console.log(result);
+        
+        expect(result).toContain("Explanation Requirements");
+        expect(result).toContain("Correct Answer Rationale");
+        expect(result).toContain("Incorrect Option Analysis");
+        expect(result).toContain("Vocabulary/Grammar Points");
+        expect(result).toContain("Regional Expression Analysis");
+        expect(result).toContain("Similar Question Application");
+    });
+});
+
+describe('D_generateJpnAudioScriptPrompt', () => {
+    test("D01_Part1日本語音声プロンプト生成", async () => {
+        expect.assertions(6);
+        const sectionNumber = 1;
+        const sampleAudioScript = "A businessman wearing a dark suit is reading a newspaper. [short pause] Two women are walking through the office corridor. [short pause] Children are playing on playground equipment. [short pause] A dog is running across the field.";
+
+        const result = await service.generateSingleJpnAudioScriptPrompt(
+            sectionNumber,
+            sampleAudioScript
+        );
+        console.log(result);
+        
+        expect(result).toContain("Translate this TOEIC Part 1");
+        expect(result).toContain("選択肢: A. [Choice 1 in Japanese] B. [Choice 2 in Japanese] C. [Choice 3 in Japanese] D. [Choice 4 in Japanese]");
+        expect(result).toContain("Natural Japanese for TOEIC learners");
+        expect(result).toContain("businessman wearing a dark suit");
+        expect(result).toContain("Output format:");
+        expect(result).toContain("Output ONLY the formatted text above");
+    });
+
+    test("D02_Part2日本語音声プロンプト生成", async () => {
+        expect.assertions(6);
+        const sectionNumber = 2;
+        const sampleAudioScript = "[Speaker1] Could you please tell me where the conference room is? [pause] [Speaker2] Go down this hallway and turn right. [short pause] Yes, I would be happy to attend the meeting. [short pause] The meeting is scheduled to start at three o'clock.";
+
+        const result = await service.generateSingleJpnAudioScriptPrompt(
+            sectionNumber,
+            sampleAudioScript
+        );
+        console.log(result);
+        
+        expect(result).toContain("Translate this TOEIC Part 2");
+        expect(result).toContain("質問文: [Question in Japanese] 選択肢: A. [Choice 1 in Japanese] B. [Choice 2 in Japanese] C. [Choice 3 in Japanese]");
+        expect(result).toContain("Could you please tell me");
+        expect(result).toContain("conference room");
+        expect(result).toContain("Natural Japanese");
+        expect(result).toContain("business/formal tone");
+    });
+
+    test("D03_Part3日本語音声プロンプト生成", async () => {
+        expect.assertions(6);
+        const sectionNumber = 3;
+        const sampleAudioScript = "[Speaker1] Good morning, Sarah. Have you finished the quarterly report? [pause] [Speaker2] Almost done, Mike. I just need to add the final sales figures. [pause] [Speaker1] Great. We need to submit it by noon for the board meeting. [pause] What does Mike need Sarah to do? [pause] Add the remaining sales figures. [short pause] Submit the report by noon. [short pause] Schedule a board meeting. [short pause] Review the quarterly data.";
+
+        const result = await service.generateSingleJpnAudioScriptPrompt(
+            sectionNumber,
+            sampleAudioScript
+        );
+        console.log(result);
+        
+        expect(result).toContain("Translate this TOEIC Part 3");
+        expect(result).toContain("会話内容: [Conversation in Japanese] 設問文: [Question in Japanese] 選択肢: A. [Choice 1 in Japanese] B. [Choice 2 in Japanese] C. [Choice 3 in Japanese] D. [Choice 4 in Japanese]");
+        expect(result).toContain("quarterly report");
+        expect(result).toContain("sales figures");
+        expect(result).toContain("board meeting");
+        expect(result).toContain("Preserve meaning and context");
+    });
+
+    test("D04_Part4日本語音声プロンプト生成", async () => {
+        expect.assertions(6);
+        const sectionNumber = 4;
+        const sampleAudioScript = "[Speaker1] Good morning, everyone. As the system administrator, I want to walk you through our new data management system. This system streamlines data processing and improves efficiency. First, log in using your credentials. The dashboard provides project overviews and statuses. To update a project, click the project name and enter new data. [pause] What is the main purpose of the new system? [pause] To streamline data processing and improve efficiency. [short pause] To increase working hours. [short pause] To reduce employees. [short pause] To enhance customer service.";
+
+        const result = await service.generateSingleJpnAudioScriptPrompt(
+            sectionNumber,
+            sampleAudioScript
+        );
+        console.log(result);
+        
+        expect(result).toContain("Translate this TOEIC Part 4");
+        expect(result).toContain("スピーチ内容: [Speech in Japanese] 設問文: [Question in Japanese] 選択肢: A. [Choice 1 in Japanese] B. [Choice 2 in Japanese] C. [Choice 3 in Japanese] D. [Choice 4 in Japanese]");
+        expect(result).toContain("system administrator");
+        expect(result).toContain("data management system");
+        expect(result).toContain("streamline data processing");
+        expect(result).toContain("Use appropriate business/formal tone");
+    });
+
+    test("D05_テンプレート変数置換確認", async () => {
+        expect.assertions(4);
+        const sectionNumber = 3;
+        const sampleAudioScript = "Test audio content with specific keywords for verification.";
+
+        const result = await service.generateSingleJpnAudioScriptPrompt(
+            sectionNumber,
+            sampleAudioScript
+        );
+        console.log(result);
+        
+        // テンプレート変数が全て置換されていることを確認
+        expect(result).not.toContain("{{sectionNumber}}");
+        expect(result).not.toContain("{{audioScript}}");
+        expect(result).not.toContain("{{jpnAudioScriptFormat}}");
+        expect(result).toContain("Test audio content with specific keywords");
+    });
+
+    test("D06_出力形式要件確認", async () => {
+        expect.assertions(5);
+        const sectionNumber = 4;
+        const sampleAudioScript = "Sample speech content for format verification test.";
+
+        const result = await service.generateSingleJpnAudioScriptPrompt(
+            sectionNumber,
+            sampleAudioScript
+        );
+        console.log(result);
+        
+        expect(result).toContain("Requirements:");
+        expect(result).toContain("Natural Japanese for TOEIC learners");
+        expect(result).toContain("Preserve meaning and context");
+        expect(result).toContain("Use appropriate business/formal tone");
+        expect(result).toContain("Output ONLY the formatted text above");
+    });
+
+    test("D07_特殊文字処理確認", async () => {
+        expect.assertions(4);
+        const sectionNumber = 1;
+        const specialCharAudioScript = `A woman is using a computer with "special characters" & symbols: 100% efficiency, $500 budget, and 3:30 PM deadline. [short pause] Two men are discussing the project's "requirements" & specifications. [short pause] The presentation includes charts with 25% growth and €1,000 investment. [short pause] A team is reviewing documents with various symbols: @, #, %, &, and punctuation marks.`;
+
+        const result = await service.generateSingleJpnAudioScriptPrompt(
+            sectionNumber,
+            specialCharAudioScript
+        );
+        console.log(result);
+        
+        expect(result).toContain('special characters');
+        expect(result).toContain('$500 budget');
+        expect(result).toContain('25% growth');
+        expect(result).toContain('€1,000 investment');
+    });
 });
 /*
 const fetchMock = createFetchMock (vi);
