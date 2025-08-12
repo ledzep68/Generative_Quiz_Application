@@ -49,8 +49,8 @@ export const GoogleTTSResponseSchema = z.object({
     })).optional()
 });
 
-export function validateAudioURLList(audioURLList: unknown): domein.AudioURL[] {
-    return z.array(z.object({
+export function validateAudioFilePath(audioFilePath: unknown): domein.AudioFilePath {
+    return z.object({
         lQuestionID: z
             .string()
             .min(1, "lQuestionIDは必須です"),
@@ -58,12 +58,9 @@ export function validateAudioURLList(audioURLList: unknown): domein.AudioURL[] {
             .string()
             .min(1, "audioFilePathは必須です")
             .regex(/\.mp3$/i, "audioFilePathはmp3ファイルである必要があります"),
-        audioURL: z
-            .string()
-            .url("不正なURL形式です")
-            .optional(),
         duration: z.number()
             .min(0.5, "durationは0.5秒以上である必要があります")
-            .max(2.0, "durationは2.0秒以下である必要があります")
-    })).parse(audioURLList);
+            .max(100.0, "durationは100.0秒以下である必要があります")
+            .optional()
+    }).parse(audioFilePath);
 };

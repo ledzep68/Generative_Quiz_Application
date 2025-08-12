@@ -77,7 +77,7 @@ export async function generateLQuestionContent(domObj: domein.NewLQuestionInfo, 
     return  generatedQuizDataList;
 };
 
-//audioScript構造の選択
+//audioScript構造の選択（話者タグ対応版）
 function generateAudioStructureText(sectionNumber: number): string {
     const structure = AUDIO_SCRIPT_STRUCTURES[sectionNumber as keyof typeof AUDIO_SCRIPT_STRUCTURES];
     
@@ -85,10 +85,75 @@ function generateAudioStructureText(sectionNumber: number): string {
         return '';
     }
     
-    return `
-- **Structure**: ${structure.structure}
-- **Rules**: ${structure.rules.map(rule => `  - ${rule}`).join('\n')}
-- **Example**: "${structure.example}"`;
+    // Part別の簡潔な構造説明
+    let simpleStructure = '';
+    switch (sectionNumber) {
+        case 1:
+            simpleStructure = 'Read only 4 choices consecutively';
+            break;
+        case 2:
+            simpleStructure = 'Question + [pause] + 3 choices read consecutively';
+            break;
+        case 3:
+            simpleStructure = 'Conversation + [pause] + 3 questions with 4 choices each';
+            break;
+        case 4:
+            simpleStructure = 'Speech content + [pause] + 3 questions with 4 choices each';
+            break;
+        default:
+            simpleStructure = '';
+    }
+    
+    // 話者タグ指示の生成
+    function generateSpeakerInstructions(structure: any): string {
+        if (!structure.tagging || !structure.tagging.speakerTag) {
+            return '';
+        }
+        
+        const speakerAssignment = structure.tagging.speakerAssignment;
+        const speakerInstructions = `
+**Speaker and Structure Tagging Requirements**
+
+**Available Speakers:** ${structure.tagging.speakerTag.join(', ')}
+
+**Speaker Assignment:**
+${Object.entries(speakerAssignment)
+    .map(([role, speaker]) => `- ${role}: ${Array.isArray(speaker) ? speaker.join(', ') : speaker}`)
+    .join('\n')}
+
+${structure.tagging.structureTag}
+
+**CRITICAL:** Every content section MUST be preceded by the appropriate speaker tag.`;
+        
+        return speakerInstructions;
+    };
+    
+    // Part 1, 2の場合は簡潔な構造
+    if (sectionNumber === 1 || sectionNumber === 2) {
+        return `**Structure:** ${simpleStructure}
+
+**Rules:**
+${structure.rules.map(rule => `- ${rule}`).join('\n')}
+
+**IMPORTANT: Structure and Speaker Tagging**
+Include the following structure and speaker tags in your audioScript output:
+
+${generateSpeakerInstructions(structure)}`;
+    }
+    
+    // Part 3, 4の場合は詳細な構造
+    return `**Structure:** ${simpleStructure}
+
+**Rules:**
+${structure.rules.map(rule => `- ${rule}`).join('\n')}
+
+**Structure for Japanese Translation:**
+${structure.structure}
+
+**IMPORTANT: Structure and Speaker Tagging**
+Include the following structure and speaker tags in your audioScript output:
+
+${generateSpeakerInstructions(structure)}`;
 };
 
 function selectAnswerOptionGenerationRules(sectionNumber: number): string {
@@ -154,13 +219,13 @@ function generateContentFrameworks(requestedNumOfLQuizs: number, sectionNumber: 
  */
 function generateTopicFromSituation(situation: string): string {
     
-    // 1. 完全一致を最優先（論理的整合性の確保）
+    //1. 完全一致を最優先（論理的整合性の確保）
     const exactMatch = TOPIC_MAPPING[situation.toLowerCase()];
     if (exactMatch) {
         return exactMatch;
     }
     
-    // 2. 部分一致による柔軟な対応
+    //2. 部分一致による柔軟な対応
     const keywords = situation.toLowerCase().split(' ');
     for (const keyword of keywords) {
         for (const [mappedSituation, topic] of Object.entries(TOPIC_MAPPING)) {
@@ -170,7 +235,7 @@ function generateTopicFromSituation(situation: string): string {
         }
     }
     
-    // 3. フォールバック（100%の対応を保証）
+    //3. フォールバック（100%の対応を保証）
     return `${situation.toLowerCase().replace(/\s+/g, ' ')} content`;
 };
 
@@ -225,10 +290,9 @@ function generateKeyElementsFromContext(situation: string, speaker: string, loca
     return finalElements.join(', ');
 };
 
+//チェックリスト生成関数
 function generateChecklistForPart(sectionNumber: number, constraints: any): string {    
-    let checklist = `
-## Verification Checklist (Must check before generation)
-- □ Are correct answers properly distributed among A, B, C, D?`;
+    let checklist = `- □ Are correct answers properly distributed among A, B, C, D?`;
     
     //Part2は選択肢がA, B, Cのみ
     if (sectionNumber === 2) {
@@ -240,20 +304,38 @@ function generateChecklistForPart(sectionNumber: number, constraints: any): stri
     
     //Part別の単語数チェック項目を追加
     Object.entries(constraints).forEach(([key, value]) => {
-        if (key === 'choices') {
-            checklist += `
-- □ Is each ${key} within the ${value} range?`;
-        } else if (key === 'totalWords') {
-            checklist += `
-- □ Is the total word count within the ${value} range?`;
-        } else {
-            checklist += `
-- □ Is each ${key} within the ${value} range?`;
+        // オブジェクト型の値の処理
+        if (typeof value === 'object' && value !== null && 'min' in value && 'max' in value) {
+            const unit = 'words';
+            if (key === 'choices') {
+                checklist += `
+- □ Is each choice within the ${value.min}-${value.max} ${unit} range?`;
+            } else if (key === 'totalWords') {
+                checklist += `
+- □ Is the total word count within the ${value.min}-${value.max} ${unit} range?`;
+            } else {
+                checklist += `
+- □ Is each ${key} within the ${value.min}-${value.max} ${unit} range?`;
+            }
+        } 
+        // プリミティブ型の値の処理
+        else {
+            if (key === 'questionsCount') {
+                checklist += `
+- □ Does the output contain exactly ${value} questions?`;
+            } else if (key === 'choicesPerQuestion') {
+                checklist += `
+- □ Does each question have exactly ${value} choices?`;
+            } else {
+                checklist += `
+- □ Is ${key} set to ${value}?`;
+            }
         }
     });
     
     checklist += `
-**Continue corrections until all checklist items are checked**`;
+- □ Are choices sufficiently detailed (MINIMUM 3 words per choice)?
+- □ Do choices require comprehension, not just vocabulary recall?`;
     
     return checklist;
 };
@@ -287,11 +369,6 @@ export async function generateSingleAudioScriptPrompt(domObj: domein.NewLQuestio
         })
         .join('\n');
 
-    const audioStructureText = `
-- **Structure**: ${audioStructure.structure}
-- **Rules**: ${audioStructure.rules.map(rule => `  - ${rule}`).join('\n')}
-- **Example**: "${audioStructure.example}"`;
-
     //プロンプトテンプレート処理
     try {
         const __filename = fileURLToPath(import.meta.url);
@@ -318,7 +395,7 @@ export async function generateSingleAudioScriptPrompt(domObj: domein.NewLQuestio
             .replace(/\{\{settingVariations\}\}/g, settingVariationsText)
             .replace(/\{\{contentTopicInstruction\}\}/g, contentTopicInstruction[currentIndex])
             .replace(/\{\{contentFrameworks\}\}/g, contentFrameworksText[currentIndex])
-            .replace(/\{\{checkList\}\}/g, generateChecklistForPart(sectionNumber, constraints));
+            .replace(/\{\{checkList\}\}/g, generateChecklistForPart(sectionNumber, constraints)); 
             
     } catch (error) {
         console.error('プロンプト生成失敗:', error);
@@ -594,65 +671,519 @@ export async function callChatGPT(prompt: string): Promise<dto.GeneratedQuestion
 //==========================================================================
 
 //音声生成関数　controllerで呼び出す
-export async function generateAudioContent(dtoList: dto.NewAudioReqDTO[], lQuestionIDList: string[]): Promise<domein.AudioURL[]> {
-    // SSML生成
-    const ssml = await TOEICSSMLGenerator.generateSSML(dtoList);
-    //・(Google Cloud TTS)音声合成（ssmlバリデーションも含む）
-    const generatedAudioURLList = await callGoogleCloudTTS(ssml, lQuestionIDList);
-    return generatedAudioURLList;
+export async function generateAudioContent(dto: dto.NewAudioReqDTO, lQuestionID: string): Promise<domein.AudioFilePath> {
+    //音声性別設定取得
+    const genderSettings = GenderRequirementsExtracter.extractGenderRequirements(dto.sectionNumber, dto.audioScript);
+    //音声設定取得
+    const voiceSettings = TTS_VOICE_CONFIG[dto.speakerAccent as AccentType];
+    //ランダム音声選択
+    const selectedVoice = TOEICVoiceSelector.selectVoicesForPart(dto.sectionNumber, voiceSettings.voices, genderSettings);
+    //audioScript分割
+    const audioSegmentList = AudioScriptSegmenter.segmentAudioScriptWithGender(dto.audioScript, selectedVoice);
+    //SSML生成
+    const ssml = await TOEICSSMLGenerator.generateSSML(dto.sectionNumber, audioSegmentList, dto.speakingRate);
+    // SSML検証
+    validateSSML(ssml);
+    //(Google Cloud TTS)音声合成
+    const audioBufferData = await callGoogleCloudTTS(ssml, lQuestionID);
+    //ファイル保存、URL取得
+    const audioFilePath = await saveAudioFile(audioBufferData, lQuestionID);
+
+    return audioFilePath;
 };
+
+//audioScriptから構造化タグ除去
+//要件：[SPEECH_CONTENT] [CONVERSATION] [QUESTION_[123]] [CHOICES_[123]] [CHOICES] [QUESTION]が完全に除去されている
+function removeStructureTags(audioScript: string): string {
+        return audioScript
+            // 構造化タグを除去
+            .replace(/\[SPEECH_CONTENT\]/g, '')
+            .replace(/\[CONVERSATION\]/g, '')
+            .replace(/\[QUESTION_[123]\]/g, '')
+            .replace(/\[CHOICES_[123]\]/g, '')
+            .replace(/\[CHOICES\]/g, '')
+            .replace(/\[QUESTION\]/g, '')
+            // 余分な空白を整理
+            .replace(/\s+/g, ' ')
+            .trim();
+    };
+
+/*
+除去前
+'[Speaker1] [SPEECH_CONTENT] Welcome to City International Airport. We are pleased to offer a range of services to enhance your travel experience. For your convenience, our information desks are located throughout the terminal, staffed with friendly personnel ready to assist you. We also provide complimentary Wi-Fi access, available in all areas of the airport. For those traveling with children, our family lounges offer a comfortable space with play areas. Additionally, we have partnered with local businesses to offer exclusive discounts at various shops and restaurants within the airport. Simply present your boarding pass to enjoy these offers. We hope you have a pleasant journey. [pause] [Speaker2] [QUESTION_1] What service is available throughout the airport? [Speaker2] [CHOICES_1] A. Free Wi-Fi access B. Complimentary meals C. Personal shopping assistants D. Free parking [pause] [Speaker2] [QUESTION_2] What should passengers show to get discounts? [Speaker2] [CHOICES_2] A. Passport B. Boarding pass C. Flight ticket D. ID card [pause] [Speaker2] [QUESTION_3] Where can families find a comfortable space? [Speaker2] [CHOICES_3] A. Information desks B. Family lounges C. Business lounges D. Security area [pause]'
+除去後
+'[Speaker1] Welcome to City International Airport. We are pleased to offer a range of services to enhance your travel experience. For your convenience, our information desks are located throughout the terminal, staffed with friendly personnel ready to assist you. We also provide complimentary Wi-Fi access, available in all areas of the airport. For those traveling with children, our family lounges offer a comfortable space with play areas. Additionally, we have partnered with local businesses to offer exclusive discounts at various shops and restaurants within the airport. Simply present your boarding pass to enjoy these offers. We hope you have a pleasant journey. [pause] [Speaker2] What service is available throughout the airport? [Speaker2] A. Free Wi-Fi access B. Complimentary meals C. Personal shopping assistants D. Free parking [pause] [Speaker2] What should passengers show to get discounts? [Speaker2] A. Passport B. Boarding pass C. Flight ticket D. ID card [pause] [Speaker2] Where can families find a comfortable space? [Speaker2] A. Information desks B. Family lounges C. Business lounges D. Security area [pause]'
+性別タグ付与
+'[Speaker1_FEMALE] Welcome to City International Airport. We are pleased to offer a range of services to enhance your travel experience. For your convenience, our information desks are located throughout the terminal, staffed with friendly personnel ready to assist you. We also provide complimentary Wi-Fi access, available in all areas of the airport. For those traveling with children, our family lounges offer a comfortable space with play areas. Additionally, we have partnered with local businesses to offer exclusive discounts at various shops and restaurants within the airport. Simply present your boarding pass to enjoy these offers. We hope you have a pleasant journey. [pause] [Speaker2] viWhat serce is available throughout the airport? [Speaker2] A. Free Wi-Fi access B. Complimentary meals C. Personal shopping assistants D. Free parking [pause] [Speaker2] What should passengers show to get discounts? [Speaker2] A. Passport B. Boarding pass C. Flight ticket D. ID card [pause] [Speaker2] Where can families find a comfortable space? [Speaker2] A. Information desks B. Family lounges C. Business lounges D. Security area [pause]'
+分割後
+1. 
+
+content: 
+2. 
+content: [pause] What service is available throughout the airport? [short pause] A. Free Wi-Fi access [short pause] B. Complimentary meals [short pause] C. Personal shopping assistants [short pause] D. Free parking [pause] What should passengers show to get discounts? [short pause] A. Passport [short pause] B. Boarding pass [short pause] C. Flight ticket [short pause] D. ID card [pause] Where can families find a comfortable space? [short pause] A. Information desks [short pause] B. Family lounges [short pause] C. Business lounges [short pause] D. Security area [pause]
+
+
+'[Speaker1_FEMALE] Welcome to City International Airport. We are pleased to offer a range of services to enhance your travel experience. For your convenience, our information desks are located throughout the terminal, staffed with friendly personnel ready to assist you. We also provide complimentary Wi-Fi access, available in all areas of the airport. For those traveling with children, our family lounges offer a comfortable space with play areas. Additionally, we have partnered with local businesses to offer exclusive discounts at various shops and restaurants within the airport. Simply present your boarding pass to enjoy these offers. We hope you have a pleasant journey. [pause] [Speaker2] [pause] What service is available throughout the airport? [short pause] A. Free Wi-Fi access [short pause] B. Complimentary meals [short pause] C. Personal shopping assistants [short pause] D. Free parking [pause] What should passengers show to get discounts? [short pause] A. Passport [short pause] B. Boarding pass [short pause] C. Flight ticket [short pause] D. ID card [pause] Where can families find a comfortable space? [short pause] A. Information desks [short pause] B. Family lounges [short pause] C. Business lounges [short pause] D. Security area [pause]'
+*/
+
+//audioScriptから性別要件を抽出する関数
+export class GenderRequirementsExtracter {
+    /**
+     * sectionNumとaudioScriptから性別要件を抽出
+     * @param sectionNum - Part番号 (1, 2, 3, 4)
+     * @param audioScript - 性別タグを含むaudioScript
+     * @returns Part構成に応じた性別要件配列（ナレーター除く）
+     */
+    static extractGenderRequirements(
+        sectionNum: 1 | 2 | 3 | 4, 
+        audioScript: string
+    ): ('MALE' | 'FEMALE')[] {
+        
+        // audioScriptから性別付きSpeakerタグを抽出
+        const genderTags = this.extractGenderTags(audioScript);
+        
+        switch (sectionNum) {
+            case 1:
+                // Part 1: ナレーターのみ（空配列）
+                return [];
+                
+            case 2:
+                // Part 2: 質問者のみ（ナレーター除く）
+                const questionerGender = genderTags.Speaker1 || 'MALE'; // デフォルト
+                return [questionerGender];
+                
+            case 3:
+                // Part 3: 会話者1 + 会話者2（ナレーター除く）
+                const speaker1Gender = genderTags.Speaker1 || 'MALE';
+                const speaker2Gender = genderTags.Speaker2 || 'FEMALE';
+                return [speaker1Gender, speaker2Gender];
+                
+            case 4:
+                // Part 4: 発表者のみ（ナレーター除く）
+                const announcerGender = genderTags.Speaker1 || 'FEMALE'; // デフォルト
+                return [announcerGender];
+                
+            default:
+                throw new Error(`Invalid section number: ${sectionNum}`);
+        }
+    }
+    /**
+     * audioScriptから性別付きSpeakerタグを抽出
+     * @param audioScript - 分析対象のaudioScript
+     * @returns Speaker番号と性別のマッピング
+     */
+    private static extractGenderTags(audioScript: string): {
+        Speaker1?: 'MALE' | 'FEMALE';
+        Speaker2?: 'MALE' | 'FEMALE';
+        Speaker3?: 'MALE' | 'FEMALE';
+    } {
+        const genderTags: {
+            Speaker1?: 'MALE' | 'FEMALE';
+            Speaker2?: 'MALE' | 'FEMALE';
+            Speaker3?: 'MALE' | 'FEMALE';
+        } = {};
+        
+        // [Speaker1_MALE], [Speaker1_FEMALE]などのパターンを検索
+        const speakerGenderPattern = /\[Speaker([123])_(MALE|FEMALE)\]/g;
+        let match;
+        
+        while ((match = speakerGenderPattern.exec(audioScript)) !== null) {
+            const speakerNum = match[1] as '1' | '2' | '3';
+            const gender = match[2] as 'MALE' | 'FEMALE';
+            genderTags[`Speaker${speakerNum}`] = gender;
+        }
+        
+        return genderTags;
+    }
+};
+
+export class TOEICVoiceSelector {
+    //ランダム選択
+    static selectRandomVoice(voices: readonly {name: string, gender: string}[]): {name: string, gender: string} {
+        const randomIndex = Math.floor(Math.random() * voices.length);
+        return voices[randomIndex];
+    }
+
+    // 指定性別の音声からランダム選択
+    static selectVoiceByGender(
+        voices: readonly {name: string, gender: string}[], 
+        requiredGender: 'MALE' | 'FEMALE'
+    ): {name: string, gender: string} {
+        const filteredVoices = voices.filter(voice => voice.gender === requiredGender);
+        
+        if (filteredVoices.length === 0) {
+            // フォールバック: 指定性別の音声がない場合は任意の音声を選択
+            return this.selectRandomVoice(voices);
+        }
+        
+        return this.selectRandomVoice(filteredVoices);
+    }
+
+    /**
+     * 固定ナレーター選択（全Part共通）
+     * US、落ち着いた男性の声を固定選択
+     */
+    private static selectNarrator(): {name: string, gender: string} {
+        // 固定でUS男性ナレーターを返す
+        return { name: 'en-US-Neural2-D', gender: 'MALE' };
+    }
+
+    /**
+     * Part 1用音声選択
+     * ナレーター1人のみ
+     */
+    static selectPart1Voices(
+        voices: readonly {name: string, gender: string}[],
+        genderRequirements: ('MALE' | 'FEMALE')[] = []
+    ): {name: string, gender: string}[] {
+        return [this.selectNarrator()];
+    }
+
+    /**
+     * Part 2用音声選択  
+     * 質問者1人（性別指定） + ナレーター1人（固定）
+     */
+    static selectPart2Voices(
+        voices: readonly {name: string, gender: string}[],
+        genderRequirements: ('MALE' | 'FEMALE')[]
+    ): {name: string, gender: string}[] {
+        const questionerGender = genderRequirements[0] || 'MALE'; // デフォルト
+        const questioner = this.selectVoiceByGender(voices, questionerGender);
+        const narrator = this.selectNarrator();
+        
+        return [questioner, narrator];
+    }
+
+    /**
+     * Part 3用音声選択
+     * 会話者2人（性別指定、異なる音声） + ナレーター1人（固定）
+     */
+    static selectPart3Voices(
+        voices: readonly {name: string, gender: string}[],
+        genderRequirements: ('MALE' | 'FEMALE')[]
+    ): {name: string, gender: string}[] {
+        const speaker1Gender = genderRequirements[0] || 'MALE';
+        const speaker2Gender = genderRequirements[1] || 'FEMALE';
+        
+        // 会話者1人目を性別指定で選択
+        const conversationSpeaker1 = this.selectVoiceByGender(voices, speaker1Gender);
+        
+        // 会話者2人目を性別指定かつ1人目と異なる音声から選択
+        const speaker2FilteredVoices = voices.filter(voice => 
+            voice.gender === speaker2Gender && voice.name !== conversationSpeaker1.name
+        );
+        
+        const conversationSpeaker2 = speaker2FilteredVoices.length > 0
+            ? this.selectRandomVoice(speaker2FilteredVoices)
+            : this.selectVoiceByGender(voices, speaker2Gender); // フォールバック
+        
+        const narrator = this.selectNarrator();
+        
+        return [conversationSpeaker1, conversationSpeaker2, narrator];
+    }
+
+    /**
+     * Part 4用音声選択
+     * 発表者1人（性別指定） + ナレーター1人（固定）
+     */
+    static selectPart4Voices(
+        voices: readonly {name: string, gender: string}[],
+        genderRequirements: ('MALE' | 'FEMALE')[]
+    ): {name: string, gender: string}[] {
+        const announcerGender = genderRequirements[0] || 'FEMALE'; // デフォルト
+        const announcer = this.selectVoiceByGender(voices, announcerGender);
+        const narrator = this.selectNarrator();
+        
+        return [announcer, narrator];
+    }
+
+    /**
+     * Part番号に応じた音声選択（統合関数）
+     */
+    static selectVoicesForPart(
+        sectionNumber: 1 | 2 | 3 | 4,
+        voices: readonly {name: string, gender: string}[],
+        genderRequirements: ('MALE' | 'FEMALE')[] = []
+    ): {name: string, gender: string}[] {
+        switch (sectionNumber) {
+            case 1:
+                return this.selectPart1Voices(voices, genderRequirements);
+            case 2:
+                return this.selectPart2Voices(voices, genderRequirements);
+            case 3:
+                return this.selectPart3Voices(voices, genderRequirements);
+            case 4:
+                return this.selectPart4Voices(voices, genderRequirements);
+            default:
+                throw new Error(`Invalid part number: ${sectionNumber}`);
+        }
+    }
+};
+
+/**
+ * audioScriptを[Speaker]タグで分割し、音声設定と統合する関数
+ */
+export interface AudioSegment {
+    speaker: number;
+    content: string;
+    voice: {name: string, gender: string};
+}
+
+export class AudioScriptSegmenter {
+    
+    /**
+     * audioScriptを[Speaker]タグで分割し、selectedVoiceと統合
+     * 同じSpeakerの連続セグメントは結合する
+     * @param audioScript - 分割対象のaudioScript
+     * @param selectedVoice - 各話者に対応する音声設定配列
+     * @returns 分割されたセグメント配列
+     */
+    static segmentAudioScript(
+        audioScript: string,
+        selectedVoice: {name: string, gender: string}[]
+    ): AudioSegment[] {
+        const segments: AudioSegment[] = [];
+        
+        // [Speaker1], [Speaker2], [Speaker3]のパターンでsplit
+        const parts = audioScript.split(/(\[Speaker[123]\])/);
+        
+        let currentSpeaker: number | null = null;
+        let currentContent: string = '';
+        
+        for (let i = 0; i < parts.length; i++) {
+            const part = parts[i].trim();
+            
+            // [SpeakerN]タグを検出
+            const speakerMatch = part.match(/\[Speaker([123])\]/);
+            if (speakerMatch) {
+                const newSpeaker = parseInt(speakerMatch[1]);
+                
+                // 前のSpeakerのセグメントを保存（話者が変わった場合）
+                if (currentSpeaker !== null && currentContent && currentSpeaker !== newSpeaker) {
+                    const voiceIndex = currentSpeaker - 1;
+                    if (selectedVoice[voiceIndex]) {
+                        segments.push({
+                            speaker: currentSpeaker,
+                            content: currentContent.trim(),
+                            voice: selectedVoice[voiceIndex]
+                        });
+                    }
+                    currentContent = '';
+                }
+                
+                currentSpeaker = newSpeaker;
+                continue;
+            }
+            
+            // 話者が設定されており、内容がある場合
+            if (currentSpeaker !== null && part && !part.startsWith('[')) {
+                // 同じSpeakerの内容を結合
+                currentContent += (currentContent ? ' ' : '') + part;
+            }
+        }
+        
+        // 最後のSpeakerのセグメントを保存
+        if (currentSpeaker !== null && currentContent) {
+            const voiceIndex = currentSpeaker - 1;
+            if (selectedVoice[voiceIndex]) {
+                segments.push({
+                    speaker: currentSpeaker,
+                    content: currentContent.trim(),
+                    voice: selectedVoice[voiceIndex]
+                });
+            }
+        }
+        
+        return segments;
+    }
+    
+    /**
+     * 性別タグ付きSpeakerタグにも対応した分割（結合処理付き）
+     * @param audioScript - [Speaker1_MALE]等の性別タグを含むaudioScript
+     * @param selectedVoice - 各話者に対応する音声設定配列
+     * @returns 分割されたセグメント配列
+     */
+    static segmentAudioScriptWithGender(
+        audioScript: string,
+        selectedVoice: {name: string, gender: string}[]
+    ): AudioSegment[] {
+        const segments: AudioSegment[] = [];
+        
+        // [Speaker1], [Speaker1_MALE], [Speaker1_FEMALE]等のパターンでsplit
+        const parts = audioScript.split(/(\[Speaker[123](?:_(?:MALE|FEMALE))?\])/);
+        
+        let currentSpeaker: number | null = null;
+        let currentContent: string = '';
+        
+        for (let i = 0; i < parts.length; i++) {
+            const part = parts[i].trim();
+            
+            // [SpeakerN]または[SpeakerN_GENDER]タグを検出
+            const speakerMatch = part.match(/\[Speaker([123])(?:_(?:MALE|FEMALE))?\]/);
+            if (speakerMatch) {
+                const newSpeaker = parseInt(speakerMatch[1]);
+                
+                // 前のSpeakerのセグメントを保存（話者が変わった場合）
+                if (currentSpeaker !== null && currentContent && currentSpeaker !== newSpeaker) {
+                    const voiceIndex = currentSpeaker - 1;
+                    if (selectedVoice[voiceIndex]) {
+                        segments.push({
+                            speaker: currentSpeaker,
+                            content: currentContent.trim(),
+                            voice: selectedVoice[voiceIndex]
+                        });
+                    }
+                    currentContent = '';
+                }
+                
+                currentSpeaker = newSpeaker;
+                continue;
+            }
+            
+            // 話者が設定されており、内容がある場合
+            if (currentSpeaker !== null && part && !part.startsWith('[')) {
+                // 同じSpeakerの内容を結合（スペース区切り）
+                currentContent += (currentContent ? ' ' : '') + part;
+            }
+        }
+        
+        // 最後のSpeakerのセグメントを保存
+        if (currentSpeaker !== null && currentContent) {
+            const voiceIndex = currentSpeaker - 1;
+            if (selectedVoice[voiceIndex]) {
+                segments.push({
+                    speaker: currentSpeaker,
+                    content: currentContent.trim(),
+                    voice: selectedVoice[voiceIndex]
+                });
+            }
+        }
+        
+        return segments;
+    }
+}
 
 //SSML生成モジュール
 export class TOEICSSMLGenerator {
-    //音声設定のランダム選択メソッド
-    static selectRandomVoice(voices: readonly {name: string, gender: string}[]): {name: string, gender: string} {
-            const randomIndex = Math.floor(Math.random() * voices.length);
-            return voices[randomIndex];
-        };
-    
-    static generateSSML(questionDataList: dto.NewAudioReqDTO[]): string {
-        const baseConfig = questionDataList[0];
-        const voiceSettings = TTS_VOICE_CONFIG[baseConfig.speakerAccent as AccentType];
-
-        // ランダム音声選択
-        const selectedVoice = this.selectRandomVoice(voiceSettings.voices);
+    /**
+     * sectionNumberとAudioSegmentListからSSMLを生成
+     * @param sectionNumber - Part番号 (1, 2, 3, 4)
+     * @param audioSegmentList - 分割された音声セグメント配列
+     * @param speakingRate - 話速 (オプション、デフォルト1.0)
+     * @returns 生成されたSSML文字列
+     */
+    static generateSSML(
+        sectionNumber: 1 | 2 | 3 | 4,
+        audioSegmentList: AudioSegment[],
+        speakingRate: number = 1.0
+    ): string {
         
-        const questionParts = questionDataList.map((question, index) => {
-            return this.createQuestionSSML(question, index + 1);
+        // sectionNumberに基づいて必要な話者数を判定
+        const expectedSpeakers = this.getExpectedSpeakersCount(sectionNumber);
+        
+        // AudioSegmentListの妥当性チェック
+        if (audioSegmentList.length !== expectedSpeakers) {
+            throw new Error(`Part ${sectionNumber} requires ${expectedSpeakers} speakers, but got ${audioSegmentList.length}`);
+        }
+        
+        // 各セグメントのSSMLを生成
+        const voiceSegments = audioSegmentList.map((segment, index) => {
+            return this.createVoiceSegment(segment, sectionNumber, index, speakingRate);
         });
-
-        return `
-<?xml version="1.0" encoding="UTF-8"?>
-<speak version="1.0" xmlns="http://www.w3.org/2001/10/synthesis" xml:lang="${voiceSettings.languageCode}">
-    <voice name="${selectedVoice.name}">
-        <prosody rate="${baseConfig.speakingRate}">
-            <break time="1s"/>
-            ${questionParts.join('\n')}
-            <break time="2s"/>
-        </prosody>
-    </voice>
-</speak>
-`.trim();
+        
+        return this.assembleSSML(voiceSegments);
     }
-
-    private static createQuestionSSML(question: dto.NewAudioReqDTO, questionNumber: number): string {
-        // [間]を<break>タグに変換するだけ
-        const escapedScript = this.escapeSSML(question.audioScript);
-        const processedScript = escapedScript
+    
+    /**
+     * sectionNumberに基づいて必要な話者数を返す
+     * @param sectionNumber - Part番号
+     * @returns 必要な話者数
+     */
+    private static getExpectedSpeakersCount(sectionNumber: 1 | 2 | 3 | 4): number {
+        switch (sectionNumber) {
+            case 1: return 1; // ナレーターのみ
+            case 2: return 2; // 質問者 + ナレーター
+            case 3: return 3; // 会話者1 + 会話者2 + ナレーター
+            case 4: return 2; // 発表者 + ナレーター
+            default:
+                throw new Error(`Invalid section number: ${sectionNumber}`);
+        }
+    }
+    
+    /**
+     * 各音声セグメントのSSMLを生成
+     * @param segment - 音声セグメント
+     * @param sectionNumber - Part番号
+     * @param segmentIndex - セグメントのインデックス
+     * @param speakingRate - 話速
+     * @returns 生成されたvoiceセグメントSSML
+     */
+    private static createVoiceSegment(
+        segment: AudioSegment,
+        sectionNumber: number,
+        segmentIndex: number,
+        speakingRate: number
+    ): string {
+        
+        // コンテンツをエスケープ
+        const escapedContent = this.escapeSSML(segment.content);
+        
+        // 音声制御タグをSSMLに変換
+        const processedContent = this.processAudioControlTags(escapedContent);
+        
+        // セグメントの役割を特定
+        const segmentRole = this.identifySegmentRole(sectionNumber, segmentIndex);
+        
+        return `
+    <!-- ${segmentRole} -->
+    <voice name="${segment.voice.name}">
+        <prosody rate="${speakingRate}">
+            <break time="0.5s"/>
+            ${processedContent}
+            <break time="0.5s"/>
+        </prosody>
+    </voice>`;
+    }
+    
+    /**
+     * セグメントの役割を特定
+     * @param sectionNumber - Part番号
+     * @param segmentIndex - セグメントのインデックス
+     * @returns セグメントの役割説明
+     */
+    private static identifySegmentRole(sectionNumber: number, segmentIndex: number): string {
+        switch (sectionNumber) {
+            case 1:
+                return 'Narrator - Photo descriptions';
+            case 2:
+                return segmentIndex === 0 ? 'Questioner' : 'Narrator - Response choices';
+            case 3:
+                if (segmentIndex === 0) return 'Conversation Speaker 1';
+                if (segmentIndex === 1) return 'Conversation Speaker 2';
+                return 'Narrator - Questions and choices';
+            case 4:
+                return segmentIndex === 0 ? 'Announcer/Presenter' : 'Narrator - Questions and choices';
+            default:
+                return `Speaker ${segmentIndex + 1}`;
+        }
+    }
+    
+    /**
+     * 音声制御タグをSSMLタグに変換
+     * @param content - 変換対象のコンテンツ
+     * @returns 変換されたコンテンツ
+     */
+    private static processAudioControlTags(content: string): string {
+        return content
             .replace(/\[pause\]/g, '<break time="1.5s"/>')
             .replace(/\[short pause\]/g, '<break time="0.8s"/>');
-
-        return `
-<!-- Question ${questionNumber}: ${question.lQuestionID} -->
-<mark name="q${questionNumber}_start"/>
-<prosody rate="${question.speakingRate}">
-    ${processedScript}
-</prosody>
-<mark name="q${questionNumber}_end"/>
-`; //<mark>音声分割に必要なタグ
     }
-
-    //XMLの特殊文字として解釈される文字をエスケープする
+    
+    /**
+     * SSMLの特殊文字をエスケープ
+     * @param text - エスケープ対象のテキスト
+     * @returns エスケープされたテキスト
+     */
     private static escapeSSML(text: string): string {
         return text
             .replace(/&/g, '&amp;')
@@ -660,7 +1191,21 @@ export class TOEICSSMLGenerator {
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&apos;');
-    } 
+    }
+    
+    /**
+     * 最終的なSSMLを組み立て
+     * @param voiceSegments - 音声セグメント配列
+     * @returns 完成したSSML
+     */
+    private static assembleSSML(voiceSegments: string[]): string {
+        return `<?xml version="1.0" encoding="UTF-8"?>
+<speak version="1.0" xmlns="http://www.w3.org/2001/10/synthesis">
+    <break time="1s"/>
+${voiceSegments.join('\n')}
+    <break time="2s"/>
+</speak>`.trim();
+    }
 };
 
 /*fetchモジュール
@@ -668,16 +1213,13 @@ export class TOEICSSMLGenerator {
 動作：fetch
 戻り値：問題数分の音声データ*/
 
-//Google Cloud TTSで音声生成 音声を取得し、URLを返す
-export async function callGoogleCloudTTS(ssml: string, lQuestionIDList: string[]): Promise<domein.AudioURL[]> {
+//Google Cloud TTSで音声生成 音声を取得し、Bufferを返す
+export async function callGoogleCloudTTS(ssml: string, lQuestionID: string): Promise<Buffer<ArrayBuffer>> {
     try {
         // 環境変数チェック
         if (!process.env.GOOGLE_APPLICATION_CREDENTIALS) {
             throw new apierror.EnvironmentConfigError('GOOGLE_APPLICATION_CREDENTIALS環境変数が設定されていません');
         };
-
-        // SSML検証
-        validateSSML(ssml);
 
         // 認証トークン取得
         const accessToken = await getGoogleAccessToken();
@@ -694,46 +1236,41 @@ export async function callGoogleCloudTTS(ssml: string, lQuestionIDList: string[]
                 input: {
                     ssml: ssml //ssmlのみを単一のソースとする（Single Source Of Truth）
                 },
+                voice:{
+                    languageCode:'en-US'
+                    //name:'en-US-Neural2-A',
+                    //ssmlGender:'MALE'
+                },
                 audioConfig: {
                     audioEncoding: 'MP3',
                     sampleRateHertz: 24000,
                     volumeGainDb: 0.0,
                     pitch: 0.0
                 },
-                enableTimePointing: ['SSML_MARK'] // 時間情報取得用
+                enableTimePointing: ['SSML_MARK'] //時間情報取得用
             })
         });
 
-        // レスポンスチェック
+        //レスポンスチェック
         if (!response.ok) {
             const errorText = await response.text();
             console.error('TTS API Error:', response.status, errorText);
             throw new apierror.GoogleTTSAPIError(`TTS API Error: ${response.status} ${response.statusText}`);
         }
+        console.log("TTS API呼び出し成功", response);
 
+        //timepointsはduration計算に使うが現時点では未実装
         const data = schema.GoogleTTSResponseSchema.parse(await response.json());
+        console.log("TTSレスポンスバリデーション成功: ", data);
         
         if (!data.audioContent) {
             throw new apierror.GoogleTTSAPIError('音声コンテンツが生成されませんでした');
         };
 
-        // Base64デコード
+        //Base64デコード
         const fullAudioBuffer = Buffer.from(data.audioContent, 'base64');
-        
-        // 問題毎に音声を分割
-        const audioURLList = await splitAudioByQuestions(
-            fullAudioBuffer, 
-            data.timepoints || [],
-            lQuestionIDList
-        );
-        const validatedAudioURLList = await schema.validateAudioURLList(audioURLList);
 
-        const totalDuration = validatedAudioURLList.reduce((sum, segment) => sum + segment.duration, 0);
-
-        console.log(`音声生成完了: ${audioURLList.length}問, 総時間: ${totalDuration}秒`);
-        console.log(validatedAudioURLList);
-
-        return  validatedAudioURLList;
+        return fullAudioBuffer;
 
     } catch (error) {
         console.error('TTS API呼び出しエラー:', error);
@@ -746,252 +1283,6 @@ export async function callGoogleCloudTTS(ssml: string, lQuestionIDList: string[]
         throw new apierror.GoogleTTSAPIError(`TTS API呼び出しエラー: ${error}`);
     }
 };
-
-//SSMLの構造検証（TOEIC音声生成専用 - 簡略版）
-export async function validateSSML(ssml: string): Promise<void> {
-    // 1. 基本チェック
-    if (!ssml || ssml.trim().length === 0) {
-        throw new apierror.SSMLValidationError('SSMLが空です');
-    }
-
-    // 2. 必須要素の確認
-    if (!ssml.includes('<speak') || !ssml.includes('</speak>')) {
-        throw new apierror.SSMLValidationError('speak要素が見つかりません');
-    }
-
-    // 3. 音声分割用markタグの検証（最重要）
-    const markTags = ssml.match(/<mark\s+name="q\d+_(start|end)"\s*\/>/g) || [];
-    const startMarks = markTags.filter(tag => tag.includes('_start'));
-    const endMarks = markTags.filter(tag => tag.includes('_end'));
-
-    if (startMarks.length === 0) {
-        throw new apierror.SSMLValidationError('問題分割用のstartマークが見つかりません');
-    }
-
-    if (startMarks.length !== endMarks.length) {
-        throw new apierror.SSMLValidationError(`markタグのペアが不正です (start: ${startMarks.length}, end: ${endMarks.length})`);
-    }
-
-    // 4. 問題数制限
-    if (startMarks.length > 10) {
-        throw new apierror.SSMLValidationError(`問題数が上限を超えています (最大10問, 実際: ${startMarks.length}問)`);
-    }
-
-    console.log(`SSML検証完了: ${startMarks.length}問題`);
-};
-
-//音声データを問題毎に分割し保存　
-// 引数: 音声データ、時間情報、識別子
-// 戻り値: 保存した音声のURLリスト
-export async function splitAudioByQuestions(
-    audioBuffer: Buffer, //Base64でエンコードされた音声データ　未分割
-    timepoints: Array<{ markName: string; timeSeconds: number }>, //時間情報　どこで切るかの指定
-    lQuestionIDList: string[] //分割した各問題に付与する識別子
-): Promise<domein.AudioURL[]> {
-
-    console.time(`splitAudioByQuestions`);
-    try{
-        // 要素数が0でないか確認
-        console.log(`timepoints.length: ${timepoints.length}, lQuestionIDList.length: ${lQuestionIDList.length}`);
-        if(timepoints.length === 0 || lQuestionIDList.length === 0) {
-            throw new apierror.AudioProcessingError('問題数もしくは時間数の要素数が0です');
-        };
-
-        const ffmpegStatic = await import('ffmpeg-static');  // 動的import モジュール実行タイミングのみ読み込み
-        const ffmpegPath = ffmpegStatic.default;
-        
-        // 型安全確認
-        if (typeof ffmpegPath !== 'string' || !ffmpegPath) {
-            throw new apierror.FFmpegError('ffmpeg-static did not return a valid path');
-        };
-
-        // timepoints をペアにグループ化
-        const questionTimeRangeList = extractQuestionTimeRangeList(timepoints);
-        // 配列の長さが整合するか確認
-        if(questionTimeRangeList.length !== lQuestionIDList.length) {
-            throw new apierror.AudioProcessingError('問題数と時間範囲の数が整合しません');
-        };
-        console.log(questionTimeRangeList)
-        
-        /*// 各時間範囲で音声を分割
-        const audioURLList: domein.AudioURL[] = [];*/
-        
-        console.log();
-        // 一括でFFmpeg処理（全問題を一度に切り出し）
-        const audioURLList = await extractMultipleAudioSegments(
-            audioBuffer,
-            questionTimeRangeList,
-            lQuestionIDList,
-            ffmpegPath
-        );
-        console.log(audioURLList);
-        return audioURLList;
-    } finally {
-        console.timeEnd(`splitAudioByQuestions`);
-    }
-};
-
-//時間範囲抽出
-export function extractQuestionTimeRangeList(timePointList: Array<{ markName: string; timeSeconds: number }>): Array<{ startTime: number; endTime: number }> {
-    
-    // 型安全性確認
-    if(timePointList.length === 0) {
-        throw new apierror.AudioSplitError('timepointsの要素数が0です');
-    };
-    if((timePointList.length % 2) !== 0) {
-        throw new apierror.AudioSplitError('要素数が偶数ではなく、startとendがどこかで欠損しています');
-    };
-    if(timePointList.length/2 > 10) {
-        throw new apierror.AudioSplitError('要求の問題数が多すぎます（最大10問まで）');
-    };
-    
-    // timepointlistをMap型に変換
-    const markMap = new Map<string, number>();
-        timePointList.forEach(tp => {
-        markMap.set(tp.markName, tp.timeSeconds);
-    }); 
-
-    const rangeList = [];
-    const questionCount = timePointList.length / 2;
-    
-    // 2. 検索（O(1) × 問題数）
-    for (let i = 1; i <= questionCount; i++) {
-        const startTime = markMap.get(`q${i}_start`);
-        const endTime = markMap.get(`q${i}_end`);
-        
-        if (startTime !== undefined && endTime !== undefined) {
-            rangeList.push({
-                startTime: startTime,
-                endTime: endTime
-            });
-        } else {
-            throw new apierror.AudioSplitError(`問題${i}のstart/endペアが見つかりません`);
-        } 
-    }
-    
-    return rangeList;
-};
-
-//音声データの切り出し処理および保存、URL生成
-export async function extractMultipleAudioSegments(
-    audioBuffer: Buffer,
-    questionTimeRangeList: Array<{ startTime: number; endTime: number }>,
-    lQuestionIDList: string[],
-    ffmpegPath: string
-): Promise<domein.AudioURL[]> {
-    if (questionTimeRangeList.length !== lQuestionIDList.length) {
-        throw new apierror.AudioSplitError('問題数と時間範囲の数が整合しません');
-    }
-
-    const tempDir = os.tmpdir();
-    const tempInputFile = path.join(tempDir, `input_${Date.now()}.mp3`);
-
-    try {
-        await fs.writeFile(tempInputFile, audioBuffer);
-
-        const audioURLList = await Promise.all(
-            questionTimeRangeList.map((range, index) =>
-                extractSingleSegment(
-                    tempInputFile,
-                    range.startTime,
-                    range.endTime,
-                    lQuestionIDList[index],
-                    ffmpegPath
-                )
-            )
-        );
-        console.log(audioURLList);
-        return audioURLList;
-    } catch (error) {
-        console.log('音声切り出しエラー:', error);
-        if (
-            error instanceof apierror.AudioProcessingError ||
-            error instanceof apierror.FFmpegError
-        ) {
-            throw error;
-        }
-        throw new apierror.AudioProcessingError(`音声切り出しエラー: ${error}`);
-    } finally {
-        //一時ファイルのクリーンアップ
-        await fs.unlink(tempInputFile).catch(() => {});
-    }
-}
-
-// 個別セグメント処理（importなし）
-async function extractSingleSegment(
-    inputFilePath: string,
-    startTime: number,
-    endTime: number,
-    lQuestionID: string,
-    ffmpegPath: string
-): Promise<domein.AudioURL> {
-    
-    const tempDir = os.tmpdir();
-    const tempOutputFile = path.join(tempDir, `output_${lQuestionID}_${Date.now()}.mp3`);
-    
-    // 最終保存先
-    const resourcesDir = path.join(process.cwd(), 'resources', 'listening-quiz-resources');
-    const questionFolder = `lQuestion_${lQuestionID}_${new Date().toISOString().replace(/[-:T]/g, '').slice(0, 15)}.`;
-    const finalDir = path.join(resourcesDir, questionFolder);
-    
-    try {
-        await fs.mkdir(finalDir, { recursive: true });
-        
-        // ファイル切り出し条件の指定
-        const args = [
-            '-i', inputFilePath,
-            '-ss', startTime.toString(),
-            '-t', (endTime - startTime).toString(),
-            '-acodec', 'libmp3lame',
-            '-b:a', '128k',
-            '-y',
-            tempOutputFile
-        ];
-        
-        await executeFFmpegProcess(ffmpegPath, args);
-        
-        // 最終保存先にコピー
-        const finalFilePath = path.join(finalDir, 'audio_segment.mp3');
-        await fs.copyFile(tempOutputFile, finalFilePath);
-        
-        return {
-            lQuestionID: lQuestionID,
-            audioFilePath: finalFilePath,
-            audioURL: `/api/audio/question/${lQuestionID}`,
-            duration: endTime - startTime
-        };
-        
-    } catch (error) {
-        console.log(error);
-        if (error instanceof apierror.FFmpegError) {
-            throw error;
-        }
-        throw new apierror.AudioProcessingError(`音声切り出しエラー: ${error}`);
-    } finally {
-        await fs.unlink(tempOutputFile).catch(() => {});
-    }
-};
-
-export function executeFFmpegProcess(ffmpegPath: string, args: string[]): Promise<void> {
-    return new Promise<void>((resolve, reject) => {
-            //切り出し実行
-            const ffmpegProcess = spawn(ffmpegPath, args);
-
-            console.log(`FFmpeg process started with command: ${ffmpegPath} ${args.join(' ')}`);
-            
-            let stderr = '';
-            ffmpegProcess.stderr.on('data', (data) => {
-                stderr += data.toString();
-            });
-            
-            ffmpegProcess.on('close', (code) => {
-                if (code === 0) resolve();
-                else reject(new apierror.FFmpegError(`FFmpeg failed: ${stderr}`));
-            });
-            
-            ffmpegProcess.on('error', (error) => {reject(new apierror.FFmpegError(`FFmpeg process error: ${error}`));});
-        });
-}
 
 //Google Cloud認証トークン取得
 export async function getGoogleAccessToken(): Promise<string> {
@@ -1014,4 +1305,143 @@ export async function getGoogleAccessToken(): Promise<string> {
         }
         throw new apierror.GoogleAuthenticationError(`Google Cloud TTS認証エラー: ${error instanceof Error ? error.message : error}`);
     }
+};
+
+//SSMLの構造検証（TOEIC音声生成専用 - 簡略版）
+export async function validateSSML(ssml: string): Promise<void> {
+    
+    //基本チェック
+    if (!ssml || ssml.trim().length === 0) {
+        throw new apierror.SSMLValidationError('SSMLが空です');
+    }
+    
+    //必須要素の確認
+    if (!ssml.includes('<speak') || !ssml.includes('</speak>')) {
+        throw new apierror.SSMLValidationError('speak要素が見つかりません');
+    }
+    
+    //voice要素の存在確認
+    const voiceTags = ssml.match(/<voice\s+name="[^"]+"\s*>/g) || [];
+    if (voiceTags.length === 0) {
+        throw new apierror.SSMLValidationError('voice要素が見つかりません');
+    }
+    
+    //TOEIC Part数制限の確認（1-4問）
+    if (voiceTags.length > 4) {
+        throw new apierror.SSMLValidationError(`voice要素数が上限を超えています (最大4個, 実際: ${voiceTags.length}個)`);
+    }
+    
+    //ナレーター固定音声の確認
+    const narratorVoice = 'en-US-Neural2-D';
+    if (!ssml.includes(narratorVoice)) {
+        throw new apierror.SSMLValidationError(`固定ナレーター音声(${narratorVoice})が見つかりません`);
+    }
+    
+    //prosody要素の確認（話速設定）
+    const prosodyTags = ssml.match(/<prosody\s+rate="[^"]+"\s*>/g) || [];
+    if (prosodyTags.length !== voiceTags.length) {
+        throw new apierror.SSMLValidationError(`voice要素とprosody要素の数が一致しません (voice: ${voiceTags.length}, prosody: ${prosodyTags.length})`);
+    }
+    
+    //break要素の基本確認（音声制御）
+    const breakTags = ssml.match(/<break\s+time="[^"]+"\s*\/>/g) || [];
+    if (breakTags.length === 0) {
+        throw new apierror.SSMLValidationError('break要素が見つかりません（音声制御が不正）');
+    }
+    
+    console.log(`SSML検証完了: ${voiceTags.length}人の話者構成`);
+};
+export async function validateDetailSSML(ssml: string, expectedPartNumber?: 1|2|3|4): Promise<void> {
+    
+    // 基本検証を実行
+    await validateSSML(ssml);
+    
+    // art別の詳細検証
+    if (expectedPartNumber) {
+        const voiceTags = ssml.match(/<voice\s+name="[^"]+"\s*>/g) || [];
+        
+        // Part別の期待話者数
+        const expectedSpeakers = {
+            1: 1, // ナレーターのみ
+            2: 2, // 質問者 + ナレーター
+            3: 3, // 会話者1 + 会話者2 + ナレーター
+            4: 2  // 発表者 + ナレーター
+        };
+        
+        const expected = expectedSpeakers[expectedPartNumber];
+        if (voiceTags.length !== expected) {
+            throw new apierror.SSMLValidationError(
+                `Part ${expectedPartNumber}の話者数が不正です (期待: ${expected}人, 実際: ${voiceTags.length}人)`
+            );
+        }
+        
+        // ナレーター固定の確認（Part1は全員ナレーター、他Partは最後がナレーター）
+        const narratorVoice = 'en-US-Neural2-D';
+        if (expectedPartNumber === 1) {
+            // Part1: 全てナレーター
+            if (!ssml.includes(`<voice name="${narratorVoice}">`)) {
+                throw new apierror.SSMLValidationError('Part1のナレーター音声が正しくありません');
+            }
+        } else {
+            // Part2-4: 最後がナレーター
+            const lastVoiceMatch = ssml.match(/<voice\s+name="([^"]+)"\s*>[^<]*<\/voice>\s*<break[^>]*>\s*<\/speak>/);
+            if (!lastVoiceMatch || !lastVoiceMatch[1].includes(narratorVoice)) {
+                throw new apierror.SSMLValidationError(`Part ${expectedPartNumber}の最後の話者がナレーターではありません`);
+            }
+        }
+        
+        console.log(`Part ${expectedPartNumber}のSSML検証完了`);
+    }
+};
+
+/**
+ * 単一の音声ファイルを保存する
+ * @param audioBuffer - 保存する音声データ
+ * @param lQuestionID - 問題識別子
+ * @param duration - 音声の長さ（秒）（オプション）
+ * @returns 保存したファイルの情報
+ */
+export async function saveAudioFile(audioBuffer: Buffer, lQuestionID: string, duration?: number): Promise<domein.AudioFilePath> {
+    
+    try {
+        // フォルダ作成
+        const audioDir = createAudioDirectory(lQuestionID);
+        await fs.mkdir(audioDir, { recursive: true });
+        console.log(`音声フォルダ作成完了`);
+        
+        // ファイル名生成と保存
+        const audioFilePath = generateAudioFilePath(audioDir);
+        await fs.writeFile(audioFilePath, audioBuffer);
+
+        console.log(`音声生成完了`/*層時間は一旦省略*/);
+        console.log(`音声ファイルパス: ${audioFilePath}`);
+        
+        return {
+            lQuestionID: lQuestionID,
+            audioFilePath: audioFilePath,
+            ...(duration !== undefined && { duration })  // durationが提供された場合のみ含める
+        };
+    } catch (error) {
+        throw new Error(`音声ファイル保存エラー: ${error}`);
+    }
+}
+
+/**
+ * 音声ファイル用のディレクトリパスを作成
+ * @param lQuestionID - 問題識別子
+ * @returns ディレクトリパス
+ */
+function createAudioDirectory(lQuestionID: string): string {
+    const resourcesDir = path.join(process.cwd(), 'resources', 'listening-quiz-resources');
+    const questionFolder = `lQuestion_${lQuestionID}_${new Date().toISOString().replace(/[-:T]/g, '').slice(0, 15)}`;
+    return path.join(resourcesDir, questionFolder);
+}
+
+/**
+ * 音声ファイルの完全パスを生成
+ * @param audioDir - 保存先ディレクトリ
+ * @returns ファイルパス
+ */
+function generateAudioFilePath(audioDir: string): string {
+    return path.join(audioDir, 'audio.mp3');
 }

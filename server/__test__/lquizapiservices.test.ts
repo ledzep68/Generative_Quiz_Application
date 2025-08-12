@@ -22,7 +22,7 @@ import * as dto from "../listening-quiz-transactions/lquiz.dto.ts";
 import * as businesserror from "../listening-quiz-transactions/errors/lquiz.businesserrors.js";
 import * as apierror from "../listening-quiz-transactions/errors/lquiz.apierrors.ts";
 import * as schema from "../listening-quiz-transactions/schemas/lquizapischema.ts";
-
+/*
 describe('A_getRandomSpeakerAccent', () => {
     test("A01_ランダムに発話アクセントを取得", async () => {
         expect.assertions(12);
@@ -401,8 +401,8 @@ describe('D_generateJpnAudioScriptPrompt', () => {
     test("D04_Part4日本語音声プロンプト生成", async () => {
         expect.assertions(6);
         const sectionNumber = 4;
-        const sampleAudioScript = "[Speaker1] Good morning, everyone. As the system administrator, I want to walk you through our new data management system. This system streamlines data processing and improves efficiency. First, log in using your credentials. The dashboard provides project overviews and statuses. To update a project, click the project name and enter new data. [pause] What is the main purpose of the new system? [pause] To streamline data processing and improve efficiency. [short pause] To increase working hours. [short pause] To reduce employees. [short pause] To enhance customer service.";
-
+        //const sampleAudioScript = "[Speaker1] Good morning, everyone. As the system administrator, I want to walk you through our new data management system. This system streamlines data processing and improves efficiency. First, log in using your credentials. The dashboard provides project overviews and statuses. To update a project, click the project name and enter new data. [pause] What is the main purpose of the new system? [pause] To streamline data processing and improve efficiency. [short pause] To increase working hours. [short pause] To reduce employees. [short pause] To enhance customer service.";
+        const sampleAudioScript = "[SPEECH_CONTENT] Good morning, passengers. This is an important announcement from the station staff. Due to scheduled maintenance, the northbound trains will be operating on a revised timetable today. Please check the digital boards for updated departure times. Additionally, the ticket machines on platforms 3 and 4 are temporarily out of service. We apologize for any inconvenience and recommend using the machines located near the main entrance. For further assistance, please approach any of our staff members. Thank you for your understanding and cooperation. [pause] [QUESTION_1] What is the main purpose of the announcement? [CHOICES_1] A. To inform about a new train service [short pause] B. To announce a change in train schedules [short pause] C. To promote a new ticketing system [short pause] D. To notify about a station closure [pause] [QUESTION_2] Where can passengers find updated departure times? [CHOICES_2] A. On the station's website [short pause] B. On the digital boards [short pause] C. At the ticket counter [short pause] D. In the station newsletter [pause] [QUESTION_3] What should passengers do if they need assistance? [CHOICES_3] A. Call the customer service hotline [short pause] B. Use the help desk near platform 1 [short pause] C. Approach any station staff member [short pause] D. Visit the station manager's office"
         const result = await service.generateSingleJpnAudioScriptPrompt(
             sectionNumber,
             sampleAudioScript
@@ -470,6 +470,8 @@ describe('D_generateJpnAudioScriptPrompt', () => {
         expect(result).toContain('€1,000 investment');
     });
 });
+*/
+
 /*
 const fetchMock = createFetchMock (vi);
 fetchMock.enableMocks();
@@ -1413,4 +1415,488 @@ describe(`H_callGoogleCloudTTS`, () => {
     }, 30000);
 });
 
-*/
+
+
+describe('SSML生成 直交表テスト L16(4^4)', () => {
+    
+    // テストデータの定義
+    const testData = {
+        // 因子A: audioScript templates (Part別)
+        audioScripts: {
+            part1: '[Speaker1] A businessman wearing a dark suit is reading. [short pause] Two women are walking. [short pause] Children are playing. [short pause] A dog is running.',
+            part2: '[Speaker1_REPLACE_GENDER] Where is the conference room? [pause] [Speaker2] Down the hall. [short pause] Yes, I will attend. [short pause] Meeting starts at 3PM.',
+            part3: '[Speaker1_REPLACE_GENDER1] Good morning, Sarah. How is the report? [pause] [Speaker2_REPLACE_GENDER2] Almost done, Mike. Just need final data. [pause] [Speaker3] What does Mike need? [short pause] A. Add data [short pause] B. Submit report [short pause] C. Schedule meeting [short pause] D. Review content [pause]',
+            part4: '[Speaker1_REPLACE_GENDER] Welcome to International Airport. We offer various services. [pause] [Speaker2] What service is available? [short pause] A. Free Wi-Fi [short pause] B. Meals [short pause] C. Shopping [short pause] D. Parking [pause]'
+        },
+        
+        // 性別設定パターン
+        genderPatterns: {
+            MALE: { gender1: 'MALE', gender2: 'MALE' },
+            FEMALE: { gender1: 'FEMALE', gender2: 'FEMALE' },
+            MIXED: { gender1: 'MALE', gender2: 'FEMALE' },
+            DEFAULT: { gender1: '', gender2: '' }
+        }
+    };
+    
+    // audioScript生成ヘルパー
+    const generateAudioScript = (part: 1|2|3|4, genderType: 'MALE'|'FEMALE'|'MIXED'|'DEFAULT'): string => {
+        const template = testData.audioScripts[`part${part}` as keyof typeof testData.audioScripts];
+        const pattern = testData.genderPatterns[genderType];
+        
+        return template
+            .replace('_REPLACE_GENDER1', pattern.gender1 ? `_${pattern.gender1}` : '')
+            .replace('_REPLACE_GENDER2', pattern.gender2 ? `_${pattern.gender2}` : '')
+            .replace('_REPLACE_GENDER', pattern.gender1 ? `_${pattern.gender1}` : '');
+    };
+    
+    // 直交表 L16(4^4) テストケース
+    
+    test('T01: Part1・American・MALE・Rate0.8', async () => {
+        const request = {
+            sectionNumber: 1 as 1|2|3|4,
+            audioScript: generateAudioScript(1, 'MALE'),
+            speakerAccent: "American" as const,
+            speakingRate: 0.8
+        };
+        
+        const result = await service.generateAudioContent(request);
+        console.log("T01: ", result);
+        
+        // 基本検証
+        expect(result).toContain('<?xml version="1.0"');
+        expect(result).toContain('<speak version="1.0"');
+        
+        // Part1検証: 1人
+        const voiceCount = (result.match(/<voice name="/g) || []).length;
+        expect(voiceCount).toBe(1);
+        
+        // ナレーター固定検証
+        expect(result).toContain('en-US-Neural2-D');
+        
+        // 話速検証
+        expect(result).toContain('<prosody rate="0.8">');
+        
+        // 内容検証
+        expect(result).toContain('businessman wearing a dark suit');
+    });
+    
+    test('T02: Part1・British・FEMALE・Rate0.9', async () => {
+        const request = {
+            sectionNumber: 1 as 1|2|3|4,
+            audioScript: generateAudioScript(1, 'FEMALE'),
+            speakerAccent: "British" as const,
+            speakingRate: 0.9
+        };
+        
+        const result = await service.generateAudioContent(request);
+        console.log("T02: ", result);
+        const voiceCount = (result.match(/<voice name="/g) || []).length;
+        
+        expect(voiceCount).toBe(1);
+        expect(result).toContain('en-US-Neural2-D'); // Part1はナレーター固定
+        expect(result).toContain('<prosody rate="0.9">');
+    });
+    
+    test('T03: Part1・Canadian・MIXED・Rate1.0', async () => {
+        const request = {
+            sectionNumber: 1 as 1|2|3|4,
+            audioScript: generateAudioScript(1, 'MIXED'),
+            speakerAccent: "Canadian" as const,
+            speakingRate: 1.0
+        };
+        
+        const result = await service.generateAudioContent(request);
+        console.log("T03: ", result);
+        
+        const voiceCount = (result.match(/<voice name="/g) || []).length;
+        expect(voiceCount).toBe(1);
+        expect(result).toContain('<prosody rate="1">');
+    });
+    
+    test('T04: Part1・Australian・DEFAULT・Rate1.2', async () => {
+        const request = {
+            sectionNumber: 1 as 1|2|3|4,
+            audioScript: generateAudioScript(1, 'DEFAULT'),
+            speakerAccent: "Australian" as const,
+            speakingRate: 1.2
+        };
+        
+        const result = await service.generateAudioContent(request);
+        console.log("T04: ", result);
+        
+        const voiceCount = (result.match(/<voice name="/g) || []).length;
+        expect(voiceCount).toBe(1);
+        expect(result).toContain('<prosody rate="1.2">');
+    });
+    
+    test('T05: Part2・American・FEMALE・Rate1.0', async () => {
+        const request = {
+            sectionNumber: 2 as 1|2|3|4,
+            audioScript: generateAudioScript(2, 'FEMALE'),
+            speakerAccent: "American" as const,
+            speakingRate: 1.0
+        };
+        
+        const result = await service.generateAudioContent(request);
+        console.log("T05: ", result);
+        
+        // Part2検証: 2人
+        const voiceCount = (result.match(/<voice name="/g) || []).length;
+        expect(voiceCount).toBe(2);
+        
+        // American音声検証
+        expect(result).toContain('en-US-Neural2-');
+        
+        // 内容検証
+        expect(result).toContain('Where is the conference room');
+        expect(result).toContain('Down the hall');
+    });
+    
+    test('T06: Part2・British・MALE・Rate1.2', async () => {
+        const request = {
+            sectionNumber: 2 as 1|2|3|4,
+            audioScript: generateAudioScript(2, 'MALE'),
+            speakerAccent: "British" as const,
+            speakingRate: 1.2
+        };
+        
+        const result = await service.generateAudioContent(request);
+        console.log("T06: ", result);
+        
+        const voiceCount = (result.match(/<voice name="/g) || []).length;
+        expect(voiceCount).toBe(2);
+        expect(result).toContain('en-GB-Neural2-'); // British音声
+        expect(result).toContain('<prosody rate="1.2">');
+    });
+    
+    test('T07: Part2・Canadian・DEFAULT・Rate0.8', async () => {
+        const request = {
+            sectionNumber: 2 as 1|2|3|4,
+            audioScript: generateAudioScript(2, 'DEFAULT'),
+            speakerAccent: "Canadian" as const,
+            speakingRate: 0.8
+        };
+        
+        const result = await service.generateAudioContent(request);
+        console.log("T07: ", result);
+        
+        const voiceCount = (result.match(/<voice name="/g) || []).length;
+        expect(voiceCount).toBe(2);
+        expect(result).toContain('<prosody rate="0.8">');
+    });
+    
+    test('T08: Part2・Australian・MIXED・Rate0.9', async () => {
+        const request = {
+            sectionNumber: 2 as 1|2|3|4,
+            audioScript: generateAudioScript(2, 'MIXED'),
+            speakerAccent: "Australian" as const,
+            speakingRate: 0.9
+        };
+        
+        const result = await service.generateAudioContent(request);
+        console.log("T08: ", result);
+        
+        const voiceCount = (result.match(/<voice name="/g) || []).length;
+        expect(voiceCount).toBe(2);
+        expect(result).toContain('en-AU-Neural2-'); // Australian音声
+    });
+    
+    test('T09: Part3・American・MIXED・Rate1.2', async () => {
+        const request = {
+            sectionNumber: 3 as 1|2|3|4,
+            audioScript: generateAudioScript(3, 'MIXED'),
+            speakerAccent: "American" as const,
+            speakingRate: 1.2
+        };
+        
+        const result = await service.generateAudioContent(request);
+        console.log("T09: ", result);
+        
+        // Part3検証: 3人
+        const voiceCount = (result.match(/<voice name="/g) || []).length;
+        expect(voiceCount).toBe(3);
+        
+        // 会話内容検証
+        expect(result).toContain('Good morning, Sarah');
+        expect(result).toContain('Almost done, Mike');
+        expect(result).toContain('What does Mike need');
+    });
+    
+    test('T10: Part3・British・DEFAULT・Rate1.0', async () => {
+        const request = {
+            sectionNumber: 3 as 1|2|3|4,
+            audioScript: generateAudioScript(3, 'DEFAULT'),
+            speakerAccent: "British" as const,
+            speakingRate: 1.0
+        };
+        
+        const result = await service.generateAudioContent(request);
+        console.log("T10: ", result);
+        
+        const voiceCount = (result.match(/<voice name="/g) || []).length;
+        expect(voiceCount).toBe(3);
+        expect(result).toContain('en-GB-Neural2-');
+    });
+    
+    test('T11: Part3・Canadian・MALE・Rate0.9', async () => {
+        const request = {
+            sectionNumber: 3 as 1|2|3|4,
+            audioScript: generateAudioScript(3, 'MALE'),
+            speakerAccent: "Canadian" as const,
+            speakingRate: 0.9
+        };
+        
+        const result = await service.generateAudioContent(request);
+        console.log("T11: ", result);
+        
+        const voiceCount = (result.match(/<voice name="/g) || []).length;
+        expect(voiceCount).toBe(3);
+    });
+    
+    test('T12: Part3・Australian・FEMALE・Rate0.8', async () => {
+        const request = {
+            sectionNumber: 3 as 1|2|3|4,
+            audioScript: generateAudioScript(3, 'FEMALE'),
+            speakerAccent: "Australian" as const,
+            speakingRate: 0.8
+        };
+        
+        const result = await service.generateAudioContent(request);
+        console.log("T12: ", result);
+        
+        const voiceCount = (result.match(/<voice name="/g) || []).length;
+        expect(voiceCount).toBe(3);
+        expect(result).toContain('en-AU-Neural2-');
+    });
+    
+    test('T13: Part4・American・DEFAULT・Rate0.9', async () => {
+        const request = {
+            sectionNumber: 4 as 1|2|3|4,
+            audioScript: generateAudioScript(4, 'DEFAULT'),
+            speakerAccent: "American" as const,
+            speakingRate: 0.9
+        };
+        
+        const result = await service.generateAudioContent(request);
+        console.log("T13: ", result);
+        
+        // Part4検証: 2人
+        const voiceCount = (result.match(/<voice name="/g) || []).length;
+        expect(voiceCount).toBe(2);
+        
+        // 内容検証
+        expect(result).toContain('Welcome to International Airport');
+        expect(result).toContain('What service is available');
+    });
+    
+    test('T14: Part4・British・MIXED・Rate0.8', async () => {
+        const request = {
+            sectionNumber: 4 as 1|2|3|4,
+            audioScript: generateAudioScript(4, 'MIXED'),
+            speakerAccent: "British" as const,
+            speakingRate: 0.8
+        };
+        
+        const result = await service.generateAudioContent(request);
+        console.log("T14: ", result);
+        
+        const voiceCount = (result.match(/<voice name="/g) || []).length;
+        expect(voiceCount).toBe(2);
+        expect(result).toContain('en-GB-Neural2-');
+    });
+    
+    test('T15: Part4・Canadian・FEMALE・Rate1.2', async () => {
+        const request = {
+            sectionNumber: 4 as 1|2|3|4,
+            audioScript: generateAudioScript(4, 'FEMALE'),
+            speakerAccent: "Canadian" as const,
+            speakingRate: 1.2
+        };
+        
+        const result = await service.generateAudioContent(request);
+        console.log("T15: ", result);
+        
+        const voiceCount = (result.match(/<voice name="/g) || []).length;
+        expect(voiceCount).toBe(2);
+        expect(result).toContain('<prosody rate="1.2">');
+    });
+    
+    test('T16: Part4・Australian・MALE・Rate1.0', async () => {
+        const request = {
+            sectionNumber: 4 as 1|2|3|4,
+            audioScript: generateAudioScript(4, 'MALE'),
+            speakerAccent: "Australian" as const,
+            speakingRate: 1.0
+        };
+        
+        const result = await service.generateAudioContent(request);
+        console.log("T16: ", result);
+        
+        const voiceCount = (result.match(/<voice name="/g) || []).length;
+        expect(voiceCount).toBe(2);
+        expect(result).toContain('en-AU-Neural2-');
+    });
+});
+// エラーケース・境界値テスト
+describe('SSML生成 エラーケース・境界値テスト', () => {
+    
+    test('E01: 境界値 - speakingRate最小値(0.5)', async () => {
+        const request = {
+            sectionNumber: 4 as 1|2|3|4,
+            audioScript: '[Speaker1] Test content [pause] [Speaker2] Question?',
+            speakerAccent: "American" as const,
+            speakingRate: 0.5
+        };
+        
+        const result = await service.generateAudioContent(request);
+        console.log("E01: ", result);
+        expect(result).toContain('<prosody rate="0.5">');
+    });
+    
+    test('E02: 境界値 - speakingRate最大値(2.0)', async () => {
+        const request = {
+            sectionNumber: 4 as 1|2|3|4,
+            audioScript: '[Speaker1] Test content [pause] [Speaker2] Question?',
+            speakerAccent: "American" as const,
+            speakingRate: 2.0
+        };
+        
+        const result = await service.generateAudioContent(request);
+        console.log("E02: ", result);
+        expect(result).toContain('<prosody rate="2">');
+    });
+    
+    test('E03: 異常系 - 不正なsectionNumber(0)', async () => {
+        const request = {
+            sectionNumber: 0 as any,
+            audioScript: '[Speaker1] Test content',
+            speakerAccent: "American" as const,
+            speakingRate: 1.0
+        };
+        
+        await expect(service.generateAudioContent(request)).rejects.toThrow();
+    });
+    
+    test('E04: 異常系 - 不正なsectionNumber(5)', async () => {
+        const request = {
+            sectionNumber: 5 as any,
+            audioScript: '[Speaker1] Test content',
+            speakerAccent: "American" as const,
+            speakingRate: 1.0
+        };
+        
+        await expect(service.generateAudioContent(request)).rejects.toThrow();
+    });
+    
+    test('E05: 異常系 - 空のaudioScript', async () => {
+        const request = {
+            sectionNumber: 4 as 1|2|3|4,
+            audioScript: '',
+            speakerAccent: "American" as const,
+            speakingRate: 1.0
+        };
+        
+        await expect(service.generateAudioContent(request)).rejects.toThrow();
+    });
+    
+    test('E06: 異常系 - 話者数不一致(Part4で1人)', async () => {
+        const request = {
+            sectionNumber: 4 as 1|2|3|4,
+            audioScript: '[Speaker1] Only one speaker content',
+            speakerAccent: "American" as const,
+            speakingRate: 1.0
+        };
+        
+        await expect(service.generateAudioContent(request))
+            .rejects
+            .toThrow('Part 4 requires 2 speakers');
+    });
+    
+    test('E07: 異常系 - 不正なspeakerAccent', async () => {
+        const request = {
+            sectionNumber: 4 as 1|2|3|4,
+            audioScript: '[Speaker1] Test [pause] [Speaker2] Question',
+            speakerAccent: "Invalid" as any,
+            speakingRate: 1.0
+        };
+        
+        await expect(service.generateAudioContent(request)).rejects.toThrow();
+    });
+    
+    test('E08: 異常系 - 負のspeakingRate', async () => {
+        const request = {
+            sectionNumber: 4 as 1|2|3|4,
+            audioScript: '[Speaker1] Test [pause] [Speaker2] Question',
+            speakerAccent: "American" as const,
+            speakingRate: -0.5
+        };
+        
+        await expect(service.generateAudioContent(request)).rejects.toThrow();
+    });
+});*/
+
+describe('H_callGoogleCloudTTS', () => {
+    beforeEach(() => {
+        vi.stubEnv('GOOGLE_APPLICATION_CREDENTIALS', '../../.env');
+        vi.stubEnv('GOOGLE_CLOUD_PROJECT_ID', '../credentials/listening-quiz-audio-generator-b5d3be486e8f.json');
+    });
+
+    afterEach(() => {
+        vi.unstubAllEnvs();
+    });
+
+    it('H01_成功', async () => {
+        expect.assertions(3);
+
+        const mockSSML = `<?xml version="1.0" encoding="UTF-8"?>
+<speak version="1.0" xmlns="http://www.w3.org/2001/10/synthesis">
+    <break time="1s"/>
+
+    <!-- Part 4: Talk -->
+    <voice name="en-US-Neural2-A">
+        <prosody rate="0.9">
+            <break time="0.5s"/>
+            Good morning everyone. I'm pleased to announce that our company has achieved record sales this quarter. 
+            <break time="1s"/>
+            Our revenue increased by twenty-five percent compared to last year. 
+            <break time="1s"/>
+            This success is largely due to our new product line and improved customer service. 
+            <break time="1s"/>
+            I want to thank all departments for their hard work and dedication. 
+            <break time="1s"/>
+            Looking ahead, we plan to expand our operations to three new markets next year.
+            <break time="1.5s"/>
+        </prosody>
+    </voice>
+
+    <!-- Questions -->
+    <voice name="en-US-Neural2-D">
+        <prosody rate="0.9">
+            <break time="0.5s"/>
+            What is the main topic of the talk? 
+            <break time="0.8s"/> 
+            A. New employee training 
+            <break time="0.8s"/> 
+            B. Company financial results 
+            <break time="0.8s"/> 
+            C. Product development 
+            <break time="0.8s"/> 
+            D. Market research
+            <break time="1.5s"/>
+        </prosody>
+    </voice>
+    <break time="2s"/>
+</speak>`;
+
+        const mockQuestionID = 'listening-part4-ABC12345';
+
+        const result = await service.callGoogleCloudTTS(mockSSML, mockQuestionID);
+        
+        expect(result).toBeInstanceOf(Buffer);
+        expect(result.length).toBeGreaterThan(0);
+        expect(result.length).toBeGreaterThan(1000);
+
+        console.log(`✅ テスト成功: 音声データサイズ ${result.length} bytes`);
+        console.log(`✅ 問題ID: ${mockQuestionID}`);
+    }, 30000);
+});

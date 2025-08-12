@@ -22,50 +22,125 @@ export const SECTION_SPECS = {
         };
 
 //audioScript構成の定義
-//audioScript構成の定義
 export const AUDIO_SCRIPT_STRUCTURES = {
     1: {
-        structure: "Read only 4 choices consecutively",
+        structure: `**Part 1 Structure:**
+- Generate 4 consecutive choices only
+- Each choice should be clearly distinguishable for Japanese translation as individual choice items`,
+        tagging: {
+            speakerTag: ['[Speaker1]'], //Speaker1:ナレーター
+            structureTag: `**Part 1 MANDATORY Output Format**: 
+\`[Speaker1] [CHOICES] [choice 1 content] [short pause] [choice 2 content] [short pause] [choice 3 content] [short pause] [choice 4 content]\`
+
+**CRITICAL:** 
+- Must include [Speaker1] tag at the beginning
+- Must include [CHOICES] tag immediately after [Speaker1]
+- Must include [short pause] between each choice
+- Do NOT add A, B, C, D labels`,
+            speakerAssignment: {
+                choices: '[Speaker1]'
+            }
+        },
         rules: [
+            "All choices read by [Speaker1]",
             "Do not add 'A', 'B', 'C', 'D' before each choice",
             "Insert [short pause] between each choice"
-        ],
-        example: "A businessman wearing a dark suit is carefully reading his morning newspaper. [short pause] Two professional women are walking together through the busy office corridor. [short pause] Several children are joyfully playing on the colorful playground equipment in the park. [short pause] A golden retriever dog is energetically running across the green field."
+        ]
     },
     2: {
-        structure: "Question + [pause] + 3 choices read consecutively",
+        structure: `**Part 2 Structure:**
+- Clear separation between the initial question (for question text translation)
+- Three response choices (for choice options translation)`,
+        tagging: {
+            speakerTag: ['[Speaker1]', '[Speaker2]'], //Speaker1: 質問者、Speaker2:ナレーター
+            structureTag: `**Part 2 MANDATORY Output Format**: 
+\`[Speaker1] [QUESTION] [question content] [pause] [Speaker2] [CHOICES] [choice 1] [short pause] [choice 2] [short pause] [choice 3]\`
+
+**CRITICAL:** 
+- Must include [Speaker1] [QUESTION] for question section
+- Must include [Speaker2] [CHOICES] for choices section
+- Must include [pause] between question and choices
+- Must include [short pause] between each choice
+- Do NOT add A, B, C labels`,
+            speakerAssignment: {
+                question: '[Speaker1]',
+                choices: '[Speaker2]'
+            }
+        },
         rules: [
             "Question and choices are handled by different speakers",
             "Question: Read by [Speaker1]",
             "Choices: Read by [Speaker2]",
             "Do not add 'A', 'B', 'C' before choices",
             "Insert [short pause] between each choice"
-        ],
-        example: "[Speaker1] Could you please tell me where the main conference room is located? [pause] [Speaker2] Go down this hallway and turn right at the end. [short pause] Yes, I would be happy to attend the important meeting today. [short pause] The quarterly business meeting is scheduled to start at three o'clock."
+        ]
     },
-    3: {
-        structure: "Conversation + [pause] + 3 questions with 4 choices each",
+    3: { 
+        structure: `**Part 3 Structure:**
+- **Conversation Section**: All speaker dialogue before first question (for conversation content translation)
+- **Question 1 Section**: First question + 4 choices (for Question 1 + choices translation)
+- **Question 2 Section**: Second question + 4 choices (for Question 2 + choices translation)  
+- **Question 3 Section**: Third question + 4 choices (for Question 3 + choices translation)`,
+        tagging: {
+            speakerTag: ['[Speaker1]', '[Speaker2]', '[Speaker3]'],//Speaker1:会話者1、Speaker2:会話者2、Speaker3:ナレーター
+            structureTag: `**Part 3 MANDATORY Output Format**: 
+\`[CONVERSATION] [Speaker1] [dialogue] [pause] [Speaker2] [dialogue] [pause] ... [pause] [Speaker3] [QUESTION_1] [question text] [Speaker3] [CHOICES_1] A. [choice] B. [choice] C. [choice] D. [choice] [pause] [Speaker3] [QUESTION_2] [question text] [Speaker3] [CHOICES_2] A. [choice] B. [choice] C. [choice] D. [choice] [pause] [Speaker3] [QUESTION_3] [question text] [Speaker3] [CHOICES_3] A. [choice] B. [choice] C. [choice] D. [choice]\`
+
+**CRITICAL:** 
+- Must start with [CONVERSATION] tag
+- Conversation: Use [Speaker1] and [Speaker2] for each dialogue line
+- Questions/Choices: Use [Speaker3] for all questions and choices
+- Must include [QUESTION_1], [QUESTION_2], [QUESTION_3] tags
+- Must include [CHOICES_1], [CHOICES_2], [CHOICES_3] tags
+- Must include A. B. C. D. labels for choices
+- Must include [pause] between question sets
+- Must include [short pause] between choices within each set`,
+            speakerAssignment: {
+                conversationSpeaker1: '[Speaker1]',
+                conversationSpeaker2: '[Speaker2]', 
+                narrator: '[Speaker3]'
+            }
+        },
         rules: [
-            "Insert speaker identification tags for each statement when multiple speakers are present",
-            "Insert appropriate intervals between speaker changes and each choice",
-            "Speaker tag format: [Speaker1], [Speaker2], [Speaker3], etc.",
-            "Question text and choices: Read by narrator (no speaker tag)",
-            "Insert [pause] between each question set",
+            "Conversation dialogue: Use [Speaker1] and [Speaker2] for each speaker's lines",
+            "Insert appropriate intervals between speaker changes",
+            "Questions and choices: Read by [Speaker3] (narrator/interviewer)",
+            "Insert [pause] between each question set", 
             "Insert [short pause] between each choice within a question"
-        ],
-        example: "[Speaker1] Good morning, Sarah. I was wondering if you have finished working on the quarterly financial report that's due today. [pause] [Speaker2] Almost completely done, Mike. I just need to add the final sales figures and revenue data before submitting it. [pause] [Speaker1] That's excellent news. We really need to submit the completed report to management by noon today for the board meeting. [pause] [Speaker2] Don't worry, I'll have everything ready well before the deadline. [pause] [Speaker1] Perfect. I appreciate your dedication to getting this done on time. [pause] What does Mike need Sarah to do with the report? [pause] Add the remaining sales figures and revenue data to complete it. [short pause] Submit the finished report to management before the noon deadline. [short pause] Schedule an important meeting with the board of directors. [short pause] Review all the financial data and make necessary corrections. [pause] When is the deadline for the report? [pause] By noon today. [short pause] Next week. [short pause] At the end of the month. [short pause] Tomorrow morning. [pause] What is the purpose of the report? [pause] For a client presentation. [short pause] For the board meeting. [short pause] For budget planning. [short pause] For performance review."
+        ]
     },
     4: {
-        structure: "Speech content + [pause] + 3 questions with 4 choices each",
+        structure: `**Part 4 Structure:**
+- **Speech Section**: All announcement/speech content before first question (for speech content translation)
+- **Question 1 Section**: First question + 4 choices (for Question 1 + choices translation)
+- **Question 2 Section**: Second question + 4 choices (for Question 2 + choices translation)
+- **Question 3 Section**: Third question + 4 choices (for Question 3 + choices translation)`,
+        tagging: {
+            speakerTag: ['[Speaker1]', '[Speaker2]'], //Speaker1:発言者、Speaker2:ナレーター
+            structureTag: `**Part 4 MANDATORY Output Format**: 
+\`[Speaker1] [SPEECH_CONTENT] [100-120 word speech content] [pause] [Speaker2] [QUESTION_1] [question text] [Speaker2] [CHOICES_1] A. [choice] B. [choice] C. [choice] D. [choice] [pause] [Speaker2] [QUESTION_2] [question text] [Speaker2] [CHOICES_2] A. [choice] B. [choice] C. [choice] D. [choice] [pause] [Speaker2] [QUESTION_3] [question text] [Speaker2] [CHOICES_3] A. [choice] B. [choice] C. [choice] D. [choice]\`
+
+**CRITICAL:** 
+- Must start with [Speaker1] [SPEECH_CONTENT] 
+- Speech content must be 100-120 words
+- Questions/Choices: Use [Speaker2] for all questions and choices
+- Must include [QUESTION_1], [QUESTION_2], [QUESTION_3] tags
+- Must include [CHOICES_1], [CHOICES_2], [CHOICES_3] tags
+- Must include A. B. C. D. labels for choices
+- Must include [pause] between question sets
+- Must include [short pause] between choices within each set`,
+            speakerAssignment: {
+                announcer: '[Speaker1]',
+                narrator: '[Speaker2]'
+            }
+        },
         rules: [
             "Format of announcements, presentations, advertisements, etc.",
-            "Speech content and questions/choices are handled by different speakers",
-            "Speech content: Read by [Speaker1]",
-            "Question text and choices: Read by [Speaker2]",
+            "Speech content: Read by [Speaker1] (announcer/presenter)",
+            "Questions and choices: Read by [Speaker2] (narrator/interviewer)",
             "Insert [pause] between each question set",
             "Insert [short pause] between each choice within a question"
-        ],
-        example: "[Speaker1] Welcome to City Bank, where we value your financial future and security. We are extremely pleased to announce the launch of our innovative new mobile banking service that will revolutionize how you manage your finances. Starting next month, all our valued customers will be able to access their accounts anytime and anywhere using our user-friendly mobile application. This convenient service will allow you to check balances, transfer funds, pay bills, and deposit checks directly from your smartphone or tablet. [pause] [Speaker2] What is the main topic of this important announcement? [pause] The launch of an innovative new mobile banking service for customers. [short pause] The grand opening of a new branch location in the city. [short pause] The results of a comprehensive customer satisfaction survey. [short pause] Scheduled maintenance of the current online banking system. [pause] When will the new service be available? [pause] Next week. [short pause] Starting next month. [short pause] By the end of this year. [short pause] It's already available. [pause] What can customers do with the mobile application? [pause] Only check account balances. [short pause] Schedule appointments with bank staff. [short pause] Check balances, transfer funds, pay bills, and deposit checks. [short pause] Apply for new credit cards only."
+        ]
     }
 };
 
@@ -103,12 +178,20 @@ export const PART_GENRES = {
         ]
     };
 
-//jpnAudioScript形式定義
 export const JPN_AUDIO_SCRIPT_FORMAT = {
-    1: "選択肢: A. [Choice 1 in Japanese] B. [Choice 2 in Japanese] C. [Choice 3 in Japanese] D. [Choice 4 in Japanese]",
-    2: "質問文: [Question in Japanese] 選択肢: A. [Choice 1 in Japanese] B. [Choice 2 in Japanese] C. [Choice 3 in Japanese]",
-    3: "会話内容: [Conversation in Japanese] 設問文: [Question in Japanese] 選択肢: A. [Choice 1 in Japanese] B. [Choice 2 in Japanese] C. [Choice 3 in Japanese] D. [Choice 4 in Japanese]",
-    4: "スピーチ内容: [Speech in Japanese] 設問文: [Question in Japanese] 選択肢: A. [Choice 1 in Japanese] B. [Choice 2 in Japanese] C. [Choice 3 in Japanese] D. [Choice 4 in Japanese]"
+    1: `選択肢: A. [Choice 1 in Japanese] B. [Choice 2 in Japanese] C. [Choice 3 in Japanese] D. [Choice 4 in Japanese]`,
+    
+    2: `質問文: [Question in Japanese] 選択肢: A. [Choice 1 in Japanese] B. [Choice 2 in Japanese] C. [Choice 3 in Japanese]`,
+    
+    3: `会話内容: [Conversation in Japanese] 
+設問1: [Question 1 in Japanese] 選択肢: A. [Choice 1 in Japanese] B. [Choice 2 in Japanese] C. [Choice 3 in Japanese] D. [Choice 4 in Japanese] 
+設問2: [Question 2 in Japanese] 選択肢: A. [Choice 1 in Japanese] B. [Choice 2 in Japanese] C. [Choice 3 in Japanese] D. [Choice 4 in Japanese] 
+設問3: [Question 3 in Japanese] 選択肢: A. [Choice 1 in Japanese] B. [Choice 2 in Japanese] C. [Choice 3 in Japanese] D. [Choice 4 in Japanese]`,
+    
+    4: `スピーチ内容: [Speech in Japanese] 
+設問1: [Question 1 in Japanese] 選択肢: A. [Choice 1 in Japanese] B. [Choice 2 in Japanese] C. [Choice 3 in Japanese] D. [Choice 4 in Japanese] 
+設問2: [Question 2 in Japanese] 選択肢: A. [Choice 1 in Japanese] B. [Choice 2 in Japanese] C. [Choice 3 in Japanese] D. [Choice 4 in Japanese] 
+設問3: [Question 3 in Japanese] 選択肢: A. [Choice 1 in Japanese] B. [Choice 2 in Japanese] C. [Choice 3 in Japanese] D. [Choice 4 in Japanese]`
 };
 
 export const ACCENT_PATTERNS = {
@@ -327,7 +410,7 @@ export const WORD_CONSTRAINTS = {
     },
     4: { 
         "speech": {
-            min: 80,
+            min: 100,
             max: 120,
             unit: "words"
         },
@@ -344,8 +427,8 @@ export const WORD_CONSTRAINTS = {
         "questionsCount": 3,
         "choicesPerQuestion": 4,
         "totalWords": {
-            min: 250,
-            max: 350,
+            min: 180,
+            max: 280,
             unit: "words"
         }
     }

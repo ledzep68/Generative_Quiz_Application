@@ -28,11 +28,10 @@ export class ReviewQuestionInfo {
 };
 
 //音声URLデータ
-export interface AudioURL {
+export interface AudioFilePath {
     lQuestionID: string;
     audioFilePath: string;
-    audioURL?: string;
-    duration: number;
+    duration?: number;
 };
 
 //新規クイズデータ記録用

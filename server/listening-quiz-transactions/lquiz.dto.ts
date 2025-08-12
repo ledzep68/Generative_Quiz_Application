@@ -75,14 +75,12 @@ export interface GeneratedQuestionDataResDTO {
 };
 
 //TTS APIへの音声データリクエスト
-export class NewAudioReqDTO {
-    constructor(
-        public lQuestionID: string,
-        public audioScript: string,
-        public speakerAccent: 'American' | 'British' | 'Canadian' | 'Australian',
-        public speakingRate: number
-    ){}
-}
+export interface NewAudioReqDTO {
+    sectionNumber: 1|2|3|4,
+    audioScript: string,
+    speakerAccent: 'American' | 'British' | 'Canadian' | 'Australian',
+    speakingRate: number
+};
 
 //TTS APIからの音声データres
 export class GeneratedAudioResDTO {
