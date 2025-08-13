@@ -8,6 +8,7 @@ import * as apierror from '../listening-quiz-transactions/errors/lquiz.apierrors
 import * as schema from '../listening-quiz-transactions/schemas/lquizapischema.ts';
 import {JPN_AUDIO_SCRIPT_FORMAT} from '../listening-quiz-transactions/services/services.types.ts';
 import * as apiservice from '../listening-quiz-transactions/services/lquizapiservice.ts';
+import * as dto from '../listening-quiz-transactions/lquiz.dto.ts';
 import z from 'zod';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -165,6 +166,28 @@ async function callGoogleCloudTTSRealAPITest() {
     console.log(`✅ テスト成功: バッファデータ: ${result}, 音声データサイズ ${result.length} bytes`);
     console.log(`✅ 問題ID: ${mockQuestionID}`);
 };
+
+//音声生成関数　controllerで呼び出す
+export async function generateAudioContent(dto: dto.NewAudioReqDTO, lQuestionID: string): Promise<domein.AudioFilePath> {
+    //音声性別設定取得
+    const genderSettings = GenderRequirementsExtracter.extractGenderRequirements(dto.sectionNumber, dto.audioScript);
+    //音声設定取得
+    const voiceSettings = TTS_VOICE_CONFIG[dto.speakerAccent as AccentType];
+    //ランダム音声選択
+    const selectedVoice = TOEICVoiceSelector.selectVoicesForPart(dto.sectionNumber, voiceSettings.voices, genderSettings);
+    //audioScript分割
+    const audioSegmentList = AudioScriptSegmenter.segmentAudioScriptWithGender(dto.audioScript, selectedVoice);
+    //SSML生成
+    const ssml = await TOEICSSMLGenerator.generateSSML(dto.sectionNumber, audioSegmentList, dto.speakingRate);
+    // SSML検証
+    validateSSML(ssml);
+    //(Google Cloud TTS)音声合成
+    const audioBufferData = await callGoogleCloudTTS(ssml, lQuestionID);
+    //ファイル保存、URL取得
+    const audioFilePath = await saveAudioFile(audioBufferData, lQuestionID);
+
+    return audioFilePath;
+};
 */
 async function callGoogleCloudTTSRealAPIAndSaveFlieTest() {
     const mockSSML = `<?xml version="1.0" encoding="UTF-8"?>
@@ -245,5 +268,16 @@ async function callGoogleCloudTTSRealAPIAndSaveFlieTest() {
     console.log(`✅ 音声データ保存テスト成功`);
 };
 
+async function generateAudioContentTest() {
+    const mockNewAudioReqDTO: dto.NewAudioReqDTO = {
+        sectionNumber: 4,
+        audioScript: '[Speaker1_FEMALE] Welcome to City International Airport. [short pause] We are pleased to offer a range of services to enhance your travel experience. [short pause] For your convenience, our information desks are located throughout the terminal, staffed with friendly personnel ready to assist you. [short pause] We also provide complimentary Wi-Fi access, available in all areas of the airport. [short pause] For those traveling with children, our family lounges offer a comfortable space with play areas. [short pause] Additionally, [short pause] we have partnered with local businesses to offer exclusive discounts at various shops and restaurants within the airport. [short pause] Simply present your boarding pass to enjoy these offers. [short pause] We hope you have a pleasant journey. [pause] [Speaker2] [pause] What service is available throughout the airport? [short pause] A. [short pause] Free Wi-Fi access [short pause] B. [short pause] Complimentary meals [short pause] C. [short pause] Personal shopping assistants [short pause] D. [short pause] Free parking [pause] What should passengers show to get discounts? [short pause] A. [short pause] Passport [short pause] B. [short pause] Boarding pass [short pause] C. [short pause] Flight ticket [short pause] D. [short pause] ID card [pause] Where can families find a comfortable space? [short pause] A. [short pause] Information desks [short pause] B. [short pause] Family lounges [short pause] C. [short pause] Business lounges [short pause] D. [short pause] Security area',
+        speakerAccent: "American",
+        speakingRate: 1.0
+    };
+    const mockQuestionID = 'listening-part4-ABC12345';
+    const audioFilePath = await apiservice.generateAudioContent(mockNewAudioReqDTO, mockQuestionID);
+    console.log(`✅ 音声データ連結テスト成功: ${audioFilePath}`);
+};
 
-callGoogleCloudTTSRealAPIAndSaveFlieTest().catch(console.error);
+generateAudioContentTest().catch(console.error);

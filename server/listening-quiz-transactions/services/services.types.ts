@@ -28,6 +28,118 @@ export const AUDIO_SCRIPT_STRUCTURES = {
 - Generate 4 consecutive choices only
 - Each choice should be clearly distinguishable for Japanese translation as individual choice items`,
         tagging: {
+            // 問題文生成では選択肢読み上げナレーターは不要
+            speakerTagPatterns: [
+                // パターン1: 男性ナレーター
+                { pattern: 'male_narrator', tags: ['[Speaker1_MALE]'] },
+                // パターン2: 女性ナレーター  
+                { pattern: 'female_narrator', tags: ['[Speaker1_FEMALE]'] }
+            ],
+            structureTag: `**Part 1**: 
+- \`[SpeakerX]\` \`[CHOICES]\` followed by 4 consecutive choice descriptions`,
+            contentSpeakerAssignment: {
+                choices: 'Speaker1'
+            }
+        },
+        rules: [
+            "All choices read by single speaker",
+            "Do not add 'A', 'B', 'C', 'D' before each choice",
+            "Insert [short pause] between each choice"
+        ]
+    },
+    
+    2: {
+        structure: `**Part 2 Structure:**
+- Clear separation between the initial question (for question text translation)
+- Three response choices (for choice options translation)`,
+        tagging: {
+            // 問題文生成では質問者と応答者のみ（選択肢ナレーターは除外）
+            speakerTagPatterns: [
+                // パターン1: 男性質問者 → 女性応答者
+                { pattern: 'male_to_female', tags: ['[Speaker1_MALE]', '[Speaker2_FEMALE]'] },
+                // パターン2: 女性質問者 → 男性応答者
+                { pattern: 'female_to_male', tags: ['[Speaker1_FEMALE]', '[Speaker2_MALE]'] },
+                // パターン3: 男性質問者 → 男性応答者
+                { pattern: 'male_to_male', tags: ['[Speaker1_MALE]', '[Speaker2_MALE]'] },
+                // パターン4: 女性質問者 → 女性応答者
+                { pattern: 'female_to_female', tags: ['[Speaker1_FEMALE]', '[Speaker2_FEMALE]'] }
+            ],
+            structureTag: `**Part 2**: 
+- \`[SpeakerX]\` \`[QUESTION]\` followed by the question text
+- \`[SpeakerY]\` \`[CHOICES]\` followed by 3 response options`,
+            contentSpeakerAssignment: {
+                question: 'Speaker1',
+                choices: 'Speaker2'
+            }
+        },
+        rules: [
+            "Question text read by Speaker1",
+            "Response choices read by Speaker2", 
+            "Insert [pause] between question and choices",
+            "Insert [short pause] between each choice"
+        ]
+    },
+    
+    3: {
+        structure: `**Part 3 Structure:**
+- **Conversation Section**: All speaker dialogue before first question (for conversation content translation)`,
+        tagging: {
+            // 問題文生成では会話者2人のみ（設問ナレーターは除外）
+            speakerTagPatterns: [
+                // パターン1: 男性 → 女性
+                { pattern: 'male_female_conversation', tags: ['[Speaker1_MALE]', '[Speaker2_FEMALE]'] },
+                // パターン2: 女性 → 男性
+                { pattern: 'female_male_conversation', tags: ['[Speaker1_FEMALE]', '[Speaker2_MALE]'] },
+                // パターン3: 男性 → 男性
+                { pattern: 'male_male_conversation', tags: ['[Speaker1_MALE]', '[Speaker2_MALE]'] },
+                // パターン4: 女性 → 女性
+                { pattern: 'female_female_conversation', tags: ['[Speaker1_FEMALE]', '[Speaker2_FEMALE]'] }
+            ],
+            structureTag: `**Part 3**: 
+- \`[CONVERSATION]\` followed by dialogue using [SpeakerX] and [SpeakerY]`,
+            contentSpeakerAssignment: {
+                conversationSpeaker1: 'Speaker1',
+                conversationSpeaker2: 'Speaker2'
+            }
+        },
+        rules: [
+            "Conversation between Speaker1 and Speaker2",
+            "Insert [pause] markers for natural conversation flow",
+            "Alternate speakers naturally based on dialogue context"
+        ]
+    },
+    
+    4: {
+        structure: `**Part 4 Structure:**
+- **Speech Section**: All announcement/speech content before first question (for speech content translation)`,
+        tagging: {
+            // 問題文生成ではアナウンサー1人のみ（設問ナレーターは除外）
+            speakerTagPatterns: [
+                // パターン1: 女性アナウンサー
+                { pattern: 'female_announcer', tags: ['[Speaker1_FEMALE]'] },
+                // パターン2: 男性アナウンサー
+                { pattern: 'male_announcer', tags: ['[Speaker1_MALE]'] }
+            ],
+            structureTag: `**Part 4**: 
+- \`[SpeakerX]\` \`[SPEECH_CONTENT]\` followed by all speech/announcement content`,
+            contentSpeakerAssignment: {
+                announcer: 'Speaker1'
+            }
+        },
+        rules: [
+            "Speech content read by single announcer/presenter",
+            "Insert [pause] markers for natural speech flow",
+            "Maintain consistent professional tone throughout"
+        ]
+    }
+};
+/*
+export const AUDIO_SCRIPT_STRUCTURES = {
+    1: {
+        structure: `**Part 1 Structure:**
+- Generate 4 consecutive choices only
+- Each choice should be clearly distinguishable for Japanese translation as individual choice items`,
+        tagging: {
             speakerTag: ['[Speaker1]'], //Speaker1:ナレーター
             structureTag: `**Part 1 MANDATORY Output Format**: 
 \`[Speaker1] [CHOICES] [choice 1 content] [short pause] [choice 2 content] [short pause] [choice 3 content] [short pause] [choice 4 content]\`
@@ -143,6 +255,7 @@ export const AUDIO_SCRIPT_STRUCTURES = {
         ]
     }
 };
+*/
 
 export const PART_GENRES = {
         1: [
@@ -303,6 +416,47 @@ export const ACCENT_PATTERNS = {
    }
 };
 
+//WaveNetの音声設定
+export const TTS_VOICE_CONFIG = {
+    American: {
+        languageCode: 'en-US',
+        voices: [
+            { name: 'en-US-Wavenet-A', gender: 'MALE' },
+            { name: 'en-US-Wavenet-B', gender: 'MALE' },
+            { name: 'en-US-Wavenet-C', gender: 'FEMALE' },
+            { name: 'en-US-Wavenet-D', gender: 'MALE' },
+            { name: 'en-US-Wavenet-E', gender: 'FEMALE' },
+            { name: 'en-US-Wavenet-F', gender: 'FEMALE' }
+        ]
+    },
+    Canadian: {
+        languageCode: 'en-US', // カナダ英語は en-US で代用
+        voices: [
+            { name: 'en-US-Wavenet-C', gender: 'FEMALE' },
+            { name: 'en-US-Wavenet-B', gender: 'MALE' }
+        ]
+    },
+    British: {
+        languageCode: 'en-GB',
+        voices: [
+            { name: 'en-GB-Wavenet-A', gender: 'FEMALE' },
+            { name: 'en-GB-Wavenet-B', gender: 'MALE' },
+            { name: 'en-GB-Wavenet-C', gender: 'FEMALE' },
+            { name: 'en-GB-Wavenet-D', gender: 'MALE' }
+        ]
+    },
+    Australian: {
+        languageCode: 'en-AU',
+        voices: [
+            { name: 'en-AU-Wavenet-A', gender: 'FEMALE' },
+            { name: 'en-AU-Wavenet-B', gender: 'MALE' },
+            { name: 'en-AU-Wavenet-C', gender: 'FEMALE' },
+            { name: 'en-AU-Wavenet-D', gender: 'MALE' }
+        ]
+    }
+} as const; //リテラル型の保持、readonlyによる値の変更防止 によって設定値の予期しない変更を防ぎ、より厳密な型チェックが可能になる
+/*
+Neural2版
 export const TTS_VOICE_CONFIG = {
     American: {
         languageCode: 'en-US',
@@ -339,6 +493,7 @@ export const TTS_VOICE_CONFIG = {
         ]
     }
 } as const; //リテラル型の保持、readonlyによる値の変更防止 によって設定値の予期しない変更を防ぎ、より厳密な型チェックが可能になる
+*/
 
 //part別単語数指定
 export const WORD_CONSTRAINTS = {

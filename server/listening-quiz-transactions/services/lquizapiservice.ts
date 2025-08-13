@@ -825,7 +825,7 @@ export class TOEICVoiceSelector {
      */
     private static selectNarrator(): {name: string, gender: string} {
         // 固定でUS男性ナレーターを返す
-        return { name: 'en-US-Neural2-D', gender: 'MALE' };
+        return { name: 'en-US-Wavenet-B', gender: 'MALE' };
     }
 
     /**
@@ -1009,8 +1009,9 @@ export class AudioScriptSegmenter {
     ): AudioSegment[] {
         const segments: AudioSegment[] = [];
         
-        // [Speaker1], [Speaker1_MALE], [Speaker1_FEMALE]等のパターンでsplit
+        //[Speaker1], [Speaker1_MALE], [Speaker1_FEMALE]等のパターンでsplit
         const parts = audioScript.split(/(\[Speaker[123](?:_(?:MALE|FEMALE))?\])/);
+        console.log('parts: ', parts);
         
         let currentSpeaker: number | null = null;
         let currentContent: string = '';
@@ -1018,12 +1019,13 @@ export class AudioScriptSegmenter {
         for (let i = 0; i < parts.length; i++) {
             const part = parts[i].trim();
             
-            // [SpeakerN]または[SpeakerN_GENDER]タグを検出
+            //[SpeakerN]または[SpeakerN_GENDER]タグを検出
             const speakerMatch = part.match(/\[Speaker([123])(?:_(?:MALE|FEMALE))?\]/);
             if (speakerMatch) {
                 const newSpeaker = parseInt(speakerMatch[1]);
+                console.log('newSpeaker: ', newSpeaker);
                 
-                // 前のSpeakerのセグメントを保存（話者が変わった場合）
+                //前のSpeakerのセグメントを保存（話者が変わった場合）
                 if (currentSpeaker !== null && currentContent && currentSpeaker !== newSpeaker) {
                     const voiceIndex = currentSpeaker - 1;
                     if (selectedVoice[voiceIndex]) {
@@ -1037,14 +1039,15 @@ export class AudioScriptSegmenter {
                 }
                 
                 currentSpeaker = newSpeaker;
+                console.log('currentSpeaker: ', currentSpeaker);
                 continue;
             }
             
-            // 話者が設定されており、内容がある場合
-            if (currentSpeaker !== null && part && !part.startsWith('[')) {
-                // 同じSpeakerの内容を結合（スペース区切り）
+            //話者が設定されており、内容がある場合
+            if (currentSpeaker !== null && part && !/^\[Speaker[123](?:_(?:MALE|FEMALE))?\]$/.test(part.trim())) {
                 currentContent += (currentContent ? ' ' : '') + part;
             }
+            console.log('currentContent: ', currentContent);
         }
         
         // 最後のSpeakerのセグメントを保存
@@ -1058,6 +1061,8 @@ export class AudioScriptSegmenter {
                 });
             }
         }
+        
+        console.log('segments: ', segments);
         
         return segments;
     }
@@ -1078,15 +1083,15 @@ export class TOEICSSMLGenerator {
         speakingRate: number = 1.0
     ): string {
         
-        // sectionNumberに基づいて必要な話者数を判定
+        //sectionNumberに基づいて必要な話者数を判定
         const expectedSpeakers = this.getExpectedSpeakersCount(sectionNumber);
         
-        // AudioSegmentListの妥当性チェック
+        //AudioSegmentListの妥当性チェック
         if (audioSegmentList.length !== expectedSpeakers) {
             throw new Error(`Part ${sectionNumber} requires ${expectedSpeakers} speakers, but got ${audioSegmentList.length}`);
         }
         
-        // 各セグメントのSSMLを生成
+        //各セグメントのSSMLを生成
         const voiceSegments = audioSegmentList.map((segment, index) => {
             return this.createVoiceSegment(segment, sectionNumber, index, speakingRate);
         });
@@ -1101,10 +1106,10 @@ export class TOEICSSMLGenerator {
      */
     private static getExpectedSpeakersCount(sectionNumber: 1 | 2 | 3 | 4): number {
         switch (sectionNumber) {
-            case 1: return 1; // ナレーターのみ
-            case 2: return 2; // 質問者 + ナレーター
-            case 3: return 3; // 会話者1 + 会話者2 + ナレーター
-            case 4: return 2; // 発表者 + ナレーター
+            case 1: return 1; //ナレーターのみ
+            case 2: return 2; //質問者 + ナレーター
+            case 3: return 3; //会話者1 + 会話者2 + ナレーター
+            case 4: return 2; //発表者 + ナレーター
             default:
                 throw new Error(`Invalid section number: ${sectionNumber}`);
         }
@@ -1125,13 +1130,13 @@ export class TOEICSSMLGenerator {
         speakingRate: number
     ): string {
         
-        // コンテンツをエスケープ
+        //コンテンツをエスケープ
         const escapedContent = this.escapeSSML(segment.content);
         
-        // 音声制御タグをSSMLに変換
+        //音声制御タグをSSMLに変換
         const processedContent = this.processAudioControlTags(escapedContent);
         
-        // セグメントの役割を特定
+        //セグメントの役割を特定
         const segmentRole = this.identifySegmentRole(sectionNumber, segmentIndex);
         
         return `
@@ -1238,7 +1243,7 @@ export async function callGoogleCloudTTS(ssml: string, lQuestionID: string): Pro
                 },
                 voice:{
                     languageCode:'en-US'
-                    //name:'en-US-Neural2-A',
+                    //name:'en-US-Wavenet-B',
                     //ssmlGender:'MALE'
                 },
                 audioConfig: {
@@ -1332,7 +1337,7 @@ export async function validateSSML(ssml: string): Promise<void> {
     }
     
     //ナレーター固定音声の確認
-    const narratorVoice = 'en-US-Neural2-D';
+    const narratorVoice = 'en-US-Wavenet-B';
     if (!ssml.includes(narratorVoice)) {
         throw new apierror.SSMLValidationError(`固定ナレーター音声(${narratorVoice})が見つかりません`);
     }
@@ -1376,7 +1381,7 @@ export async function validateDetailSSML(ssml: string, expectedPartNumber?: 1|2|
         }
         
         // ナレーター固定の確認（Part1は全員ナレーター、他Partは最後がナレーター）
-        const narratorVoice = 'en-US-Neural2-D';
+        const narratorVoice = 'en-US-Wavenet-B';
         if (expectedPartNumber === 1) {
             // Part1: 全てナレーター
             if (!ssml.includes(`<voice name="${narratorVoice}">`)) {
