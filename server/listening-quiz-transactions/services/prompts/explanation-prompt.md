@@ -3,28 +3,24 @@
 Generate a detailed explanation in Japanese for the following TOEIC question.
 
 ## Question Information
-
 **Part**: {{sectionNumber}}
 **Speaker Accent**: {{speakerAccent}}
 **AudioScript**: {{audioScript}}
 **Correct Answer Options**: {{answerOptionList}}
 
-## Accent-Specific Context
-
-**Accent Description**: {{accentDescription}}
-**Key Pronunciation Features**: {{pronunciationCharacteristics}}
-**Regional Vocabulary Used**: {{regionalVocabulary}}
-**Typical Expressions**: {{typicalExpressions}}
+## Accent Features Found
+{{relevantAccentFeatures}}
 
 ## Explanation Requirements
 
-Generate a 250-400 character explanation including the following elements:
+Generate a comprehensive explanation of 500-700 characters in Japanese including:
 
-1. **Correct Answer Rationale**: Why those options are correct
-2. **Incorrect Option Analysis**: Why other options are wrong
-3. **Vocabulary/Grammar Points**: Important vocabulary and grammar items
-4. **{{speakerAccent}} Accent Listening Tips**: Specific pronunciation features that affect comprehension
-5. **Regional Expression Analysis**: How {{speakerAccent}} vocabulary/expressions influenced the correct answers
-6. **Similar Question Application**: Tips for recognizing {{speakerAccent}} accent patterns in future questions
+1. **正答解説**: Why the correct answers are right based on content
+2. **誤答分析**: Why incorrect options are wrong  
+3. **{{speakerAccent}}発音ポイント**: Pronunciation tips for accent-specific features found in this audio
+4. **学習アドバイス**: Practical listening tips for similar questions
 
-Focus on how the {{speakerAccent}} accent characteristics specifically impact listening comprehension and answer selection.
+Focus on content comprehension while incorporating {{speakerAccent}} accent guidance where relevant.
+
+## Output Instructions
+Return ONLY the Japanese explanation text. No formatting or additional text.

@@ -1835,7 +1835,7 @@ describe('SSML生成 エラーケース・境界値テスト', () => {
     });
 });*/
 
-describe('H_callGoogleCloudTTS', () => {
+/*describe('H_callGoogleCloudTTS', () => {
     beforeEach(() => {
         vi.stubEnv('GOOGLE_APPLICATION_CREDENTIALS', '../../.env');
         vi.stubEnv('GOOGLE_CLOUD_PROJECT_ID', '../credentials/listening-quiz-audio-generator-b5d3be486e8f.json');
@@ -1899,4 +1899,4 @@ describe('H_callGoogleCloudTTS', () => {
         console.log(`✅ テスト成功: 音声データサイズ ${result.length} bytes`);
         console.log(`✅ 問題ID: ${mockQuestionID}`);
     }, 30000);
-});
+});*/

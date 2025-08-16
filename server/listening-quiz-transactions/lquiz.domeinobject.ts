@@ -9,7 +9,7 @@ import { UUID } from "crypto";
 //新規問題生成用
 export interface NewLQuestionInfo {
     sectionNumber: 1|2|3|4,
-    requestedNumOfLQuizs: number,
+    requestedNumOfLQuizs: 1|2|3|4|5|6|7|8|9|10,
     speakerAccent?: 'American' | 'British' | 'Canadian' | 'Australian',
     speakingRate: number //必須　デフォルト値は1.0
 };

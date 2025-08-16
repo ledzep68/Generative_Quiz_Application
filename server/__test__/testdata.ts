@@ -1,4 +1,3 @@
-import {callChatGPT} from '../listening-quiz-transactions/services/lquizapiservice.ts';
 import fs from 'fs/promises';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -13,12 +12,11 @@ import z from 'zod';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-//config({path: path.join(__dirname, '../../.env')});
-process.env.GOOGLE_APPLICATION_CREDENTIALS = path.resolve(__dirname, '../credentials/listening-quiz-audio-generator-b5d3be486e8f.json');
+config({path: path.join(__dirname, '../.env')});
+//process.env.GOOGLE_APPLICATION_CREDENTIALS = path.resolve(__dirname, '../credentials/listening-quiz-audio-generator-b5d3be486e8f.json');
 
 
-//chatgpt - audioScript generation only
-export async function callChatGPTForAudioScript(prompt: string): Promise<string> {
+export async function callChatGPTForPart2AudioScript(prompt: string): Promise<{audioScript: string, answerOption: string}> {
     try {
         console.log('=== Step 1: fetch開始 (AudioScript生成) ===');
         const response = await fetch('https://api.openai.com/v1/chat/completions', {
@@ -32,7 +30,91 @@ export async function callChatGPTForAudioScript(prompt: string): Promise<string>
                 messages: [
                     {
                         role: "system",
-                        content: "You are an expert in TOEIC question creation. Return ONLY a valid JSON object with audioScript and answerOption fields. Do not use markdown code blocks."
+                        content: "You are an expert in TOEIC content creation. Return ONLY a valid JSON object with audioScript and answerOption fields as specified in the prompt. Do not include markdown code blocks or any other formatting."
+                    },
+                    {
+                        role: "user",
+                        content: prompt
+                    }
+                ],
+                temperature: 0.3,  // 一貫性重視、適度なバリエーション
+                max_tokens: 500,   // 必要十分な長さ
+                top_p: 0.9        // 追加: より安定した出力
+            }),
+            signal: AbortSignal.timeout(60000)
+        });
+        
+        console.log("response status:", response.status);
+        console.log('=== Step 2: response確認 ===');
+        
+        if (!response.ok) {
+            throw new apierror.ChatGPTAPIError(`ChatGPT API Error: ${response.status} ${response.statusText}`);
+        }
+        
+        console.log('=== Step 3: JSON parse開始 ===');
+        const data = await response.json();
+        
+        console.log('=== Step 4: OpenAI APIの応答構造検証 ===');
+        const validatedData = schema.openAIResponseSchema.parse(data);
+
+        if (validatedData.choices.length === 0) {
+            throw new apierror.ChatGPTAPIError('ChatGPT APIからの応答に問題があります');
+        }
+
+        console.log('=== Step 5: audioScript&answerOption抽出 ===');
+        const jsonResponse = validatedData.choices[0].message.content;
+
+        // 不要な文字列の除去（markdown形式等）
+        let cleanedResponse = jsonResponse.trim();
+        cleanedResponse = cleanedResponse.replace(/^```json\s*/, ''); // 先頭の```jsonを削除
+        cleanedResponse = cleanedResponse.replace(/^```.*\n?/, '');   // 先頭の```を削除
+        cleanedResponse = cleanedResponse.replace(/\n?```$/, '');     // 末尾の```を削除
+
+        console.log('=== Step 6: JSON parse実行 ===');
+        const parsedJson = JSON.parse(cleanedResponse);
+
+        //レスポンス形式の検証
+        if (!parsedJson.audioScript || !parsedJson.answerOption) {
+            throw new apierror.ChatGPTAPIError('必要なフィールド（audioScript, answerOption）が不足しています');
+        }
+        
+        console.log('=== Step 7: 検証完了 ===');
+        console.log("audioScript length:", parsedJson.audioScript.length);
+        console.log("answerOption:", parsedJson.answerOption);
+
+        return {
+            audioScript: parsedJson.audioScript,
+            answerOption: parsedJson.answerOption
+        }
+        
+    } catch (error) {
+        if (error instanceof z.ZodError) {
+            console.error(`OpenAI APIから予期しない形式のレスポンスを受信しました:`, error);
+            throw new apierror.ChatGPTAPIError(`OpenAI APIから予期しない形式のレスポンスを受信しました: ${error.message}`);
+        } else if (error instanceof apierror.ChatGPTAPIError) {
+            throw error;
+        } else {
+            console.error('Unexpected ChatGPT API Error:', error);
+            throw new apierror.ChatGPTAPIError('ChatGPT APIとの通信で予期しないエラーが発生しました');
+        }
+    }
+};
+//chatgpt - audioScript generation only
+export async function callChatGPTForAudioScriptContent(prompt: string): Promise<string> {
+    try {
+        console.log('=== Step 1: fetch開始 (AudioScript生成) ===');
+        const response = await fetch('https://api.openai.com/v1/chat/completions', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`
+            },
+            body: JSON.stringify({
+                model: "gpt-4o",
+                messages: [
+                    {
+                        role: "system",
+                        content: "You are an expert in TOEIC content creation. Return ONLY the audioScript content as plain text with proper speaker tags. Do not include JSON formatting, markdown code blocks, or any other formatting. Output only the conversation/speech content exactly as specified in the prompt."
                     },
                     {
                         role: "user",
@@ -63,21 +145,256 @@ export async function callChatGPTForAudioScript(prompt: string): Promise<string>
         }
 
         console.log('=== Step 5: audioScript抽出 ===');
-        const audioScriptAndAnswerOption = validatedData.choices[0].message.content;
+        const audioScriptContent = validatedData.choices[0].message.content;
 
-        // 不要な文字列の除去（markdown形式等）
-        let cleanedAudioScript = audioScriptAndAnswerOption.trim();
-        cleanedAudioScript = cleanedAudioScript.replace(/^```.*\n?/, ''); // 先頭の```を削除
-        cleanedAudioScript = cleanedAudioScript.replace(/\n?```$/, '');   // 末尾の```を削除
-        cleanedAudioScript = cleanedAudioScript.replace(/^"|"$/g, '');   // 前後のクォートを削除
+        //前後の空白除去
+        const cleanedAudioScript = audioScriptContent.trim();
+        
         console.log("cleaned audioScript: ", cleanedAudioScript);
-
         console.log('=== Step 6: audioScript検証完了 ===');
         console.log("generated audioScript length:", cleanedAudioScript.length);
 
-        const result = JSON.parse(cleanedAudioScript);
-        console.log("result: ", result);
-        return result;
+        //JSONパースを削除し、クリーンアップされたテキストをそのまま返す
+        return cleanedAudioScript;
+        
+    } catch (error) {
+        if (error instanceof z.ZodError) {
+            console.error(`OpenAI APIから予期しない形式のレスポンスを受信しました:`, error);
+            throw new apierror.ChatGPTAPIError(`OpenAI APIから予期しない形式のレスポンスを受信しました: ${error.message}`);
+        } else if (error instanceof apierror.ChatGPTAPIError) {
+            throw error;
+        } else {
+            console.error('Unexpected ChatGPT API Error:', error);
+            throw new apierror.ChatGPTAPIError('ChatGPT APIとの通信で予期しないエラーが発生しました');
+        }
+    }
+};
+
+export async function callChatGPTForAudioScriptQuestions(prompt: string): Promise<{audioScript: string, answerOptionList: string[]}> {
+    try {
+        console.log('=== Step 1: fetch開始 (Questions&Choices生成) ===');
+        const response = await fetch('https://api.openai.com/v1/chat/completions', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`
+            },
+            body: JSON.stringify({
+                model: "gpt-4o",
+                messages: [
+                    {
+                        role: "system",
+                        content: "You are an expert in TOEIC question creation. Return ONLY a valid JSON object with audioScript and answerOption fields. Do not use markdown code blocks or any other formatting. Output only the JSON object exactly as specified in the prompt."
+                    },
+                    {
+                        role: "user",
+                        content: prompt
+                    }
+                ],
+                temperature: 0.4,        // 変更: 0 → 0.4 (創造性と一貫性のバランス)
+                max_tokens: 3000,       // 変更: 2000 → 3000 (思考プロセス用)
+                top_p: 0.9,             // 追加: より質の高い選択
+                presence_penalty: 0.1,   // 追加: 繰り返し回避
+                frequency_penalty: 0.1   // 追加: 語彙の多様性向上
+            }),
+            signal: AbortSignal.timeout(60000)
+        });
+        
+        console.log("response status:", response.status);
+        console.log('=== Step 2: response確認 ===');
+        
+        if (!response.ok) {
+            throw new apierror.ChatGPTAPIError(`ChatGPT API Error: ${response.status} ${response.statusText}`);
+        }
+        
+        console.log('=== Step 3: JSON parse開始 ===');
+        const data = await response.json();
+        
+        console.log('=== Step 4: OpenAI APIの応答構造検証 ===');
+        const validatedData = schema.openAIResponseSchema.parse(data);
+
+        if (validatedData.choices.length === 0) {
+            throw new apierror.ChatGPTAPIError('ChatGPT APIからの応答に問題があります');
+        }
+
+        console.log('=== Step 5: Questions&Choices抽出 ===');
+        const jsonResponse = validatedData.choices[0].message.content;
+
+        // 不要な文字列の除去（markdown形式等）
+        let cleanedResponse = jsonResponse.trim();
+        cleanedResponse = cleanedResponse.replace(/^```json\s*/, ''); // 先頭の```jsonを削除
+        cleanedResponse = cleanedResponse.replace(/^```.*\n?/, '');   // 先頭の```を削除
+        cleanedResponse = cleanedResponse.replace(/\n?```$/, '');     // 末尾の```を削除
+        
+        console.log("cleaned JSON response: ", cleanedResponse);
+
+        console.log('=== Step 6: JSON parse実行 ===');
+        const result = JSON.parse(cleanedResponse);
+        
+        //レスポンス形式の検証
+        if (!result.audioScript || !result.answerOptionList) {
+            throw new apierror.ChatGPTAPIError('必要なフィールド（audioScript, answerOptionList）が不足しています');
+        }
+        
+        // answerOptionが配列かどうかチェック
+        if(!Array.isArray(result.answerOptionList)) {
+            throw new apierror.ChatGPTAPIError('answerOptionListは配列である必要があります');
+        }
+        
+        console.log('=== Step 7: 検証完了 ===');
+        console.log("audioScript length:", result.audioScript.length);
+        console.log("answerOptionList:", result.answerOptionList);
+
+        return {
+            audioScript: result.audioScript,
+            answerOptionList: result.answerOptionList
+        };
+        
+    } catch (error) {
+        if (error instanceof SyntaxError) {
+            console.error('JSON parse error:', error);
+            throw new apierror.ChatGPTAPIError('ChatGPT APIからの応答が有効なJSON形式ではありません');
+        } else if (error instanceof z.ZodError) {
+            console.error(`OpenAI APIから予期しない形式のレスポンスを受信しました:`, error);
+            throw new apierror.ChatGPTAPIError(`OpenAI APIから予期しない形式のレスポンスを受信しました: ${error.message}`);
+        } else if (error instanceof apierror.ChatGPTAPIError) {
+            throw error;
+        } else {
+            console.error('Unexpected ChatGPT API Error:', error);
+            throw new apierror.ChatGPTAPIError('ChatGPT APIとの通信で予期しないエラーが発生しました');
+        }
+    }
+};
+
+export async function callChatGPTForJpnAudioScript(prompt: string): Promise<string> {
+    try {
+        console.log('=== Step 1: fetch開始 (jpnAudioScript生成) ===');
+        const response = await fetch('https://api.openai.com/v1/chat/completions', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`
+            },
+            body: JSON.stringify({
+                model: "gpt-4o",
+                messages: [
+                    {
+                        role: "system",
+                        content: "You are an expert Japanese translator specializing in TOEIC materials. Translate the provided English TOEIC content into natural Japanese following the exact format specified in the prompt. Return ONLY the structured Japanese text as specified. Do not include explanations, markdown formatting, JSON, or any additional text."
+                    },
+                    {
+                        role: "user",
+                        content: prompt
+                    }
+                ],
+                temperature: 0.3,        //翻訳の一貫性を保ちつつ自然さを確保
+                max_tokens: 2000,       //日本語は文字数が多くなるため増量
+                top_p: 0.9,
+                presence_penalty: 0.1
+            }),
+            signal: AbortSignal.timeout(90000)
+        });
+        
+        console.log("response status:", response.status);
+        console.log('=== Step 2: response確認 ===');
+        
+        if (!response.ok) {
+            throw new apierror.ChatGPTAPIError(`ChatGPT API Error: ${response.status} ${response.statusText}`);
+        }
+        
+        console.log('=== Step 3: JSON parse開始 ===');
+        const data = await response.json();
+        
+        console.log('=== Step 4: OpenAI APIの応答構造検証 ===');
+        const validatedData = schema.openAIResponseSchema.parse(data);
+
+        if (validatedData.choices.length === 0) {
+            throw new apierror.ChatGPTAPIError('ChatGPT APIからの応答に問題があります');
+        }
+
+        console.log('=== Step 5: jpnAudioScript抽出 ===');
+        const jpnAudioScriptContent = validatedData.choices[0].message.content;
+
+        //前後の空白除去
+        const cleanedJpnAudioScript = jpnAudioScriptContent.trim();
+        
+        console.log("cleaned jpnAudioScript: ", cleanedJpnAudioScript);
+        console.log('=== Step 6: jpnAudioScript検証完了 ===');
+        console.log("generated jpnAudioScript length:", cleanedJpnAudioScript.length);
+
+        return cleanedJpnAudioScript;
+        
+    } catch (error) {
+        if (error instanceof z.ZodError) {
+            console.error(`OpenAI APIから予期しない形式のレスポンスを受信しました:`, error);
+            throw new apierror.ChatGPTAPIError(`OpenAI APIから予期しない形式のレスポンスを受信しました: ${error.message}`);
+        } else if (error instanceof apierror.ChatGPTAPIError) {
+            throw error;
+        } else {
+            console.error('Unexpected ChatGPT API Error:', error);
+            throw new apierror.ChatGPTAPIError('ChatGPT APIとの通信で予期しないエラーが発生しました');
+        }
+    }
+};
+
+export async function callChatGPTForExplanation(prompt: string): Promise<string> {
+    try {
+        console.log('=== Step 1: fetch開始 (explanation生成) ===');
+        const response = await fetch('https://api.openai.com/v1/chat/completions', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`
+            },
+            body: JSON.stringify({
+                model: "gpt-4o",
+                messages: [
+                    {
+                        role: "system",
+                        content: "You are an expert TOEIC instructor specializing in creating detailed explanations in Japanese. Generate comprehensive explanations that help students understand correct answers, analyze incorrect options, and improve their listening skills. Focus on practical learning points and accent-specific pronunciation guidance. Return ONLY the Japanese explanation text as specified. Do not include formatting, markdown, or additional text."
+                    },
+                    {
+                        role: "user",
+                        content: prompt
+                    }
+                ],
+                temperature: 0.4,        // 解説の一貫性と教育的配慮のバランス
+                max_tokens: 1500,       // 500-700文字の日本語解説に適切
+                top_p: 0.9,
+                presence_penalty: 0.1,
+                frequency_penalty: 0.1   // 語彙の多様性確保
+            }),
+            signal: AbortSignal.timeout(90000)
+        });
+        
+        console.log("response status:", response.status);
+        console.log('=== Step 2: response確認 ===');
+        
+        if (!response.ok) {
+            throw new apierror.ChatGPTAPIError(`ChatGPT API Error: ${response.status} ${response.statusText}`);
+        }
+        
+        console.log('=== Step 3: JSON parse開始 ===');
+        const data = await response.json();
+        
+        console.log('=== Step 4: OpenAI APIの応答構造検証 ===');
+        const validatedData = schema.openAIResponseSchema.parse(data);
+
+        if (validatedData.choices.length === 0) {
+            throw new apierror.ChatGPTAPIError('ChatGPT APIからの応答に問題があります');
+        }
+
+        console.log('=== Step 5: explanation抽出 ===');
+        const explanationContent = validatedData.choices[0].message.content;
+
+        //前後の空白除去
+        const cleanedExplanation = explanationContent.trim();
+        
+        console.log("cleaned explanation: ", cleanedExplanation);
+        console.log('=== Step 6: explanation検証完了 ===');
+        console.log("generated explanation length:", cleanedExplanation.length);
+
+        return cleanedExplanation;
         
     } catch (error) {
         if (error instanceof z.ZodError) {
@@ -93,30 +410,62 @@ export async function callChatGPTForAudioScript(prompt: string): Promise<string>
 };
 
 
-
-/*
-async function audioScript() {
+async function part2AudioScript() {
+    const __filename = fileURLToPath(import.meta.url);
+    const __dirname = path.dirname(__filename);
+    const audioScriptPromptPath = path.join(__dirname, 'test-part2-audioscript-prompt.md');
+    const audioScriptPrompt = await fs.readFile(audioScriptPromptPath, 'utf8');
+    console.log("testprompt: ", audioScriptPrompt);
+    const response = await callChatGPTForPart2AudioScript(audioScriptPrompt);
+    console.log("response", response);
+};
+async function audioScriptContent() {
     const __filename = fileURLToPath(import.meta.url);
     const __dirname = path.dirname(__filename);
     const audioScriptPromptPath = path.join(__dirname, 'test-audioscript-prompt.md');
     const audioScriptPrompt = await fs.readFile(audioScriptPromptPath, 'utf8');
     console.log("testprompt: ", audioScriptPrompt);
-    //const response = await callChatGPT(testprompt);
-    const response = await callChatGPTForAudioScript(audioScriptPrompt);
+    const response = await callChatGPTForAudioScriptContent(audioScriptPrompt);
     console.log("response", response);
 };
-*/
 
-/*async function jpnAudioScript() {
+async function audioScriptQuestions() {
+    const __filename = fileURLToPath(import.meta.url);
+    const __dirname = path.dirname(__filename);
+    const audioScriptPromptPath = path.join(__dirname, 'test-audioscript-questions-prompt.md');
+    const audioScriptPrompt = await fs.readFile(audioScriptPromptPath, 'utf8');
+    console.log("testprompt: ", audioScriptPrompt);
+    const response = await callChatGPTForAudioScriptQuestions(audioScriptPrompt);
+    console.log("response", response);
+};
+
+async function jpnAudioScript() {
     const __filename = fileURLToPath(import.meta.url);
     const __dirname = path.dirname(__filename);
     const jpnAudioScriptPromptPath = path.join(__dirname, 'test-jpnaudioscript-prompt.md');
     const jpnAudioScriptPrompt = await fs.readFile(jpnAudioScriptPromptPath, 'utf8');
     console.log("testprompt: ", jpnAudioScriptPrompt);
-    //const response = await callChatGPT(testprompt);
-    const response = await apiservice.callChatGPTForJpnAudioScript(jpnAudioScriptPrompt);
+    const response = await callChatGPTForJpnAudioScript(jpnAudioScriptPrompt);
     console.log("response", response);
-};*/
+};
+
+async function explanation() {
+    const __filename = fileURLToPath(import.meta.url);
+    const __dirname = path.dirname(__filename);
+    const explanationPromptPath = path.join(__dirname, 'test-explanation-prompt.md');
+    const explanationPrompt = await fs.readFile(explanationPromptPath, 'utf8');
+    console.log("testprompt: ", explanationPrompt);
+    const response = await callChatGPTForExplanation(explanationPrompt);
+    console.log("response", response);
+};
+
+
+part2AudioScript().catch(console.error);
+//audioScriptContent().catch(console.error);
+//audioScriptQuestions().catch(console.error);
+//jpnAudioScript().catch(console.error);
+//explanation().catch(console.error);
+
 /*
 async function callGoogleCloudTTSRealAPITest() {
     const mockSSML = `<?xml version="1.0" encoding="UTF-8"?>
@@ -189,6 +538,7 @@ export async function generateAudioContent(dto: dto.NewAudioReqDTO, lQuestionID:
     return audioFilePath;
 };
 */
+/*
 async function callGoogleCloudTTSRealAPIAndSaveFlieTest() {
     const mockSSML = `<?xml version="1.0" encoding="UTF-8"?>
     <speak version="1.0" xmlns="http://www.w3.org/2001/10/synthesis">
@@ -279,5 +629,4 @@ async function generateAudioContentTest() {
     const audioFilePath = await apiservice.generateAudioContent(mockNewAudioReqDTO, mockQuestionID);
     console.log(`✅ 音声データ連結テスト成功: ${audioFilePath}`);
 };
-
-generateAudioContentTest().catch(console.error);
+*/

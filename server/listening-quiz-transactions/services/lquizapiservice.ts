@@ -11,7 +11,7 @@ import * as domein from "../lquiz.domeinobject.ts";
 import * as dto from "../lquiz.dto.ts";
 import * as apierror from "../errors/lquiz.apierrors.ts";
 import * as schema from "../schemas/lquizapischema.ts";
-import {SECTION_SPECS, AUDIO_SCRIPT_STRUCTURES, JPN_AUDIO_SCRIPT_FORMAT, PART_GENRES, ACCENT_PATTERNS, TTS_VOICE_CONFIG, PART_SPECIFIC_SCENARIOS, WORD_CONSTRAINTS, TOPIC_MAPPING, SITUATION_ELEMENTS, SPEAKER_ELEMENTS, LOCATION_ELEMENTS} from "./services.types.ts";
+import {SPEAKER_PATTERNS, JPN_AUDIO_SCRIPT_FORMAT, ACCENT_PATTERNS, TTS_VOICE_CONFIG, PART_SPECIFIC_SCENARIOS, WORD_CONSTRAINTS, TOPIC_MAPPING, SITUATION_ELEMENTS, SPEAKER_ELEMENTS, LOCATION_ELEMENTS} from "./services.types.ts";
 
 import { z } from "zod";
 import {GoogleAuth} from "google-auth-library";
@@ -36,7 +36,7 @@ export type SpeakerAccent = typeof ACCENT_PATTERNS[keyof typeof ACCENT_PATTERNS]
 
 //ランダム選択関数 リクエストされた問題数分のアクセントを返す
 export function getRandomSpeakerAccent(requestedNumOfQuizs: number): AccentType[] {
-    // TOEIC実際の出題頻度を反映した重み設定
+    //TOEIC実際の出題頻度を反映した重み設定
     const accentWeights: Record<AccentType, number> = {
         'American': 0.5,    // 50% - 最も高頻度
         'British': 0.25,    // 25% - 中頻度
@@ -44,7 +44,7 @@ export function getRandomSpeakerAccent(requestedNumOfQuizs: number): AccentType[
         'Canadian': 0.1     // 10% - 最低頻度
     };
     
-    // 累積重みの配列を作成
+    //累積重みの配列を作成
     const accents = Object.keys(accentWeights) as AccentType[];
     const weights = accents.map(accent => accentWeights[accent]);
     const cumulativeWeights: number[] = [];
@@ -55,126 +55,248 @@ export function getRandomSpeakerAccent(requestedNumOfQuizs: number): AccentType[
         return sum;
     }, 0);
     
-    // 重み付きランダム選択関数
+    //重み付きランダム選択関数
     function selectWeightedRandom(): AccentType {
         const random = Math.random();
         const index = cumulativeWeights.findIndex(weight => random <= weight);
         return accents[index];
     }
     
-    // 指定された問題数分のアクセントを選択
+    //指定された問題数分のアクセントを選択
     return Array.from({ length: requestedNumOfQuizs }, () => selectWeightedRandom());
 };
 
 //問題生成関数 controllerで呼び出す
-export async function generateLQuestionContent(domObj: domein.NewLQuestionInfo, currentIndex: number): Promise<dto.GeneratedQuestionDataResDTO[]> {
+export async function generatePart2Question(domObj: domein.NewLQuestionInfo, currentIndex: number): Promise<dto.GeneratedQuestionDataResDTO> {
+    //sectionNumberによって分岐
+    const speakerAccentList = getRandomSpeakerAccent(domObj.requestedNumOfLQuizs);
+    //状況設定（多様性担保）
+    const settings = getRandomSettings(domObj.requestedNumOfLQuizs, domObj.sectionNumber);
+    //性別ランダム選択
+    const speakerList = getRandomSpeakers(domObj.sectionNumber);
     //プロンプト生成
-    const prompt = await generateSingleAudioScriptPrompt(domObj, currentIndex);
-    //・(ChatGPT-4o API)クイズ生成プロンプト生成
-    const generatedQuizDataList = await callChatGPT(prompt); //バリデーション済
+    const prompt = await generatePart2AudioScriptPrompt(domObj.sectionNumber, speakerAccentList[currentIndex], settings[currentIndex], speakerList);
+
+};
+export async function generatePart34Question(domObj: domein.NewLQuestionInfo, currentIndex: number): Promise<dto.GeneratedQuestionDataResDTO> {
+    //sectionNumberによって分岐
+    const speakerAccentList = getRandomSpeakerAccent(domObj.requestedNumOfLQuizs);
+    //状況設定（多様性担保）
+    const settings = getRandomSettings(domObj.requestedNumOfLQuizs, domObj.sectionNumber);
+    const contentTopicInstruction = generateContentTopicInstructions(domObj.requestedNumOfLQuizs, settings);
+    const contentFrameworksText = generateContentFrameworks(domObj.sectionNumber, settings);
+    //プロンプト生成
+    const contentPrompt = await generatePart34AudioScriptContentPrompt(domObj, speakerAccentList[currentIndex], settings[currentIndex], contentTopicInstruction[currentIndex], contentFrameworksText[currentIndex], currentIndex=0);
+    //(ChatGPT-4o API)クイズ生成プロンプト生成
+    const generatedContent = await callChatGPTForPart34AudioScriptContent(contentPrompt);
+
+    //要修正：const questionsAndChoicesPrompt = await generatePart34AudioScriptQuestionsPrompt(domObj.sectionNumber, speakerAccentList[currentIndex], settings[currentIndex]);
+    
+    const generatedQuestionsAndChoices = await callChatGPTForPart34AudioScriptQuestionsAndChoices(questionsAndChoicesPrompt);
+    const answerOptionList = generatedQuestionsAndChoices.answerOptionList as ("A" | "B" | "C" | "D")[];
+
+    const audioScript = combineContentAndQuestions(generatedContent, generatedQuestionsAndChoices.questionsAndChoices);
+
+    const jpnAudioScriptPrompt = await generateSingleJpnAudioScriptPrompt(domObj.sectionNumber, audioScript);
+    const generatedJpnAudioScript = await callChatGPTForJpnAudioScript(audioScript);
+
+    const relevantAccentFeaturesText = extractAccentSpecificPoints(audioScript, speakerAccentList[currentIndex]);   
+
+    const explanationPrompt = await generateSingleExplanationPrompt(domObj.sectionNumber, speakerAccentList[currentIndex], relevantAccentFeaturesText, audioScript, answerOptionList);
+
+    const generatedExplanation = await callChatGPTForExplanation(generatedJpnAudioScript);
+    //GeneratedQuestionDataResDTOへのmapping関数
 
     //似たような問題の生成をどうやって防止するか？
-    return  generatedQuizDataList;
+    return  ;
 };
 
-//audioScript構造の選択（話者タグ対応版）
-function generateAudioStructureText(sectionNumber: number): string {
-    const structure = AUDIO_SCRIPT_STRUCTURES[sectionNumber as keyof typeof AUDIO_SCRIPT_STRUCTURES];
+/**
+ * 指定されたsectionNumberのpatternをランダム選択し、speakers配列を取得
+ * @param sectionNum - Part番号 (1, 2, 3, 4)
+ * @returns 選択されたパターンのspeakers配列
+ */
+export function getRandomSpeakers(sectionNum: 1 | 2 | 3 | 4): readonly string[] {
+    const partKey = `part${sectionNum}` as keyof typeof SPEAKER_PATTERNS;
+    const availablePatterns = SPEAKER_PATTERNS[partKey];
     
-    if (!structure) {
-        return '';
-    }
-    
-    // Part別の簡潔な構造説明
-    let simpleStructure = '';
-    switch (sectionNumber) {
-        case 1:
-            simpleStructure = 'Read only 4 choices consecutively';
-            break;
-        case 2:
-            simpleStructure = 'Question + [pause] + 3 choices read consecutively';
-            break;
-        case 3:
-            simpleStructure = 'Conversation + [pause] + 3 questions with 4 choices each';
-            break;
-        case 4:
-            simpleStructure = 'Speech content + [pause] + 3 questions with 4 choices each';
-            break;
-        default:
-            simpleStructure = '';
-    }
-    
-    // 話者タグ指示の生成
-    function generateSpeakerInstructions(structure: any): string {
-        if (!structure.tagging || !structure.tagging.speakerTag) {
-            return '';
-        }
-        
-        const speakerAssignment = structure.tagging.speakerAssignment;
-        const speakerInstructions = `
-**Speaker and Structure Tagging Requirements**
+    const randomIndex = Math.floor(Math.random() * availablePatterns.length);
+    return availablePatterns[randomIndex].speakers;
+};
 
-**Available Speakers:** ${structure.tagging.speakerTag.join(', ')}
+/*
+audioScriptタグ構造の選択
+*/
+//Part 2: 問題文(コメント/質問)&選択肢(応答)生成（応答選択肢に話者タグ必要）
+export function generatePart2Structure(): string {
+    const patterns = SPEAKER_PATTERNS.part2;
+    const pattern = patterns[Math.floor(Math.random() * patterns.length)];
+    const [questioner, responder] = pattern.speakers;
+    
+    return `**Structure:** Generate question/comment + 3 response choices
+
+**Rules:**
+- Question/comment read by actual speakers with gender-specific tags
+- Response choices read by actual speakers with gender-specific tags
 
 **Speaker Assignment:**
-${Object.entries(speakerAssignment)
-    .map(([role, speaker]) => `- ${role}: ${Array.isArray(speaker) ? speaker.join(', ') : speaker}`)
-    .join('\n')}
+- Selected Pattern: ${pattern.pattern}
+- Questioner: ${questioner} (reads the question/comment)
+- Responder: ${responder} (reads the response choices)
 
-${structure.tagging.structureTag}
+**Structure Tagging:**
+- \`[QUESTION]\` followed by question text with ${questioner} tag
+- \`[CHOICES]\` followed by 3 response options with ${responder} tags
 
-**CRITICAL:** Every content section MUST be preceded by the appropriate speaker tag.`;
-        
-        return speakerInstructions;
-    };
-    
-    // Part 1, 2の場合は簡潔な構造
-    if (sectionNumber === 1 || sectionNumber === 2) {
-        return `**Structure:** ${simpleStructure}
-
-**Rules:**
-${structure.rules.map(rule => `- ${rule}`).join('\n')}
-
-**IMPORTANT: Structure and Speaker Tagging**
-Include the following structure and speaker tags in your audioScript output:
-
-${generateSpeakerInstructions(structure)}`;
-    }
-    
-    // Part 3, 4の場合は詳細な構造
-    return `**Structure:** ${simpleStructure}
-
-**Rules:**
-${structure.rules.map(rule => `- ${rule}`).join('\n')}
-
-**Structure for Japanese Translation:**
-${structure.structure}
-
-**IMPORTANT: Structure and Speaker Tagging**
-Include the following structure and speaker tags in your audioScript output:
-
-${generateSpeakerInstructions(structure)}`;
+**Output Format:** Question with questioner tag + 3 response choices with responder tags.`;
 };
 
-function selectAnswerOptionGenerationRules(sectionNumber: number): string {
-    const rules = {
-        1: "- **Part 1:** Generate 1 correct answer, return array with 1 element: [\"A\"] or [\"B\"] or [\"C\"] or [\"D\"]",
-        2: "- **Part 2:** Generate 1 correct answer, return array with 1 element: [\"A\"] or [\"B\"] or [\"C\"]", 
-        3: "- **Part 3:** Generate 3 correct answers, return array with 3 elements: [\"A\", \"B\", \"C\"] or [\"B\", \"C\", \"A\"] etc.",
-        4: "- **Part 4:** Generate 3 correct answers, return array with 3 elements: [\"A\", \"B\", \"C\"] or [\"B\", \"C\", \"A\"] etc."
-    };
-
-    const specificRule = rules[sectionNumber as keyof typeof rules];
+//Part 3: 会話生成（会話に話者タグ必要）
+export function generatePart3ContentStructure(): string {
+    const patterns = SPEAKER_PATTERNS.part3;
+    const pattern = patterns[Math.floor(Math.random() * patterns.length)];
+    const [speaker1, speaker2] = pattern.speakers;
     
-    if (!specificRule) {
-        return "";
-    }
+    return `**Structure:** Generate conversation content only (no questions or choices)
 
-    return specificRule;
+**Rules:**
+- Conversation between 2 speakers
+- Alternate speakers naturally based on dialogue context
+
+**Speaker Assignment:**
+- Selected Pattern: ${pattern.pattern}
+- Conversation Speaker 1: ${speaker1}
+- Conversation Speaker 2: ${speaker2}
+
+**Structure Tagging:**
+- Each speaker's line must start with their speaker tag: ${speaker1} or ${speaker2}
+- Format: ${speaker1} [speaker's dialogue text] ${speaker2} [speaker's dialogue text]
+
+**Output Format:** Conversation content with proper speaker and structure tags only. Do not include questions or answer choices.`;
 };
 
+//Part 3: 設問&選択肢生成（話者タグ不要）
+export function generatePart3QuestionsStructure(): string {
+    return `**Structure:** Generate 3 questions with 4 choices each (based on provided conversation)
+
+**Rules:**
+- Each question should focus on different aspects of the conversation
+- Questions should test various comprehension levels (literal, inferential, critical)`;
+}
+
+//Part 4: スピーチ生成（スピーチに話者タグ必要）
+export function generatePart4ContentStructure(): string {
+    const patterns = SPEAKER_PATTERNS.part4;
+    const pattern = patterns[Math.floor(Math.random() * patterns.length)];
+    const [presenter] = pattern.speakers;
+    
+    return `**Structure:** Generate speech/announcement content only (no questions or choices)
+
+**Rules:**
+- Each question should focus on different aspects of the speech
+- Questions should test various comprehension levels (literal, inferential, critical)
+
+**Speaker Assignment:**
+- Selected Pattern: ${pattern.pattern}
+- Presenter/Announcer: ${presenter}
+
+**Structure Tagging:**
+- Speech content must start with ${presenter} tag
+- Format: ${presenter} [presenter's speech text continues...]
+
+**Output Format:** Speech content with proper speaker and structure tags only. Do not include questions or answer choices.`;
+}
+
+//Part 4: 設問&選択肢生成（話者タグ不要）
+export function generatePart4QuestionsStructure(): string {
+    return `**Structure:** Generate 3 questions with 4 choices each (based on provided speech)
+
+**Rules:**
+- Each question should focus on different aspects of the speech
+- Questions require inference rather than direct information recall`;
+}
+
+/*
+アクセント設定
+*/
+//Part1専用のアクセント指示
+export function generatePart1AccentInstructions(accentType: AccentType): string {
+    const accent = ACCENT_PATTERNS[accentType];
+    return `**Accent Requirements: ${accent.description}**
+
+**Vocabulary to Use in Descriptions:**
+- ${accent.vocabulary.slice(0, 4).join(', ')}
+
+**Pronunciation Features to Consider:**
+- ${accent.characteristics.slice(0, 2).join('\n- ')}
+
+**Part 1 Specific Guidelines:**
+- Use accent-specific vocabulary for objects and actions
+- Choose descriptive words that reflect pronunciation patterns
+- Ensure descriptions sound natural in this accent
+- Consider regional variations in terminology`;
+}
+//Part2専用のアクセント指示
+export function generatePart2AccentInstructions(accentType: AccentType): string {
+    const accent = ACCENT_PATTERNS[accentType];
+    return `**Accent Requirements: ${accent.description}**
+
+**Question Vocabulary:**
+- ${accent.vocabulary.slice(0, 3).join(', ')}
+
+**Response Expressions:**
+- ${accent.expressions.slice(0, 5).join(', ')}
+
+**Pronunciation Features:**
+- ${accent.characteristics.slice(0, 2).join('\n- ')}
+
+**Part 2 Specific Guidelines:**
+- Questions should use accent-appropriate vocabulary
+- Response choices must reflect natural expressions for this accent
+- Consider accent-specific politeness levels and formality
+- Ensure conversational flow matches accent patterns`;
+}
+//Part3,4アクセント指示
+export function generatePart34AccentInstructionsForContent(accentType: AccentType): string {
+    const accent = ACCENT_PATTERNS[accentType];
+    return `**Accent Requirements: ${accent.description}**
+
+**Vocabulary to Use:**
+- ${accent.vocabulary.slice(0, 6).join(', ')}
+
+**Expressions to Include:**
+- ${accent.expressions.slice(0, 4).join(', ')}
+
+**Pronunciation Features to Reflect:**
+- ${accent.characteristics.slice(0, 3).join('\n- ')}
+
+**Implementation Guidelines:**
+- Naturally incorporate accent-specific vocabulary in dialogue/speech
+- Use characteristic expressions that reflect this accent
+- Choose words that demonstrate pronunciation patterns
+- Maintain authenticity while keeping content comprehensible`;
+}
+//Part3,4設問文&選択肢生成時のアクセント指示
+export function generatePart34AccentInstructionsForQuestions(accentType: AccentType): string {
+    const accent = ACCENT_PATTERNS[accentType];
+    return `**Accent Context from Content: ${accent.description}**
+
+**Consider these accent features when creating questions:**
+- Vocabulary used: ${accent.vocabulary.slice(0, 4).join(', ')}
+- Expressions used: ${accent.expressions.slice(0, 3).join(', ')}
+
+**Question Design Guidelines:**
+- Questions should test comprehension of accent-specific vocabulary
+- Answer choices may include accent-related synonyms
+- Consider pronunciation variations that affect meaning
+- Ensure questions are fair regardless of accent familiarity`;
+}
+
+/*
+状況設定（問題の多様性確保目的）
+*/
 //状況設定のランダム選択関数
-function getRandomSettings(requestedNumOfLQuizs: number, sectionNumber: number) {
+export function getRandomSettings(requestedNumOfLQuizs: number, sectionNumber: number) {
    const scenarios = PART_SPECIFIC_SCENARIOS[sectionNumber as keyof typeof PART_SPECIFIC_SCENARIOS];
    const shuffledScenarios = [...scenarios].sort(() => 0.5 - Math.random());
    
@@ -183,38 +305,41 @@ function getRandomSettings(requestedNumOfLQuizs: number, sectionNumber: number) 
    );
 };
 
-function generateContentTopicInstructions(requestedNumOfLQuizs: number, /*sectionNumber: number,*/ settings: Array<{location: string, speaker: string, situation: string}>): string[] {
+export function generateContentTopicInstructions(requestedNumOfLQuizs: number, /*sectionNumber: number,*/ settings: Array<{location: string, speaker: string, situation: string}>): string[] {
     return settings.slice(0, requestedNumOfLQuizs).map((setting, index) => {
         const topic = generateTopicFromSituation(setting.situation);
         
         return `**Question ${index + 1}**: Content must focus on **${topic}**`;
     });
 };
-
 //要求問題数の数だけcontentFrameworkを生成
-function generateContentFrameworks(requestedNumOfLQuizs: number, sectionNumber: number, settings: Array<{location: string, speaker: string, situation: string}>): string[] {
-    // Part 4以外では空配列を返す
-    if (sectionNumber !== 4) {
-        return Array(requestedNumOfLQuizs).fill('');
-    }
-    
+export function generateContentFrameworks(sectionNumber: number, settings: Array<{location: string, speaker: string, situation: string}>): string[] {
     return settings.map((setting, index) => {
-        // 各問題ごとに配列から要素を取り出す
         const { location, speaker, situation } = setting;
-        
         const topic = generateTopicFromSituation(situation);
         const keyElements = generateKeyElementsFromContext(situation, speaker, location);
         
-        return `### Question ${index + 1}: ${situation}
+        if (sectionNumber === 3) {
+            return `### Question ${index + 1}: ${situation}
+- **Conversation Context**: ${speaker} engaging in ${situation.toLowerCase()} at ${location}
+- **Speaker Roles**: Define relationship and information exchange
+- **Key Discussion Points**: ${keyElements}
+- **Conversation Flow**: Problem → Discussion → Resolution/Decision
+- **Focus Areas**: Must include ${topic} elements for question development`;
+        } else if (sectionNumber === 4) {
+            return `### Question ${index + 1}: ${situation}
 - **Content Focus**: ${speaker} delivering ${situation.toLowerCase()} at ${location}
 - **Speaker Context**: Professional ${speaker.toLowerCase()} providing ${topic}
 - **Key Elements**: ${keyElements}
 - **Correct Choice**: Must relate to ${topic}`;
+        }
+        
+        return '';
     });
-};
+}
 /**
  * generateTopicFromSituation
- * 役割: 論理的整合性の確保
+ * 役割: part3,4の論理的整合性の確保
  * 機能: situationから明確なトピックを生成し、Content→Question→Answerの論理的流れを保証
  */
 function generateTopicFromSituation(situation: string): string {
@@ -224,7 +349,6 @@ function generateTopicFromSituation(situation: string): string {
     if (exactMatch) {
         return exactMatch;
     }
-    
     //2. 部分一致による柔軟な対応
     const keywords = situation.toLowerCase().split(' ');
     for (const keyword of keywords) {
@@ -234,14 +358,13 @@ function generateTopicFromSituation(situation: string): string {
             }
         }
     }
-    
     //3. フォールバック（100%の対応を保証）
     return `${situation.toLowerCase().replace(/\s+/g, ' ')} content`;
 };
 
 /**
  * generateKeyElementsFromContext  
- * 役割: 品質の均一化と向上
+ * 役割: Part3,4の品質の均一化と向上
  * 機能: situation、speaker、locationの文脈から具体的な要素を生成し、一貫した高品質な内容を保証
  */
 function generateKeyElementsFromContext(situation: string, speaker: string, location: string): string {
@@ -290,19 +413,61 @@ function generateKeyElementsFromContext(situation: string, speaker: string, loca
     return finalElements.join(', ');
 };
 
-//チェックリスト生成関数
-function generateChecklistForPart(sectionNumber: number, constraints: any): string {    
-    let checklist = `- □ Are correct answers properly distributed among A, B, C, D?`;
+
+/*
+チェックリスト
+*/
+//Part3,4 問題文生成用チェックリスト関数
+function generatePart34ContentChecklist(sectionNumber: number, constraints: any): string {
+    let checklist = '';
     
-    //Part2は選択肢がA, B, Cのみ
-    if (sectionNumber === 2) {
-        checklist = checklist.replace('A, B, C, D', 'A, B, C');
+    //Part別の専用チェック項目
+    if (sectionNumber === 3) {
+        checklist += `
+- □ Is the dialogue natural with believable speaker interactions?
+- □ Does the conversation flow logically with meaningful content?`;
+    } else if (sectionNumber === 4) {
+        checklist += `
+- □ Does the speech follow a logical, well-organized structure?
+- □ Is the tone and formality appropriate for the context?`;
     }
     
+    //共通の必須品質チェック項目
     checklist += `
-- □ Are the same choices not consecutive for 3 or more questions?`;
+- □ Does the content contain 3-4 distinct information areas?
+- □ Is the difficulty level appropriate for TOEIC 600-990 points?
+- □ Are accent-specific vocabulary and expressions included?
+- □ Does the content support multiple inference-based questions?`;
     
-    //Part別の単語数チェック項目を追加
+    //単語数制約のチェックリスト
+    Object.entries(constraints).forEach(([key, value]) => {
+        if (typeof value === 'object' && value !== null && 'min' in value && 'max' in value) {
+            const unit = 'words';
+            if (key === 'conversation') {
+                checklist += `
+- □ Is the conversation content within the ${value.min}-${value.max} ${unit} range?`;
+            } else if (key === 'speech') {
+                checklist += `
+- □ Is the speech content within the ${value.min}-${value.max} ${unit} range?`;
+            }
+        }
+    });
+    
+    return checklist;
+};
+//Part 2専用 質問&応答生成チェックリスト関数
+function generatePart2QuestionsAndChoicesChecklist(constraints: any): string {
+    let checklist = '';
+    // 必須品質チェック項目
+    checklist += `
+- □ Does the setting match the specified location and speaker role?
+- □ Are accent-specific vocabulary and expressions included?
+- □ Are incorrect responses plausible but inappropriate?
+- □ Is the difficulty level appropriate for TOEIC 600-990 points?
+- □ Direct Response: Does the selected answer directly address the specific question asked?
+- □ Complete Information: Does the answer provide the exact information requested (location, time, confirmation, etc.)?`;
+    
+    // 動的な単語数チェック項目
     Object.entries(constraints).forEach(([key, value]) => {
         // オブジェクト型の値の処理
         if (typeof value === 'object' && value !== null && 'min' in value && 'max' in value) {
@@ -310,57 +475,66 @@ function generateChecklistForPart(sectionNumber: number, constraints: any): stri
             if (key === 'choices') {
                 checklist += `
 - □ Is each choice within the ${value.min}-${value.max} ${unit} range?`;
-            } else if (key === 'totalWords') {
+            } else if (key === 'question') {
                 checklist += `
-- □ Is the total word count within the ${value.min}-${value.max} ${unit} range?`;
-            } else {
-                checklist += `
-- □ Is each ${key} within the ${value.min}-${value.max} ${unit} range?`;
+- □ Is the question within the ${value.min}-${value.max} ${unit} range?`;
             }
         } 
-        // プリミティブ型の値の処理
-        else {
-            if (key === 'questionsCount') {
-                checklist += `
-- □ Does the output contain exactly ${value} questions?`;
-            } else if (key === 'choicesPerQuestion') {
-                checklist += `
-- □ Does each question have exactly ${value} choices?`;
-            } else {
-                checklist += `
-- □ Is ${key} set to ${value}?`;
+    });
+    
+    return checklist;
+};
+//Part3&4専用 設問文&選択肢生成チェックリスト関数
+function generatePart34QuestionsAndChoicesChecklist(sectionNumber: 1|2|3|4, constraints: any): string {
+    let checklist = `### Smart Keyword Usage
+- □ Specific facts/numbers use direct keywords when appropriate?
+- □ Main ideas/concepts use natural paraphrasing?
+- □ Wrong answers include direct keywords for realistic traps?
+- □ Avoid obvious word-for-word copying in all choices?
+
+### TOEIC Requirements
+- □ Do the 3 questions cover different types (main idea, detail, inference)?
+- □ Are all choices based on content mentioned or clearly implied?
+- □ Is the difficulty level appropriate for TOEIC 600-990 points?
+`;
+    
+    //単語数制約チェックリスト
+    Object.entries(constraints).forEach(([key, value]) => {
+        if (typeof value === 'object' && value !== null && 'min' in value && 'max' in value) {
+            if (key === 'choices') {
+                checklist += `- □ Is each choice within ${value.min}-${value.max} words?\n`;
+            } else if (key === 'questionText') {
+                checklist += `- □ Is each question within ${value.min}-${value.max} words?\n`;
             }
         }
     });
     
     checklist += `
-- □ Are choices sufficiently detailed (MINIMUM 3 words per choice)?
-- □ Do choices require comprehension, not just vocabulary recall?`;
+### Technical Requirements
+- □ Does JSON contain both "audioScript" and "answerOptionList" fields?
+- □ Are structure tags ([QUESTION_1], [CHOICES_1]) used correctly?
+- □ **Do all choices include A. B. C. D. labels?**`;
     
     return checklist;
 };
 
-//audioScriptと正解選択肢生成
-export async function generateSingleAudioScriptPrompt(domObj: domein.NewLQuestionInfo, currentIndex: number): Promise<string> {
-    //基本情報の取得
-    const sectionNumber = domObj.sectionNumber as keyof typeof SECTION_SPECS;
-    const spec = SECTION_SPECS[sectionNumber];
-    const audioStructure = AUDIO_SCRIPT_STRUCTURES[sectionNumber];
-    const genres = PART_GENRES[sectionNumber];
-    const constraints = WORD_CONSTRAINTS[sectionNumber];
+//part1専用 audioScript生成
 
-    //設定生成
-    const settings = getRandomSettings(domObj.requestedNumOfLQuizs, domObj.sectionNumber);
-    //const answerOptionList = generateBalancedAnswers(domObj.requestedNumOfLQuizs as number, sectionNumber);
-
-    //テキスト構築
-    const settingVariationsText = settings.map((setting, index) => 
-        `**Question ${index + 1}**: Location ${setting.location}, Speaker ${setting.speaker}, Situation ${setting.situation}`
-    ).join('\n');
-
-    const genresText = genres.map((genre, index) => `${index + 1}. **${genre}`).join('\n');
-
-    const constraintsText = Object.entries(constraints)
+//part2専用 audioScript生成
+export async function generatePart2AudioScriptPrompt(
+    sectionNumber: 1|2|3|4,
+    speakerAccent: AccentType, 
+    setting: { location: string; speaker: string; situation: string; } | { location: string; speaker: string; situation: string; } | { location: string; speaker: string; situation: string; } | { location: string; speaker: string; situation: string; },
+    speakerList: string[]
+): Promise<string> {
+        //アクセント設定（domObjのspeakerAccentは使わない）
+        const accentInstructions = generatePart2AccentInstructions(speakerAccent as AccentType);
+        //設定
+        const settingInstruction = `**Setting**: Generate content for a ${setting.location.toLowerCase()} setting where a ${setting.speaker.toLowerCase()} is involved in ${setting.situation.toLowerCase()}. The ${setting.speaker.toLowerCase()} should ask questions or make comments that would naturally occur in this ${setting.location.toLowerCase()} context during ${setting.situation.toLowerCase()}. Ensure the language and formality match what a ${setting.speaker.toLowerCase()} would typically use in ${setting.location.toLowerCase()} interactions.`
+        //設問文の単語数制約
+        const constraints = WORD_CONSTRAINTS[sectionNumber];
+        const contentConstraints = { questionOrComment: WORD_CONSTRAINTS[2].question, responses: WORD_CONSTRAINTS[2].responses };
+        const constraintsText = Object.entries(contentConstraints)
         .map(([key, value]) => {
             if (typeof value === 'object' && value.min && value.max) {
                 return `- **${key}**: Minimum word count ${value.min}${value.unit}, Maximum word count ${value.max}${value.unit}`;
@@ -368,43 +542,153 @@ export async function generateSingleAudioScriptPrompt(domObj: domein.NewLQuestio
             return `- **${key}**: ${value}`;
         })
         .join('\n');
+    
+        //チェックリスト
+        const checkList = generatePart2QuestionsAndChoicesChecklist(constraints);
+    try {
+        const __filename = fileURLToPath(import.meta.url);
+        const __dirname = path.dirname(__filename);
+        const promptPath = path.join(__dirname, 'prompts', 'part2-audioscript-prompt.md');
+        const promptTemplate = await fs.readFile(promptPath, 'utf8');
+
+        return promptTemplate
+            .replace(/\{\{accentInstructions\}\}/g, accentInstructions)
+            .replace(/\{\{settingInstruction\}\}/g, settingInstruction)
+            .replace(/\{\{wordConstraints\}\}/g, constraintsText)
+            .replace(/\{\{speaker1\}\}/g, speakerList[0])
+            .replace(/\{\{speaker2\}\}/g, speakerList[1])
+            .replace(/\{\{checkList\}\}/g, checkList);
+            
+    } catch (error) {
+        console.error(`Part${sectionNumber}プロンプト生成失敗:`, error);
+        throw new apierror.PromptGenerateError(`Part${sectionNumber}のaudioScriptのPromptの生成に失敗しました`);
+    } 
+};
+
+//part3,4専用audioScript問題文生成
+export async function generatePart34AudioScriptContentPrompt(
+    domObj: domein.NewLQuestionInfo, 
+    speakerAccent: AccentType, 
+    setting: { location: string; speaker: string; situation: string; } | { location: string; speaker: string; situation: string; } | { location: string; speaker: string; situation: string; } | { location: string; speaker: string; situation: string; }, 
+    contentTopicInstruction: string, 
+    contentFrameworksText: string,
+    currentIndex: number
+    ): Promise<string> {
+    const sectionNumber = domObj.sectionNumber as 1|2|3|4;
+    //speakerAccent
+    //const speakerAccent = domObj.speakerAccent as AccentType;
+    //構造
+    const audioStructure = sectionNumber === 3 ? generatePart3ContentStructure() : generatePart4ContentStructure();
+    //アクセント設定（domObjのspeakerAccentは使わない）
+    const accentInstructions = generatePart34AccentInstructionsForContent(speakerAccent as AccentType);
+    //単語数制約
+    const constraints = WORD_CONSTRAINTS[sectionNumber];
+    const contentConstraints = sectionNumber === 3 
+        ? { conversation: WORD_CONSTRAINTS[3].conversation }
+        : { speech: WORD_CONSTRAINTS[4].speech };
+    const constraintsText = Object.entries(contentConstraints)
+        .map(([key, value]) => {
+            if (typeof value === 'object' && value.min && value.max) {
+                return `- **${key}**: Minimum word count ${value.min}${value.unit}, Maximum word count ${value.max}${value.unit}`;
+            }
+            return `- **${key}**: ${value}`;
+        })
+        .join('\n');
+    //設定生成
+    //const settings = getRandomSettings(domObj.requestedNumOfLQuizs, domObj.sectionNumber);
+    const settingVariationText = `**Question ${currentIndex + 1}**: Location ${setting.location}, Speaker ${setting.speaker}, Situation ${setting.situation}`;
+    //状況設定（多様性担保）
+    //const contentTopicInstruction = generateContentTopicInstructions(domObj.requestedNumOfLQuizs, settings);
+    //const contentFrameworksText = generateContentFrameworks(domObj.requestedNumOfLQuizs, sectionNumber, settings);
+    //チェックリスト    
+    const checkList = generatePart34ContentChecklist(sectionNumber, constraints);
 
     //プロンプトテンプレート処理
     try {
         const __filename = fileURLToPath(import.meta.url);
         const __dirname = path.dirname(__filename);
-        const promptPath = path.join(__dirname, 'prompts', 'audioscript-prompt.md');
+        const promptPath = path.join(__dirname, 'prompts', 'part3_4-audioscript-content-prompt.md');
         const promptTemplate = await fs.readFile(promptPath, 'utf8');
-
-        const audioStructureText = generateAudioStructureText(sectionNumber);
-        const answerOptionRule = selectAnswerOptionGenerationRules(sectionNumber);
-
-        const contentTopicInstruction = generateContentTopicInstructions(domObj.requestedNumOfLQuizs, settings);
-        const contentFrameworksText = generateContentFrameworks(domObj.requestedNumOfLQuizs, sectionNumber, settings);
 
         // 5. テンプレート置換
         return promptTemplate
             .replace(/\{\{sectionNumber\}\}/g, sectionNumber.toString())
-            .replace(/\{\{spec\.description\}\}/g, spec.description)
-            .replace(/\{\{spec\.format\}\}/g, spec.format)
-            .replace(/\{\{spec\.requirements\}\}/g, spec.requirements)
-            .replace(/\{\{audioStructure\}\}/g, audioStructureText)
-            .replace(/\{\{answerOptionRule\}\}/g, answerOptionRule)
-            .replace(/\{\{partGenres\}\}/g, genresText)
+            .replace(/\{\{conversationOrSpeech\}\}/g, sectionNumber === 3 ? 'conversation' : 'speech')
+            .replace(/\{\{audioStructure\}\}/g, audioStructure)
+            .replace(/\{\{accentInstructions\}\}/g, accentInstructions)
+            .replace(/\{\{settingVariations\}\}/g, settingVariationText)
+            .replace(/\{\{contentTopicInstruction\}\}/g, contentTopicInstruction)
+            .replace(/\{\{contentFrameworks\}\}/g, contentFrameworksText)
             .replace(/\{\{wordConstraints\}\}/g, constraintsText)
-            .replace(/\{\{settingVariations\}\}/g, settingVariationsText)
-            .replace(/\{\{contentTopicInstruction\}\}/g, contentTopicInstruction[currentIndex])
-            .replace(/\{\{contentFrameworks\}\}/g, contentFrameworksText[currentIndex])
-            .replace(/\{\{checkList\}\}/g, generateChecklistForPart(sectionNumber, constraints)); 
+            .replace(/\{\{checkList\}\}/g, checkList);
             
     } catch (error) {
-        console.error('プロンプト生成失敗:', error);
-        throw new apierror.PromptGenerateError('audioScriptのPromptの生成に失敗しました');
+        console.error(`Part${sectionNumber}プロンプト生成失敗:`, error);
+        throw new apierror.PromptGenerateError(`Part${sectionNumber}のaudioScriptのPromptの生成に失敗しました`);
     } 
 };
 
-//audioScript, answerOption生成
-export async function callChatGPTForAudioScript(prompt: string): Promise<string> {
+function selectAnswerOptionGenerationRules(sectionNumber: number): string {
+    const rules = {
+        1: "- **Part 1:** Generate 1 correct answer, return array with 1 element: [\"A\"], [\"B\"], [\"C\"], or [\"D\"] - distribute randomly across options",
+        2: "- **Part 2:** Generate 1 correct answer, return array with 1 element: [\"A\"], [\"B\"], or [\"C\"] - distribute randomly across options", 
+        3: "- **Part 3:** Generate 3 DIFFERENT correct answers, return array with 3 elements like [\"A\", \"C\", \"B\"], [\"D\", \"B\", \"A\"], [\"C\", \"A\", \"D\"] etc. **CRITICAL:** Each question MUST have a different correct answer letter. NEVER use clustering like [\"A\", \"A\", \"C\"] or [\"B\", \"B\", \"D\"]",
+        4: "- **Part 4:** Generate 3 DIFFERENT correct answers, return array with 3 elements like [\"B\", \"D\", \"A\"], [\"C\", \"A\", \"B\"], [\"A\", \"D\", \"C\"] etc. **CRITICAL:** Each question MUST have a different correct answer letter. NEVER use clustering like [\"A\", \"A\", \"B\"] or [\"C\", \"C\", \"A\"]"
+    };
+    const specificRule = rules[sectionNumber as keyof typeof rules];
+    if (!specificRule) {
+        return "";
+    }
+    return specificRule;
+};
+
+export async function generatePart34AudioScriptQuestionsPrompt(domObj: domein.NewLQuestionInfo, content: string, speakerAccent: AccentType): Promise<string> {
+        const sectionNumber = domObj.sectionNumber as 1|2|3|4;
+        //構造
+        const audioStructureText = sectionNumber === 3 ? generatePart3QuestionsStructure() : generatePart4QuestionsStructure();
+        //アクセント設定（domObjのspeakerAccentは使わない）
+        const accentInstructions = generatePart34AccentInstructionsForQuestions(speakerAccent as AccentType);
+        //answerOption制約
+        const answerOptionRule = selectAnswerOptionGenerationRules(sectionNumber);
+        //設問文の単語数制約
+        const constraints = WORD_CONSTRAINTS[sectionNumber];
+        const contentConstraints = sectionNumber === 3 
+        ? { questions: WORD_CONSTRAINTS[3].questionText, choices: WORD_CONSTRAINTS[3].choices }
+        : { questions: WORD_CONSTRAINTS[4].questionText, choices: WORD_CONSTRAINTS[4].choices };
+        const constraintsText = Object.entries(contentConstraints)
+        .map(([key, value]) => {
+            if (typeof value === 'object' && value.min && value.max) {
+                return `- **${key}**: Minimum word count ${value.min}${value.unit}, Maximum word count ${value.max}${value.unit}`;
+            }
+            return `- **${key}**: ${value}`;
+        })
+        .join('\n');
+    
+        //チェックリスト
+        const checkList = generatePart34QuestionsAndChoicesChecklist(sectionNumber, constraints);
+    try {
+        const __filename = fileURLToPath(import.meta.url);
+        const __dirname = path.dirname(__filename);
+        const promptPath = path.join(__dirname, 'prompts', 'part3_4-audioscript-question-prompt.md');
+        const promptTemplate = await fs.readFile(promptPath, 'utf8');
+
+        return promptTemplate
+            .replace(/\{\{sectionNumber\}\}/g, sectionNumber.toString())
+            .replace(/\{\{content\}\}/g, content)
+            .replace(/\{\{accentInstructions\}\}/g, accentInstructions)
+            .replace(/\{\{audioStructure\}\}/g, audioStructureText)
+            .replace(/\{\{answerOptionRule\}\}/g, answerOptionRule)
+            .replace(/\{\{wordConstraints\}\}/g, constraintsText)
+            .replace(/\{\{checkList\}\}/g, checkList);
+            
+    } catch (error) {
+        console.error(`Part${sectionNumber}プロンプト生成失敗:`, error);
+        throw new apierror.PromptGenerateError(`Part${sectionNumber}のaudioScriptのPromptの生成に失敗しました`);
+    } 
+}
+
+//chatgpt - audioScript generation only
+export async function callChatGPTForPart34AudioScriptContent(prompt: string): Promise<string> {
     try {
         console.log('=== Step 1: fetch開始 (AudioScript生成) ===');
         const response = await fetch('https://api.openai.com/v1/chat/completions', {
@@ -418,7 +702,7 @@ export async function callChatGPTForAudioScript(prompt: string): Promise<string>
                 messages: [
                     {
                         role: "system",
-                        content: "You are an expert in TOEIC question creation. Return ONLY a valid JSON object with audioScript and answerOption fields. Do not use markdown code blocks."
+                        content: "You are an expert in TOEIC content creation. Return ONLY the audioScript content as plain text with proper speaker tags. Do not include JSON formatting, markdown code blocks, or any other formatting. Output only the conversation/speech content exactly as specified in the prompt."
                     },
                     {
                         role: "user",
@@ -449,21 +733,20 @@ export async function callChatGPTForAudioScript(prompt: string): Promise<string>
         }
 
         console.log('=== Step 5: audioScript抽出 ===');
-        const audioScriptAndAnswerOption = validatedData.choices[0].message.content;
+        const audioScriptContent = validatedData.choices[0].message.content;
 
         // 不要な文字列の除去（markdown形式等）
-        let cleanedAudioScriptAndAnswerOption = audioScriptAndAnswerOption.trim();
-        cleanedAudioScriptAndAnswerOption = cleanedAudioScriptAndAnswerOption.replace(/^```.*\n?/, ''); // 先頭の```を削除
-        cleanedAudioScriptAndAnswerOption = cleanedAudioScriptAndAnswerOption.replace(/\n?```$/, '');   // 末尾の```を削除
-        cleanedAudioScriptAndAnswerOption = cleanedAudioScriptAndAnswerOption.replace(/^"|"$/g, '');   // 前後のクォートを削除
-        console.log("cleaned audioScript: ", cleanedAudioScriptAndAnswerOption);
-
+        let cleanedAudioScript = audioScriptContent.trim();
+        cleanedAudioScript = cleanedAudioScript.replace(/^```.*\n?/, ''); // 先頭の```を削除
+        cleanedAudioScript = cleanedAudioScript.replace(/\n?```$/, '');   // 末尾の```を削除
+        cleanedAudioScript = cleanedAudioScript.replace(/^"|"$/g, '');   // 前後のクォートを削除
+        
+        console.log("cleaned audioScript: ", cleanedAudioScript);
         console.log('=== Step 6: audioScript検証完了 ===');
-        console.log("generated audioScript length:", cleanedAudioScriptAndAnswerOption.length);
+        console.log("generated audioScript length:", cleanedAudioScript.length);
 
-        const result = JSON.parse(cleanedAudioScriptAndAnswerOption);
-        console.log("result: ", result);
-        return result;
+        // JSONパースを削除し、クリーンアップされたテキストをそのまま返す
+        return cleanedAudioScript;
         
     } catch (error) {
         if (error instanceof z.ZodError) {
@@ -476,6 +759,114 @@ export async function callChatGPTForAudioScript(prompt: string): Promise<string>
             throw new apierror.ChatGPTAPIError('ChatGPT APIとの通信で予期しないエラーが発生しました');
         }
     }
+};
+
+export async function callChatGPTForPart34AudioScriptQuestionsAndChoices(prompt: string): Promise<{questionsAndChoices: string, answerOptionList: string[]}> {
+    try {
+        console.log('=== Step 1: fetch開始 (Questions&Choices生成) ===');
+        const response = await fetch('https://api.openai.com/v1/chat/completions', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`
+            },
+            body: JSON.stringify({
+                model: "gpt-4o",
+                messages: [
+                    {
+                        role: "system",
+                        content: "You are an expert in TOEIC question creation. Return ONLY a valid JSON object with questionsAndChoices and answerOption fields. Do not use markdown code blocks or any other formatting. Output only the JSON object exactly as specified in the prompt."
+                    },
+                    {
+                        role: "user",
+                        content: prompt
+                    }
+                ],
+                temperature: 0.4,        // 変更: 0 → 0.4 (創造性と一貫性のバランス)
+                max_tokens: 3000,       // 変更: 2000 → 3000 (思考プロセス用)
+                top_p: 0.9,             // 追加: より質の高い選択
+                presence_penalty: 0.1,   // 追加: 繰り返し回避
+                frequency_penalty: 0.1   // 追加: 語彙の多様性向上
+            }),
+            signal: AbortSignal.timeout(60000)
+        });
+        
+        console.log("response status:", response.status);
+        console.log('=== Step 2: response確認 ===');
+        
+        if (!response.ok) {
+            throw new apierror.ChatGPTAPIError(`ChatGPT API Error: ${response.status} ${response.statusText}`);
+        }
+        
+        console.log('=== Step 3: JSON parse開始 ===');
+        const data = await response.json();
+        
+        console.log('=== Step 4: OpenAI APIの応答構造検証 ===');
+        const validatedData = schema.openAIResponseSchema.parse(data);
+
+        if (validatedData.choices.length === 0) {
+            throw new apierror.ChatGPTAPIError('ChatGPT APIからの応答に問題があります');
+        }
+
+        console.log('=== Step 5: Questions&Choices抽出 ===');
+        const jsonResponse = validatedData.choices[0].message.content;
+
+        // 不要な文字列の除去（markdown形式等）
+        let cleanedResponse = jsonResponse.trim();
+        cleanedResponse = cleanedResponse.replace(/^```json\s*/, ''); // 先頭の```jsonを削除
+        cleanedResponse = cleanedResponse.replace(/^```.*\n?/, '');   // 先頭の```を削除
+        cleanedResponse = cleanedResponse.replace(/\n?```$/, '');     // 末尾の```を削除
+        
+        console.log("cleaned JSON response: ", cleanedResponse);
+
+        console.log('=== Step 6: JSON parse実行 ===');
+        const result = JSON.parse(cleanedResponse);
+        
+        // レスポンス形式の検証
+        if (!result.questionsAndChoices || !result.answerOptionList) {
+            throw new apierror.ChatGPTAPIError('必要なフィールド（questionsAndChoices, answerOptionList）が不足しています');
+        }
+        
+        // answerOptionが配列かどうかチェック
+        if (!Array.isArray(result.answerOptionList)) {
+            throw new apierror.ChatGPTAPIError('answerOptionListは配列である必要があります');
+        }
+        
+        console.log('=== Step 7: 検証完了 ===');
+        console.log("questionsAndChoices length:", result.questionsAndChoices.length);
+        console.log("answerOptionList:", result.answerOptionList);
+
+        return {
+            questionsAndChoices: result.questionsAndChoices,
+            answerOptionList: result.answerOptionList
+        };
+        
+    } catch (error) {
+        if (error instanceof SyntaxError) {
+            console.error('JSON parse error:', error);
+            throw new apierror.ChatGPTAPIError('ChatGPT APIからの応答が有効なJSON形式ではありません');
+        } else if (error instanceof z.ZodError) {
+            console.error(`OpenAI APIから予期しない形式のレスポンスを受信しました:`, error);
+            throw new apierror.ChatGPTAPIError(`OpenAI APIから予期しない形式のレスポンスを受信しました: ${error.message}`);
+        } else if (error instanceof apierror.ChatGPTAPIError) {
+            throw error;
+        } else {
+            console.error('Unexpected ChatGPT API Error:', error);
+            throw new apierror.ChatGPTAPIError('ChatGPT APIとの通信で予期しないエラーが発生しました');
+        }
+    }
+};
+
+/**
+ * contentとquestions&choicesを結合して一つのaudioScriptを生成
+ * @param content - 元の音声内容 (例: "[Speaker1_MALE] Good morning...")
+ * @param questionsAndChoices - 生成された問題と選択肢 (例: "[QUESTION_1] What is...")
+ * @returns audioScript - 結合された文字列
+ */
+function combineContentAndQuestions(content: string, questionsAndChoices: string): string {
+    return `Content: ${content.trim()}
+
+Questions and Choices: ${questionsAndChoices.trim()}`;
 };
 
 export async function generateSingleJpnAudioScriptPrompt(sectionNumber: number, audioScript: string): Promise<string> {
@@ -510,17 +901,19 @@ export async function callChatGPTForJpnAudioScript(prompt: string): Promise<stri
                 messages: [
                     {
                         role: "system",
-                        content: "You are an expert English-Japanese translator specializing in TOEIC educational materials. Provide natural and accurate Japanese translations in the specified format only."
+                        content: "You are an expert Japanese translator specializing in TOEIC materials. Translate the provided English TOEIC content into natural Japanese following the exact format specified in the prompt. Return ONLY the structured Japanese text as specified. Do not include explanations, markdown formatting, JSON, or any additional text."
                     },
                     {
                         role: "user",
                         content: prompt
                     }
                 ],
-                temperature: 0,
-                max_tokens: 1000
+                temperature: 0.3,        //翻訳の一貫性を保ちつつ自然さを確保
+                max_tokens: 2000,       //日本語は文字数が多くなるため増量
+                top_p: 0.9,
+                presence_penalty: 0.1
             }),
-            signal: AbortSignal.timeout(60000)
+            signal: AbortSignal.timeout(90000)
         });
         
         console.log("response status:", response.status);
@@ -528,7 +921,7 @@ export async function callChatGPTForJpnAudioScript(prompt: string): Promise<stri
         
         if (!response.ok) {
             throw new apierror.ChatGPTAPIError(`ChatGPT API Error: ${response.status} ${response.statusText}`);
-        };
+        }
         
         console.log('=== Step 3: JSON parse開始 ===');
         const data = await response.json();
@@ -536,9 +929,25 @@ export async function callChatGPTForJpnAudioScript(prompt: string): Promise<stri
         console.log('=== Step 4: OpenAI APIの応答構造検証 ===');
         const validatedData = schema.openAIResponseSchema.parse(data);
 
+        if (validatedData.choices.length === 0) {
+            throw new apierror.ChatGPTAPIError('ChatGPT APIからの応答に問題があります');
+        }
+
         console.log('=== Step 5: jpnAudioScript抽出 ===');
-        const jpnAudioScript = validatedData.choices[0].message.content;
-        return jpnAudioScript;
+        const jpnAudioScriptContent = validatedData.choices[0].message.content;
+
+        //不要な文字列除去
+        let cleanedJpnAudioScript = jpnAudioScriptContent.trim();
+        cleanedJpnAudioScript = cleanedJpnAudioScript.replace(/^```.*\n?/, ''); // 先頭の```を削除
+        cleanedJpnAudioScript = cleanedJpnAudioScript.replace(/\n?```$/, '');   // 末尾の```を削除
+        cleanedJpnAudioScript = cleanedJpnAudioScript.replace(/^"|"$/g, '');   // 前後のクォートを削除
+        
+        console.log("cleaned jpnAudioScript: ", cleanedJpnAudioScript);
+        console.log('=== Step 6: jpnAudioScript検証完了 ===');
+        console.log("generated jpnAudioScript length:", cleanedJpnAudioScript.length);
+
+        return cleanedJpnAudioScript;
+        
     } catch (error) {
         if (error instanceof z.ZodError) {
             console.error(`OpenAI APIから予期しない形式のレスポンスを受信しました:`, error);
@@ -552,15 +961,54 @@ export async function callChatGPTForJpnAudioScript(prompt: string): Promise<stri
     }
 };
 
-export async function generateSingleExplanationPrompt(domObj: domein.NewLQuestionInfo, jpnAudioScriptFormat: string, audioScript: string, answerOptionList: ("A" | "B" | "C" | "D")[]): Promise<string> {
-    const sectionNumber = domObj.sectionNumber;
-    const speakerAccent = domObj.speakerAccent as "American" | "British" | "Canadian" | "Australian";
-    const accentPattern = ACCENT_PATTERNS[speakerAccent as keyof typeof ACCENT_PATTERNS];
+export function extractAccentSpecificPoints(audioScript: string, speakerAccent: AccentType): string {
+    const accentPattern = ACCENT_PATTERNS[speakerAccent];
+    
+    // 音声に含まれるアクセント特有語彙を抽出
+    const foundVocabulary = accentPattern.vocabulary.filter(item => {
+        const word = item.split(' ')[0];
+        return audioScript.toLowerCase().includes(word.toLowerCase());
+    });
+    
+    // 音声に含まれるアクセント特有表現を抽出
+    const foundExpressions = accentPattern.expressions.filter(expr => {
+        return audioScript.toLowerCase().includes(expr.toLowerCase());
+    });
+    
+    // そのアクセントの最重要発音特徴（上位2-3項目）
+    const keyPronunciationFeatures = accentPattern.characteristics.slice(0, 3);
 
-    const accentDescription = accentPattern.description;
-    const pronunciationCharacteristics = accentPattern.characteristics;
-    const regionalVocabulary = accentPattern.vocabulary;
-    const typicalExpressions = accentPattern.expressions;
+    const relevantAccentFeatures = {
+        foundVocabulary,
+        foundExpressions,
+        keyPronunciationFeatures,
+        accentName: speakerAccent
+    }
+
+    let relevantAccentFeaturesText = `${relevantAccentFeatures.accentName} English Features:\n`;
+    
+    //テキスト化
+    relevantAccentFeaturesText += `Pronunciation: ${relevantAccentFeatures.keyPronunciationFeatures.join('; ')}\n`;
+    //検出された語彙（ある場合のみ）
+    if (relevantAccentFeatures.foundVocabulary.length > 0) {
+        relevantAccentFeaturesText += `Vocabulary: ${relevantAccentFeatures.foundVocabulary.join(', ')}\n`;
+    };
+    //検出された表現（ある場合のみ）
+    if (relevantAccentFeatures.foundExpressions.length > 0) {
+        relevantAccentFeaturesText += `Expressions: ${relevantAccentFeatures.foundExpressions.join(', ')}`;
+    };
+    
+    return relevantAccentFeaturesText;
+};
+
+export async function generateSingleExplanationPrompt(
+    sectionNumber: 1|2|3|4,
+    speakerAccent: AccentType, 
+    relevantAccentFeaturesText: string, 
+    audioScript: string, 
+    answerOptionList: ("A" | "B" | "C" | "D")[]
+): Promise<string> {
+    const accentPattern = ACCENT_PATTERNS[speakerAccent];
 
     try {
         const __filename = fileURLToPath(import.meta.url);
@@ -570,101 +1018,86 @@ export async function generateSingleExplanationPrompt(domObj: domein.NewLQuestio
         return promptTemplate
             .replace(/\{\{sectionNumber\}\}/g, sectionNumber.toString())
             .replace(/\{\{speakerAccent\}\}/g, speakerAccent)
+            .replace(/\{\{relevantAccentFeatures\}\}/g, relevantAccentFeaturesText)
             .replace(/\{\{audioScript\}\}/g, audioScript)
-            .replace(/\{\{answerOptionList\}\}/g, answerOptionList.toString())
-            .replace(/\{\{accentDescription\}\}/g, accentDescription)
-            .replace(/\{\{pronunciationCharacteristics\}\}/g, pronunciationCharacteristics.toString())
-            .replace(/\{\{regionalVocabulary\}\}/g, regionalVocabulary.toString())
-            .replace(/\{\{typicalExpressions\}\}/g, typicalExpressions.toString())
+            .replace(/\{\{answerOptionList\}\}/g, answerOptionList.join(','))
     } catch (error) {
         console.error('プロンプト生成失敗:', error);
-        throw new apierror.PromptGenerateError('jpnAudioScriptのPromptの生成に失敗しました');
+        throw new apierror.PromptGenerateError('explanationのPromptの生成に失敗しました');
     }
 };
 
-//chatgpt
-export async function callChatGPT(prompt: string): Promise<dto.GeneratedQuestionDataResDTO[]>/*lQuestionIDはnull(別途マッピング)*/ {
+export async function callChatGPTForExplanation(prompt: string): Promise<string> {
     try {
-        console.log('=== Step 1: fetch開始 ===');
+        console.log('=== Step 1: fetch開始 (explanation生成) ===');
         const response = await fetch('https://api.openai.com/v1/chat/completions', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'Authorization': `Bearer ${process.env.OPENAI_API_KEY}` //API key未作成
+                'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`
             },
             body: JSON.stringify({
                 model: "gpt-4o",
                 messages: [
                     {
                         role: "system",
-                        content: "You are an expert in TOEIC problem creation. Please generate problems in JSON format according to the specified requirements."//"あなたはTOEIC問題作成の専門家です。指定された仕様に従ってJSON形式で問題を生成してください。"
+                        content: "You are an expert TOEIC instructor specializing in creating detailed explanations in Japanese. Generate comprehensive explanations that help students understand correct answers, analyze incorrect options, and improve their listening skills. Focus on practical learning points and accent-specific pronunciation guidance. Return ONLY the Japanese explanation text as specified. Do not include formatting, markdown, or additional text."
                     },
                     {
                         role: "user",
                         content: prompt
                     }
                 ],
-                temperature: 0,
-                max_tokens: 4000
-                //response_format: { type: "json_object" }
+                temperature: 0.4,        // 解説の一貫性と教育的配慮のバランス
+                max_tokens: 1500,       // 500-700文字の日本語解説に適切
+                top_p: 0.9,
+                presence_penalty: 0.1,
+                frequency_penalty: 0.1   // 語彙の多様性確保
             }),
-            signal: AbortSignal.timeout(200000)
+            signal: AbortSignal.timeout(90000)
         });
-        console.log("response: ", response);
+        
+        console.log("response status:", response.status);
         console.log('=== Step 2: response確認 ===');
+        
         if (!response.ok) {
             throw new apierror.ChatGPTAPIError(`ChatGPT API Error: ${response.status} ${response.statusText}`);
         }
         
         console.log('=== Step 3: JSON parse開始 ===');
-        const data = await response.json();//パース① HTTPレスポンスボディ（バイトストリーム）→ JavaScriptオブジェクト
-        console.log("parsed response: ", data);
+        const data = await response.json();
+        
         console.log('=== Step 4: OpenAI APIの応答構造検証 ===');
-        const validatedData = schema.openAIResponseSchema.parse(data);//パース② OpenAI APIの応答構造を検証（choices配列の存在確認など）
-        console.log("validated data: ", validatedData);
+        const validatedData = schema.openAIResponseSchema.parse(data);
 
         if (validatedData.choices.length === 0) {
-            console.log('=== Step 4: 失敗 ===');
             throw new apierror.ChatGPTAPIError('ChatGPT APIからの応答に問題があります');
-        };
-
-        console.log('=== Step 5: content抽出 ===');
-        const content = validatedData.choices[0].message.content; //ChatGPTが生成したクイズデータのJSON文字列を抽出
-        console.log("extraced quiz content: ", content);
-        
-        //文頭の「```json」 と 文末の「```」 を除去
-        let cleanedContent = content;
-        cleanedContent = cleanedContent.replace(/^```json\n?/, ''); // 先頭の```jsonを削除
-        cleanedContent = cleanedContent.replace(/\n?```$/, '');     // 末尾の```を削除
-
-        console.log('=== Step 6: content JSON parse ===');
-        const parsedContent = JSON.parse(cleanedContent);//パース③ 文字列をJSONオブジェクトに変換
-        console.log("parsed content: ", parsedContent);
-
-        const dtoValidationResult = schema.generatedQuestionDataResDTOSchema.safeParse(parsedContent); //パース④ 予期されるDTO形式になっているか検証
-        if (!dtoValidationResult.success) {
-            console.error('DTO Validation Error:', dtoValidationResult.error);
-            throw new apierror.ChatGPTAPIError('生成された問題データが期待する形式と一致しません');
         }
-        console.log("dto validation result: ", dtoValidationResult);
 
-        return dtoValidationResult.data;
+        console.log('=== Step 5: explanation抽出 ===');
+        const explanationContent = validatedData.choices[0].message.content;
+
+        //前後の空白除去
+        const cleanedExplanation = explanationContent.trim();
+        
+        console.log("cleaned explanation: ", cleanedExplanation);
+        console.log('=== Step 6: explanation検証完了 ===');
+        console.log("generated explanation length:", cleanedExplanation.length);
+
+        return cleanedExplanation;
+        
     } catch (error) {
         if (error instanceof z.ZodError) {
             console.error(`OpenAI APIから予期しない形式のレスポンスを受信しました:`, error);
             throw new apierror.ChatGPTAPIError(`OpenAI APIから予期しない形式のレスポンスを受信しました: ${error.message}`);
-        }else if (error instanceof apierror.ChatGPTAPIError) {
-            throw error; // 既知のビジネスエラーはそのまま
+        } else if (error instanceof apierror.ChatGPTAPIError) {
+            throw error;
         } else {
-        console.error('Unexpected ChatGPT API Error:', error);
-        throw new apierror.ChatGPTAPIError('ChatGPT APIとの通信で予期しないエラーが発生しました');
+            console.error('Unexpected ChatGPT API Error:', error);
+            throw new apierror.ChatGPTAPIError('ChatGPT APIとの通信で予期しないエラーが発生しました');
         }
     }
 };
-
-
-
-
 
 //==========================================================================
 //音声生成処理モジュール群
