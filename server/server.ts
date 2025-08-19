@@ -19,11 +19,18 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 config({path: path.join(__dirname, '.env')});
+
+//セッション管理
 app.use(session({
-    secret: process.env.SESSION_SECRET as string,
+    secret: process.env.SESSION_SECRET as string, //sessionIDに電子署名を付与(HMAC_SHA256) sessionIDと電子署名をセットで授受し、改ざん検知
     resave: false,
     saveUninitialized: false,
-    cookie: { maxAge: 3600000 }
+    cookie: { 
+        maxAge: 1000 * 60 * 60 * 24, //24h 学習セッションが継続する間の秒数
+        httpOnly: true
+        //secure: true HTTPS時のみ有効化（後で実装）
+        //sameSite: 'lax' クロスオリジンなサイトからのリクエスト制限　CSRF対策
+    }
 }));
 
 //ミドルウェア設定　CORS設定 Viteの開発サーバーとのコミュニケーション

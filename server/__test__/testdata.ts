@@ -442,7 +442,7 @@ async function audioScriptQuestions() {
 async function jpnAudioScript() {
     const __filename = fileURLToPath(import.meta.url);
     const __dirname = path.dirname(__filename);
-    const jpnAudioScriptPromptPath = path.join(__dirname, 'test-jpnaudioscript-prompt.md');
+    const jpnAudioScriptPromptPath = path.join(__dirname, 'test-part2-jpnaudioscript-prompt.md');
     const jpnAudioScriptPrompt = await fs.readFile(jpnAudioScriptPromptPath, 'utf8');
     console.log("testprompt: ", jpnAudioScriptPrompt);
     const response = await callChatGPTForJpnAudioScript(jpnAudioScriptPrompt);
@@ -452,7 +452,7 @@ async function jpnAudioScript() {
 async function explanation() {
     const __filename = fileURLToPath(import.meta.url);
     const __dirname = path.dirname(__filename);
-    const explanationPromptPath = path.join(__dirname, 'test-explanation-prompt.md');
+    const explanationPromptPath = path.join(__dirname, 'test-part2-explanation-prompt.md');
     const explanationPrompt = await fs.readFile(explanationPromptPath, 'utf8');
     console.log("testprompt: ", explanationPrompt);
     const response = await callChatGPTForExplanation(explanationPrompt);
@@ -460,11 +460,11 @@ async function explanation() {
 };
 
 
-part2AudioScript().catch(console.error);
+//part2AudioScript().catch(console.error);
 //audioScriptContent().catch(console.error);
 //audioScriptQuestions().catch(console.error);
 //jpnAudioScript().catch(console.error);
-//explanation().catch(console.error);
+explanation().catch(console.error);
 
 /*
 async function callGoogleCloudTTSRealAPITest() {

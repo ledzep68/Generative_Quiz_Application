@@ -68,7 +68,7 @@ export class NewQuizGenerateReqDTO {
 export interface GeneratedQuestionDataResDTO {
     audioScript: string,
     jpnAudioScript: string,
-    answerOption: "A"|"B"|"C"|"D",
+    answerOption: ("A"|"B"|"C"|"D")[],
     sectionNumber: 1|2|3|4,
     explanation: string,
     speakerAccent: "American" | "British" | "Canadian" | "Australian"
@@ -106,7 +106,7 @@ export class ExistingLQuizReqDTO {
 export interface UserAnswerReqDTO {
     lQuestionID: string,
     userID: UUID,
-    userAnswerOption: "A"|"B"|"C"|"D",
+    userAnswerOption: ("A"|"B"|"C"|"D")[],
     reviewTag: boolean,
     answerDate?: Date
 };
@@ -115,7 +115,7 @@ export interface UserAnswerReqDTO {
 export interface UserAnswerResDTO {
     //lQuestionID: string,
     isCorrect: boolean,
-    answerOption: "A"|"B"|"C"|"D",
+    answerOption: ("A"|"B"|"C"|"D")[],
     audioScript: string,
     jpnAudioScript: string,
     explanation: string

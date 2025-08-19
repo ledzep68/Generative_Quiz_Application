@@ -161,23 +161,22 @@ describe('C_generatePart34AudioScriptQuestionsAndChoicesPrompt', () => {
 });
 
 describe('D_generateSingleJpnAudioScriptPrompt', () => {
-    test("D01_part4プロンプト生成", async () => {
-        expect.assertions(5);
+    test("D01_part2プロンプト生成", async () => {
+        expect.assertions(3);
         
-        const sectionNumber = 3;
-        const audioScript = `Content: [Speaker1_MALE] Good morning. [Speaker2_FEMALE] Good morning. [Speaker1_MALE] How are you? [Speaker2_FEMALE] I'm fine. [Speaker1_MALE] I'm glad to see you. [Speaker2_FEMALE] I'm glad to see you too.
-
-Questions and Choices: [QUESTION_1] dummy question for test [CHOICES_1] A. Increasing customer satisfaction B. Reducing operational costs C. Presenting the quarterly report D. Discussing new software [QUESTION_2] dummy question for test [CHOICES_2] A. 10% B. 15% C. 20% D. 25% [QUESTION_3] dummy question for test [CHOICES_3] A. Hiring more staff B. Improving training sessions C. Expanding market reach D. Increasing salaries`
+        const sectionNumber = 2;
+        const part2Output = {
+            audioScript: "[Speaker1_MALE] How's the afternoon shift progressing? [Speaker2_MALE] A. Certainly, it's on schedule. B. That's excellent, how about you? C. Of course, it starts tomorrow.",
+            answerOption: 'A'
+        };
         
-        const result = await service.generateSingleJpnAudioScriptPrompt(sectionNumber, audioScript);
+        const result = await service.generateSingleJpnAudioScriptPrompt(sectionNumber, part2Output.audioScript);
         console.log(result);
         
         // Part 3 日本語プロンプト生成用のアサーション
-        expect(result).toContain("TOEIC Part 3");
-        expect(result).toContain("会話内容: ");
-        expect(result).toContain(audioScript);
-        expect(result).toContain("Questions and Choices:");
-        expect(result).toContain("設問1:");
+        expect(result).toContain("TOEIC Part 2");
+        expect(result).toContain(part2Output.audioScript);
+        expect(result).toContain("Comment");
     })
     test("D01_part4プロンプト生成", async () => {
         expect.assertions(5);
@@ -253,6 +252,20 @@ describe('F_generatePart2AudioScriptPrompt', () => {
         expect(result).toContain("answerOption");
     });
 });
+
+describe('G_generatePart2SingleExplanationPrompt', () => {
+    test("G01_プロンプト生成成功", async () => {
+        const speakerAccnet = "American";
+        const audioScript = "[Speaker1_MALE] How's the afternoon shift progressing? [Speaker2_MALE] A. Certainly, it's on schedule. B. That's excellent, how about you? C. Of course, it starts tomorrow.";
+        const answerOption = "A";
+        
+        const result = await service.generatePart2SingleExplanationPrompt(speakerAccnet, audioScript, answerOption);
+        console.log(result);
+        expect(result).toContain("Part 2");
+        expect(result).toContain("[Speaker1_MALE]");
+        expect(result).toContain("American");
+    })
+})
 
 /*
 describe('C_generateExplanationPrompt', () => {

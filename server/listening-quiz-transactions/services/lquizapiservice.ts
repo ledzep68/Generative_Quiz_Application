@@ -34,6 +34,42 @@ config({path: path.join(__dirname, '../../.env')});
 export type AccentType = keyof typeof ACCENT_PATTERNS; 
 export type SpeakerAccent = typeof ACCENT_PATTERNS[keyof typeof ACCENT_PATTERNS]; 
 
+
+
+//問題セット生成初期化時（初回リクエスト時）
+export async function initializeNewQuestionSet(
+    req: Express.Request,
+    domObj: domein.NewLQuestionInfo
+): Promise<void> {
+    const speakerAccentList = getRandomSpeakerAccent(domObj.requestedNumOfLQuizs);
+
+    const settingList = getRandomSettings(domObj.requestedNumOfLQuizs, domObj.sectionNumber);
+    if(domObj.sectionNumber === 2){
+        req.session.questionSet = {
+            sectionNumber: domObj.sectionNumber,
+            totalQuestionNum: domObj.requestedNumOfLQuizs,
+            currentIndex: 0, //現在の問題番号 min:0, max:9（1-10に対応）
+            //speakerList: speakerList, //問題毎に生成
+            speakerAccentList: speakerAccentList,
+            settingList: settingList
+        };
+    } else if (domObj.sectionNumber === 3 || domObj.sectionNumber === 4) {
+        const contentTopicInstructionList = generateContentTopicInstructions(domObj.requestedNumOfLQuizs, settingList);
+        const contentFrameworkList = generateContentFrameworks(domObj.sectionNumber, settingList);
+        
+        req.session.questionSet = {
+            sectionNumber: domObj.sectionNumber,
+            totalQuestionNum: domObj.requestedNumOfLQuizs,
+            currentIndex: 0,
+            //speakerList: speakerList,
+            speakerAccentList: speakerAccentList,
+            settingList: settingList,
+            contentTopicInstructionList: contentTopicInstructionList,
+            contentFrameworkTextList: contentFrameworkList
+        }
+    }
+}
+
 //ランダム選択関数 リクエストされた問題数分のアクセントを返す
 export function getRandomSpeakerAccent(requestedNumOfQuizs: number): AccentType[] {
     //TOEIC実際の出題頻度を反映した重み設定
@@ -66,31 +102,47 @@ export function getRandomSpeakerAccent(requestedNumOfQuizs: number): AccentType[
     return Array.from({ length: requestedNumOfQuizs }, () => selectWeightedRandom());
 };
 
+//状況設定（問題の多様性確保目的）
+export function generatePart2Questions(requestedNumOfQuizs: number, sectionNumber: number): string[] {
+    
+}
+
 //問題生成関数 controllerで呼び出す
 export async function generatePart2Question(domObj: domein.NewLQuestionInfo, currentIndex: number): Promise<dto.GeneratedQuestionDataResDTO> {
-    //sectionNumberによって分岐
+    //分離
     const speakerAccentList = getRandomSpeakerAccent(domObj.requestedNumOfLQuizs);
-    //状況設定（多様性担保）
+    //状況設定（多様性担保）（分離）
     const settings = getRandomSettings(domObj.requestedNumOfLQuizs, domObj.sectionNumber);
     //性別ランダム選択
-    const speakerList = getRandomSpeakers(domObj.sectionNumber);
+    const speakerList = getRandomSpeakers(domObj.sectionNumber) as string[];
+
     //プロンプト生成
     const prompt = await generatePart2AudioScriptPrompt(domObj.sectionNumber, speakerAccentList[currentIndex], settings[currentIndex], speakerList);
-
+    const generatedAudioScript = await callChatGPTForPart2AudioScript(prompt);
+    const generatedJpnAudioScript = await callChatGPTForJpnAudioScript(generatedAudioScript.audioScript);
+    const generatedExplanation = await callChatGPTForExplanation(generatedAudioScript.audioScript);
+    return {
+        audioScript: generatedAudioScript.audioScript,
+        jpnAudioScript: generatedJpnAudioScript,
+        answerOption: generatedAudioScript.answerOption,
+        sectionNumber: domObj.sectionNumber,
+        explanation: generatedExplanation,
+        speakerAccent: speakerAccentList[currentIndex]
+    }
 };
 export async function generatePart34Question(domObj: domein.NewLQuestionInfo, currentIndex: number): Promise<dto.GeneratedQuestionDataResDTO> {
-    //sectionNumberによって分岐
     const speakerAccentList = getRandomSpeakerAccent(domObj.requestedNumOfLQuizs);
-    //状況設定（多様性担保）
+    //状況設定（多様性担保）（分離）
     const settings = getRandomSettings(domObj.requestedNumOfLQuizs, domObj.sectionNumber);
     const contentTopicInstruction = generateContentTopicInstructions(domObj.requestedNumOfLQuizs, settings);
     const contentFrameworksText = generateContentFrameworks(domObj.sectionNumber, settings);
+
     //プロンプト生成
     const contentPrompt = await generatePart34AudioScriptContentPrompt(domObj, speakerAccentList[currentIndex], settings[currentIndex], contentTopicInstruction[currentIndex], contentFrameworksText[currentIndex], currentIndex=0);
     //(ChatGPT-4o API)クイズ生成プロンプト生成
     const generatedContent = await callChatGPTForPart34AudioScriptContent(contentPrompt);
 
-    //要修正：const questionsAndChoicesPrompt = await generatePart34AudioScriptQuestionsPrompt(domObj.sectionNumber, speakerAccentList[currentIndex], settings[currentIndex]);
+    const questionsAndChoicesPrompt = await generatePart34AudioScriptQuestionsPrompt(domObj.sectionNumber, generatedContent, speakerAccentList[currentIndex]);
     
     const generatedQuestionsAndChoices = await callChatGPTForPart34AudioScriptQuestionsAndChoices(questionsAndChoicesPrompt);
     const answerOptionList = generatedQuestionsAndChoices.answerOptionList as ("A" | "B" | "C" | "D")[];
@@ -98,25 +150,32 @@ export async function generatePart34Question(domObj: domein.NewLQuestionInfo, cu
     const audioScript = combineContentAndQuestions(generatedContent, generatedQuestionsAndChoices.questionsAndChoices);
 
     const jpnAudioScriptPrompt = await generateSingleJpnAudioScriptPrompt(domObj.sectionNumber, audioScript);
-    const generatedJpnAudioScript = await callChatGPTForJpnAudioScript(audioScript);
+    const generatedJpnAudioScript = await callChatGPTForJpnAudioScript(jpnAudioScriptPrompt);
 
     const relevantAccentFeaturesText = extractAccentSpecificPoints(audioScript, speakerAccentList[currentIndex]);   
 
-    const explanationPrompt = await generateSingleExplanationPrompt(domObj.sectionNumber, speakerAccentList[currentIndex], relevantAccentFeaturesText, audioScript, answerOptionList);
+    const explanationPrompt = await generatePart34SingleExplanationPrompt(domObj.sectionNumber, speakerAccentList[currentIndex], relevantAccentFeaturesText, audioScript, answerOptionList);
 
-    const generatedExplanation = await callChatGPTForExplanation(generatedJpnAudioScript);
-    //GeneratedQuestionDataResDTOへのmapping関数
+    const generatedExplanation = await callChatGPTForExplanation(explanationPrompt);
 
     //似たような問題の生成をどうやって防止するか？
-    return  ;
+    return  {
+        audioScript: audioScript,
+        jpnAudioScript: generatedJpnAudioScript,
+        answerOption: answerOptionList,
+        sectionNumber: domObj.sectionNumber,
+        explanation: generatedExplanation,
+        speakerAccent: speakerAccentList[currentIndex]
+    };
 };
+
 
 /**
  * 指定されたsectionNumberのpatternをランダム選択し、speakers配列を取得
  * @param sectionNum - Part番号 (1, 2, 3, 4)
  * @returns 選択されたパターンのspeakers配列
  */
-export function getRandomSpeakers(sectionNum: 1 | 2 | 3 | 4): readonly string[] {
+export function getRandomSpeakers(sectionNum: 1 | 2 | 3 | 4): string[] {
     const partKey = `part${sectionNum}` as keyof typeof SPEAKER_PATTERNS;
     const availablePatterns = SPEAKER_PATTERNS[partKey];
     
@@ -565,6 +624,90 @@ export async function generatePart2AudioScriptPrompt(
     } 
 };
 
+export async function callChatGPTForPart2AudioScript(prompt: string): Promise<{audioScript: string, answerOption: ("A"|"B"|"C"|"D")[]}> {
+    try {
+        console.log('=== Step 1: fetch開始 (AudioScript生成) ===');
+        const response = await fetch('https://api.openai.com/v1/chat/completions', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`
+            },
+            body: JSON.stringify({
+                model: "gpt-4o",
+                messages: [
+                    {
+                        role: "system",
+                        content: "You are an expert in TOEIC content creation. Return ONLY a valid JSON object with audioScript and answerOption fields as specified in the prompt. Do not include markdown code blocks or any other formatting."
+                    },
+                    {
+                        role: "user",
+                        content: prompt
+                    }
+                ],
+                temperature: 0.3,  // 一貫性重視、適度なバリエーション
+                max_tokens: 500,   // 必要十分な長さ
+                top_p: 0.9        // 追加: より安定した出力
+            }),
+            signal: AbortSignal.timeout(60000)
+        });
+        
+        console.log("response status:", response.status);
+        console.log('=== Step 2: response確認 ===');
+        
+        if (!response.ok) {
+            throw new apierror.ChatGPTAPIError(`ChatGPT API Error: ${response.status} ${response.statusText}`);
+        }
+        
+        console.log('=== Step 3: JSON parse開始 ===');
+        const data = await response.json();
+        
+        console.log('=== Step 4: OpenAI APIの応答構造検証 ===');
+        const validatedData = schema.openAIResponseSchema.parse(data);
+
+        if (validatedData.choices.length === 0) {
+            throw new apierror.ChatGPTAPIError('ChatGPT APIからの応答に問題があります');
+        }
+
+        console.log('=== Step 5: audioScript&answerOption抽出 ===');
+        const jsonResponse = validatedData.choices[0].message.content;
+
+        // 不要な文字列の除去（markdown形式等）
+        let cleanedResponse = jsonResponse.trim();
+        cleanedResponse = cleanedResponse.replace(/^```json\s*/, ''); // 先頭の```jsonを削除
+        cleanedResponse = cleanedResponse.replace(/^```.*\n?/, '');   // 先頭の```を削除
+        cleanedResponse = cleanedResponse.replace(/\n?```$/, '');     // 末尾の```を削除
+
+        console.log('=== Step 6: JSON parse実行 ===');
+        const parsedJson = JSON.parse(cleanedResponse);
+
+        //レスポンス形式の検証
+        if (!parsedJson.audioScript || !parsedJson.answerOption) {
+            throw new apierror.ChatGPTAPIError('必要なフィールド（audioScript, answerOption）が不足しています');
+        }
+        
+        console.log('=== Step 7: 検証完了 ===');
+        console.log("audioScript length:", parsedJson.audioScript.length);
+        console.log("answerOption:", parsedJson.answerOption);
+
+        return {
+            audioScript: parsedJson.audioScript,
+            answerOption: [parsedJson.answerOption]
+        }
+        
+    } catch (error) {
+        if (error instanceof z.ZodError) {
+            console.error(`OpenAI APIから予期しない形式のレスポンスを受信しました:`, error);
+            throw new apierror.ChatGPTAPIError(`OpenAI APIから予期しない形式のレスポンスを受信しました: ${error.message}`);
+        } else if (error instanceof apierror.ChatGPTAPIError) {
+            throw error;
+        } else {
+            console.error('Unexpected ChatGPT API Error:', error);
+            throw new apierror.ChatGPTAPIError('ChatGPT APIとの通信で予期しないエラーが発生しました');
+        }
+    }
+};
+
 //part3,4専用audioScript問題文生成
 export async function generatePart34AudioScriptContentPrompt(
     domObj: domein.NewLQuestionInfo, 
@@ -642,8 +785,7 @@ function selectAnswerOptionGenerationRules(sectionNumber: number): string {
     return specificRule;
 };
 
-export async function generatePart34AudioScriptQuestionsPrompt(domObj: domein.NewLQuestionInfo, content: string, speakerAccent: AccentType): Promise<string> {
-        const sectionNumber = domObj.sectionNumber as 1|2|3|4;
+export async function generatePart34AudioScriptQuestionsPrompt(sectionNumber: 1|2|3|4, content: string, speakerAccent: AccentType): Promise<string> {
         //構造
         const audioStructureText = sectionNumber === 3 ? generatePart3QuestionsStructure() : generatePart4QuestionsStructure();
         //アクセント設定（domObjのspeakerAccentは使わない）
@@ -1001,7 +1143,29 @@ export function extractAccentSpecificPoints(audioScript: string, speakerAccent: 
     return relevantAccentFeaturesText;
 };
 
-export async function generateSingleExplanationPrompt(
+export async function generatePart2SingleExplanationPrompt(
+    //sectionNumber: 1|2|3|4,
+    speakerAccent: AccentType, 
+    audioScript: string, 
+    answerOption: "A" | "B" | "C" | "D"
+): Promise<string> {
+    const accentPattern = ACCENT_PATTERNS[speakerAccent];
+
+    try {
+        const __filename = fileURLToPath(import.meta.url);
+        const __dirname = path.dirname(__filename);
+        const promptPath = path.join(__dirname, 'prompts', 'part2-explanation-prompt.md');
+        const promptTemplate = await fs.readFile(promptPath, 'utf8');
+        return promptTemplate
+            .replace(/\{\{speakerAccent\}\}/g, speakerAccent)
+            .replace(/\{\{audioScript\}\}/g, audioScript)
+            .replace(/\{\{answerOption\}\}/g, answerOption)
+    } catch (error) {
+        console.error('プロンプト生成失敗:', error);
+        throw new apierror.PromptGenerateError('explanationのPromptの生成に失敗しました');
+    }
+};
+export async function generatePart34SingleExplanationPrompt(
     sectionNumber: 1|2|3|4,
     speakerAccent: AccentType, 
     relevantAccentFeaturesText: string, 
@@ -1013,7 +1177,7 @@ export async function generateSingleExplanationPrompt(
     try {
         const __filename = fileURLToPath(import.meta.url);
         const __dirname = path.dirname(__filename);
-        const promptPath = path.join(__dirname, 'prompts', 'explanation-prompt.md');
+        const promptPath = path.join(__dirname, 'prompts', 'part3_4-explanation-prompt.md');
         const promptTemplate = await fs.readFile(promptPath, 'utf8');
         return promptTemplate
             .replace(/\{\{sectionNumber\}\}/g, sectionNumber.toString())
@@ -1158,6 +1322,79 @@ content: [pause] What service is available throughout the airport? [short pause]
 
 '[Speaker1_FEMALE] Welcome to City International Airport. We are pleased to offer a range of services to enhance your travel experience. For your convenience, our information desks are located throughout the terminal, staffed with friendly personnel ready to assist you. We also provide complimentary Wi-Fi access, available in all areas of the airport. For those traveling with children, our family lounges offer a comfortable space with play areas. Additionally, we have partnered with local businesses to offer exclusive discounts at various shops and restaurants within the airport. Simply present your boarding pass to enjoy these offers. We hope you have a pleasant journey. [pause] [Speaker2] [pause] What service is available throughout the airport? [short pause] A. Free Wi-Fi access [short pause] B. Complimentary meals [short pause] C. Personal shopping assistants [short pause] D. Free parking [pause] What should passengers show to get discounts? [short pause] A. Passport [short pause] B. Boarding pass [short pause] C. Flight ticket [short pause] D. ID card [pause] Where can families find a comfortable space? [short pause] A. Information desks [short pause] B. Family lounges [short pause] C. Business lounges [short pause] D. Security area [pause]'
 */
+
+/**
+ * Part2専用: audioScriptに音声合成用タグ[pause]と[short pause]を付与する関数
+ * @param audioScript - 元のaudioScript
+ * @returns pause付きのaudioScript
+ */
+export function addPausesToPart2AudioScript(audioScript: string): string {
+    //Speaker1とSpeaker2の境界を検出するパターン
+    const speakerBoundaryPattern = /(\[Speaker1_(?:MALE|FEMALE)\]\s+[^[]+?)(\s+\[Speaker2_(?:MALE|FEMALE)\])/;
+    
+    //選択肢A, B, Cの前に[short pause]を挿入するパターン
+    const choicePattern = /(\s+)([ABC]\.\s+)/g;
+    
+    let result = audioScript;
+    
+    //Speaker1の質問後に[pause]を挿入
+    result = result.replace(speakerBoundaryPattern, '$1 [pause]$2');
+    
+    //各選択肢A, B, Cの前に[short pause]を挿入
+    result = result.replace(choicePattern, '$1[short pause] $2');
+    
+    return result;
+};
+
+/**
+ * Part3&4専用: audioScriptに[pause]と[short pause]を付与する関数
+ * @param audioScript - 元のaudioScript
+ * @returns pause付きのaudioScript
+ * 
+出力形式: 
+[Speaker1_MALE] 発言内容 [short pause]
+[Speaker2_MALE] 発言内容 [short pause]
+[Speaker1_MALE] 発言内容 [short pause]
+... 最後の発言内容 [pause]
+
+[QUESTION_1] 質問文 [short pause] 
+[CHOICES_1] A. [short pause] choice A B. [short pause] choice B C. [short pause] choice C D. [short pause] choice D
+
+[QUESTION_2] 以降も同様...
+ */
+export function addPausesToPart34AudioScript(audioScript: string): string {
+    let result = audioScript;
+    
+    //各Speaker発言の後に[short pause]を挿入（QUESTIONタグの直前以外）
+    //Speaker発言パターン: [Speaker1_MALE/FEMALE] または [Speaker2_MALE/FEMALE] の後
+    const speakerPattern = /(\[Speaker[12]_(?:MALE|FEMALE)\]\s+[^[]+?)(\s*)(?=\[)/g;
+    
+    result = result.replace(speakerPattern, (match, speakerContent, whitespace) => {
+        //次に来るタグを確認
+        const nextTagIndex = match.length;
+        const remainingText = audioScript.substring(audioScript.indexOf(match) + nextTagIndex);
+        
+        if (remainingText.startsWith('[QUESTION')) {
+            //質問の直前なら[pause]
+            return speakerContent + ' [pause] ';
+        } else {
+            //他のSpeakerが続くなら[short pause]
+            return speakerContent + ' [short pause] ';
+        }
+    });
+    
+    //各質問文の後に[short pause]を挿入
+    const questionPattern = /(\[QUESTION_\d+\]\s+[^[]+?)(\s+\[CHOICES_\d+\])/g;
+    result = result.replace(questionPattern, '$1 [short pause] $2');
+    
+    //各選択肢の前に[short pause]を挿入し、選択肢を整形
+    const choicesPattern = /\[CHOICES_(\d+)\]\s+choice A\s+choice B\s+choice C\s+choice D/g;
+    result = result.replace(choicesPattern, (match, questionNum) => {
+        return `[CHOICES_${questionNum}] A. [short pause] choice A B. [short pause] choice B C. [short pause] choice C D. [short pause] choice D`;
+    });
+    
+    return result;
+}
 
 //audioScriptから性別要件を抽出する関数
 export class GenderRequirementsExtracter {

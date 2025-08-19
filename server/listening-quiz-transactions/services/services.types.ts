@@ -1,3 +1,20 @@
+import session from 'express-session';
+
+declare module 'express-session' {
+    interface SessionData {
+        questionSet?: {
+            sectionNumber: 1 | 2 | 3 | 4;
+            totalQuestionNum: number;
+            currentIndex: number;
+            speakerList?: string[]; //Part2専用
+            speakerAccentList: string[];
+            settingList: ({ location: string; speaker: string; situation: string; } | { location: string; speaker: string; situation: string; } | { location: string; speaker: string; situation: string; } | { location: string; speaker: string; situation: string; })[];
+            contentTopicInstructionList?: string[]; //Part3,4専用
+            contentFrameworkTextList?: string[]; //Part3,4専用
+        }
+    }
+};
+
 //audioScriptタグ構造定義用
 //基本的な話者パターン定義
 export type GenderPattern = 'MALE' | 'FEMALE';
@@ -31,8 +48,8 @@ export const JPN_AUDIO_SCRIPT_FORMAT = {
 選択肢: A. [Choice 1 in Japanese] B. [Choice 2 in Japanese] C. [Choice 3 in Japanese] D. [Choice 4 in Japanese]`,
     
     2: `質問・応答問題
-質問文: [話者1 男性/女性] [Question/Comment in Japanese] 
-選択肢: A. [Choice 1 in Japanese] B. [Choice 2 in Japanese] C. [Choice 3 in Japanese]`,
+設問文: [話者1 男性/女性] [Question/Comment in Japanese] 
+選択肢: [話者2 男性/女性] A. [Choice 1 in Japanese] B. [Choice 2 in Japanese] C. [Choice 3 in Japanese]`,
     
     3: `会話問題
 会話内容: [Conversation in Japanese with speaker labels]
