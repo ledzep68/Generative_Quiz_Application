@@ -34,30 +34,26 @@ config({path: path.join(__dirname, '../../.env')});
 export type AccentType = keyof typeof ACCENT_PATTERNS; 
 export type SpeakerAccent = typeof ACCENT_PATTERNS[keyof typeof ACCENT_PATTERNS]; 
 
-
-
 //問題セット生成初期化時（初回リクエスト時）
-export async function initializeNewQuestionSet(
-    req: Express.Request,
-    domObj: domein.NewLQuestionInfo
-): Promise<void> {
+export async function initializeNewQuestionSet(req: Express.Request["session"], domObj: domein.NewLQuestionInfo): Promise<void> {
     const speakerAccentList = getRandomSpeakerAccent(domObj.requestedNumOfLQuizs);
 
     const settingList = getRandomSettings(domObj.requestedNumOfLQuizs, domObj.sectionNumber);
     if(domObj.sectionNumber === 2){
-        req.session.questionSet = {
+        req.questionSet = {
             sectionNumber: domObj.sectionNumber,
             totalQuestionNum: domObj.requestedNumOfLQuizs,
             currentIndex: 0, //現在の問題番号 min:0, max:9（1-10に対応）
             //speakerList: speakerList, //問題毎に生成
             speakerAccentList: speakerAccentList,
-            settingList: settingList
+            settingList: settingList,
+            speakingRate: domObj.speakingRate
         };
     } else if (domObj.sectionNumber === 3 || domObj.sectionNumber === 4) {
         const contentTopicInstructionList = generateContentTopicInstructions(domObj.requestedNumOfLQuizs, settingList);
         const contentFrameworkList = generateContentFrameworks(domObj.sectionNumber, settingList);
         
-        req.session.questionSet = {
+        req.questionSet = {
             sectionNumber: domObj.sectionNumber,
             totalQuestionNum: domObj.requestedNumOfLQuizs,
             currentIndex: 0,
@@ -65,7 +61,8 @@ export async function initializeNewQuestionSet(
             speakerAccentList: speakerAccentList,
             settingList: settingList,
             contentTopicInstructionList: contentTopicInstructionList,
-            contentFrameworkTextList: contentFrameworkList
+            contentFrameworkTextList: contentFrameworkList,
+            speakingRate: domObj.speakingRate
         }
     }
 }
@@ -102,22 +99,24 @@ export function getRandomSpeakerAccent(requestedNumOfQuizs: number): AccentType[
     return Array.from({ length: requestedNumOfQuizs }, () => selectWeightedRandom());
 };
 
-//状況設定（問題の多様性確保目的）
-export function generatePart2Questions(requestedNumOfQuizs: number, sectionNumber: number): string[] {
-    
-}
-
 //問題生成関数 controllerで呼び出す
-export async function generatePart2Question(domObj: domein.NewLQuestionInfo, currentIndex: number): Promise<dto.GeneratedQuestionDataResDTO> {
+export async function generatePart2Question(req: Express.Request["session"] /*requestedIndex: 0|1|2|3|4|5|6|7|8|9/*, domObj: domein.NewLQuestionInfo*/): Promise<dto.GeneratedQuestionDataResDTO> {
+    if(!req.questionSet){
+        throw new Error("Question set not found in session");
+    };
+    const questionSet = req.questionSet;
+    const sectionNumber = questionSet.sectionNumber;
+    const currentIndex = questionSet.currentIndex;
+    
     //分離
-    const speakerAccentList = getRandomSpeakerAccent(domObj.requestedNumOfLQuizs);
+    const speakerAccentList = questionSet.speakerAccentList;
     //状況設定（多様性担保）（分離）
-    const settings = getRandomSettings(domObj.requestedNumOfLQuizs, domObj.sectionNumber);
+    const settingList = questionSet.settingList
     //性別ランダム選択
-    const speakerList = getRandomSpeakers(domObj.sectionNumber) as string[];
+    const speakerList = getRandomSpeakers(sectionNumber) as string[];
 
     //プロンプト生成
-    const prompt = await generatePart2AudioScriptPrompt(domObj.sectionNumber, speakerAccentList[currentIndex], settings[currentIndex], speakerList);
+    const prompt = await generatePart2AudioScriptPrompt(sectionNumber, speakerAccentList[currentIndex], settingList[currentIndex], speakerList);
     const generatedAudioScript = await callChatGPTForPart2AudioScript(prompt);
     const generatedJpnAudioScript = await callChatGPTForJpnAudioScript(generatedAudioScript.audioScript);
     const generatedExplanation = await callChatGPTForExplanation(generatedAudioScript.audioScript);
@@ -125,57 +124,91 @@ export async function generatePart2Question(domObj: domein.NewLQuestionInfo, cur
         audioScript: generatedAudioScript.audioScript,
         jpnAudioScript: generatedJpnAudioScript,
         answerOption: generatedAudioScript.answerOption,
-        sectionNumber: domObj.sectionNumber,
+        sectionNumber: sectionNumber,
         explanation: generatedExplanation,
         speakerAccent: speakerAccentList[currentIndex]
     }
 };
-export async function generatePart34Question(domObj: domein.NewLQuestionInfo, currentIndex: number): Promise<dto.GeneratedQuestionDataResDTO> {
-    const speakerAccentList = getRandomSpeakerAccent(domObj.requestedNumOfLQuizs);
+export async function generatePart34Question(req: Express.Request["session"]/*, requestedIndex: 0|1|2|3|4|5|6|7|8|9/*, domObj: domein.NewLQuestionInfo*/): Promise<dto.GeneratedQuestionDataResDTO> {
+    if(!req.questionSet){
+        throw new Error("Question set not found in session");
+    };
+    const questionSet = req.questionSet;
+    const sectionNumber = questionSet.sectionNumber;
+    const currentIndex = questionSet.currentIndex;
+
+    const speakerAccentList = questionSet.speakerAccentList;
     //状況設定（多様性担保）（分離）
-    const settings = getRandomSettings(domObj.requestedNumOfLQuizs, domObj.sectionNumber);
-    const contentTopicInstruction = generateContentTopicInstructions(domObj.requestedNumOfLQuizs, settings);
-    const contentFrameworksText = generateContentFrameworks(domObj.sectionNumber, settings);
+    const settingList = questionSet.settingList;
+    const contentTopicInstructionList = questionSet.contentTopicInstructionList as string[];
+    const contentFrameworkTextList = questionSet.contentFrameworkTextList as string[];
 
     //プロンプト生成
-    const contentPrompt = await generatePart34AudioScriptContentPrompt(domObj, speakerAccentList[currentIndex], settings[currentIndex], contentTopicInstruction[currentIndex], contentFrameworksText[currentIndex], currentIndex=0);
+    const contentPrompt = await generatePart34AudioScriptContentPrompt(sectionNumber, speakerAccentList[currentIndex], settingList[currentIndex], contentTopicInstructionList[currentIndex], contentFrameworkTextList[currentIndex], currentIndex);
     //(ChatGPT-4o API)クイズ生成プロンプト生成
     const generatedContent = await callChatGPTForPart34AudioScriptContent(contentPrompt);
 
-    const questionsAndChoicesPrompt = await generatePart34AudioScriptQuestionsPrompt(domObj.sectionNumber, generatedContent, speakerAccentList[currentIndex]);
+    const questionsAndChoicesPrompt = await generatePart34AudioScriptQuestionsPrompt(sectionNumber, generatedContent, speakerAccentList[currentIndex]);
     
     const generatedQuestionsAndChoices = await callChatGPTForPart34AudioScriptQuestionsAndChoices(questionsAndChoicesPrompt);
     const answerOptionList = generatedQuestionsAndChoices.answerOptionList as ("A" | "B" | "C" | "D")[];
 
     const audioScript = combineContentAndQuestions(generatedContent, generatedQuestionsAndChoices.questionsAndChoices);
 
-    const jpnAudioScriptPrompt = await generateSingleJpnAudioScriptPrompt(domObj.sectionNumber, audioScript);
+    const jpnAudioScriptPrompt = await generateSingleJpnAudioScriptPrompt(sectionNumber, audioScript);
     const generatedJpnAudioScript = await callChatGPTForJpnAudioScript(jpnAudioScriptPrompt);
 
     const relevantAccentFeaturesText = extractAccentSpecificPoints(audioScript, speakerAccentList[currentIndex]);   
 
-    const explanationPrompt = await generatePart34SingleExplanationPrompt(domObj.sectionNumber, speakerAccentList[currentIndex], relevantAccentFeaturesText, audioScript, answerOptionList);
+    const explanationPrompt = await generatePart34SingleExplanationPrompt(sectionNumber, speakerAccentList[currentIndex], relevantAccentFeaturesText, audioScript, answerOptionList);
 
     const generatedExplanation = await callChatGPTForExplanation(explanationPrompt);
 
     //似たような問題の生成をどうやって防止するか？
     return  {
         audioScript: audioScript,
-        jpnAudioScript: generatedJpnAudioScript,
+        //jpnAudioScript　後で生成
         answerOption: answerOptionList,
-        sectionNumber: domObj.sectionNumber,
-        explanation: generatedExplanation,
+        sectionNumber: sectionNumber,
+        //explanation　後で生成
         speakerAccent: speakerAccentList[currentIndex]
     };
 };
+export async function generatePart34JpnAudioScript(sectionNumber: 1|2|3|4, audioScript: string): Promise<string> {
+    const jpnAudioScriptPrompt = await generateSingleJpnAudioScriptPrompt(sectionNumber, audioScript);
+    const generatedJpnAudioScript = await callChatGPTForJpnAudioScript(jpnAudioScriptPrompt);
 
+    return  generatedJpnAudioScript;
+};
+export async function generatePart34Explanation(req: Express.Request["session"], audioScript: string, answerOptionList: ("A" | "B" | "C" | "D")[]/*, requestedIndex: 0|1|2|3|4|5|6|7|8|9/*, domObj: domein.NewLQuestionInfo*/): Promise<string> {
+    if(!req.questionSet){
+        throw new Error("Question set not found in session");
+    };
+    const questionSet = req.questionSet;
+    const sectionNumber = questionSet.sectionNumber;
+    const currentIndex = questionSet.currentIndex;
+
+    const speakerAccentList = questionSet.speakerAccentList;
+    //状況設定（多様性担保）（分離）
+    const settingList = questionSet.settingList;
+    const contentTopicInstructionList = questionSet.contentTopicInstructionList as string[];
+    const contentFrameworkTextList = questionSet.contentFrameworkTextList as string[];
+
+    const relevantAccentFeaturesText = extractAccentSpecificPoints(audioScript, speakerAccentList[currentIndex]);   
+
+    const explanationPrompt = await generatePart34SingleExplanationPrompt(sectionNumber, speakerAccentList[currentIndex], relevantAccentFeaturesText, audioScript, answerOptionList);
+
+    const generatedExplanation = await callChatGPTForExplanation(explanationPrompt);
+
+    return  generatedExplanation;
+};
 
 /**
  * 指定されたsectionNumberのpatternをランダム選択し、speakers配列を取得
  * @param sectionNum - Part番号 (1, 2, 3, 4)
  * @returns 選択されたパターンのspeakers配列
  */
-export function getRandomSpeakers(sectionNum: 1 | 2 | 3 | 4): string[] {
+export function getRandomSpeakers(sectionNum: 1 | 2 | 3 | 4): readonly string[] {
     const partKey = `part${sectionNum}` as keyof typeof SPEAKER_PATTERNS;
     const availablePatterns = SPEAKER_PATTERNS[partKey];
     
@@ -355,16 +388,20 @@ export function generatePart34AccentInstructionsForQuestions(accentType: AccentT
 状況設定（問題の多様性確保目的）
 */
 //状況設定のランダム選択関数
-export function getRandomSettings(requestedNumOfLQuizs: number, sectionNumber: number) {
-   const scenarios = PART_SPECIFIC_SCENARIOS[sectionNumber as keyof typeof PART_SPECIFIC_SCENARIOS];
-   const shuffledScenarios = [...scenarios].sort(() => 0.5 - Math.random());
-   
-   return Array.from({ length: requestedNumOfLQuizs }, (_, i) => 
-       shuffledScenarios[i % shuffledScenarios.length]
-   );
+export function getRandomSettings(requestedNumOfLQuizs: number, sectionNumber: number): {location: string, speaker: string, situation: string}[] {
+    const scenarioList = PART_SPECIFIC_SCENARIOS[sectionNumber as keyof typeof PART_SPECIFIC_SCENARIOS];
+    //シャッフル
+    const arr = [...scenarioList];
+    for (let i = arr.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [arr[i], arr[j]] = [arr[j], arr[i]];
+    };
+    const shuffledScenarioList = arr;
+    //必要数だけ切り出し
+    return shuffledScenarioList.slice(0, requestedNumOfLQuizs); 
 };
 
-export function generateContentTopicInstructions(requestedNumOfLQuizs: number, /*sectionNumber: number,*/ settings: Array<{location: string, speaker: string, situation: string}>): string[] {
+export function generateContentTopicInstructions(requestedNumOfLQuizs: number, /*sectionNumber: number,*/ settings: {location: string, speaker: string, situation: string}[]): string[] {
     return settings.slice(0, requestedNumOfLQuizs).map((setting, index) => {
         const topic = generateTopicFromSituation(setting.situation);
         
@@ -372,7 +409,7 @@ export function generateContentTopicInstructions(requestedNumOfLQuizs: number, /
     });
 };
 //要求問題数の数だけcontentFrameworkを生成
-export function generateContentFrameworks(sectionNumber: number, settings: Array<{location: string, speaker: string, situation: string}>): string[] {
+export function generateContentFrameworks(sectionNumber: number, settings: {location: string, speaker: string, situation: string}[]): string[] {
     return settings.map((setting, index) => {
         const { location, speaker, situation } = setting;
         const topic = generateTopicFromSituation(situation);
@@ -583,7 +620,7 @@ function generatePart34QuestionsAndChoicesChecklist(sectionNumber: 1|2|3|4, cons
 export async function generatePart2AudioScriptPrompt(
     sectionNumber: 1|2|3|4,
     speakerAccent: AccentType, 
-    setting: { location: string; speaker: string; situation: string; } | { location: string; speaker: string; situation: string; } | { location: string; speaker: string; situation: string; } | { location: string; speaker: string; situation: string; },
+    setting: { location: string; speaker: string; situation: string; },
     speakerList: string[]
 ): Promise<string> {
         //アクセント設定（domObjのspeakerAccentは使わない）
@@ -710,14 +747,13 @@ export async function callChatGPTForPart2AudioScript(prompt: string): Promise<{a
 
 //part3,4専用audioScript問題文生成
 export async function generatePart34AudioScriptContentPrompt(
-    domObj: domein.NewLQuestionInfo, 
+    sectionNumber: 1|2|3|4,
     speakerAccent: AccentType, 
-    setting: { location: string; speaker: string; situation: string; } | { location: string; speaker: string; situation: string; } | { location: string; speaker: string; situation: string; } | { location: string; speaker: string; situation: string; }, 
+    setting: { location: string; speaker: string; situation: string; }, 
     contentTopicInstruction: string, 
     contentFrameworksText: string,
     currentIndex: number
     ): Promise<string> {
-    const sectionNumber = domObj.sectionNumber as 1|2|3|4;
     //speakerAccent
     //const speakerAccent = domObj.speakerAccent as AccentType;
     //構造

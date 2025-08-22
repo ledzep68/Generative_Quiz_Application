@@ -22,13 +22,13 @@ export class NewLQuestionInfoMapper {
 
 //ChatGPT生成クイズデータ&lQuestionIDList→TTSリクエストへのマッパー
 export class generatedQuestionDataToTTSReqMapper {
-    static toDomainObject(generatedQuestionDataList: dto.GeneratedQuestionDataResDTO[], lQuestionIDList: string[], speakingRate: number): dto.NewAudioReqDTO[] {
-        return generatedQuestionDataList.map((generatedQuestionData, index) => new dto.NewAudioReqDTO(
-            lQuestionIDList[index],
-            generatedQuestionData.audioScript,
-            generatedQuestionData.speakerAccent,
-            speakingRate
-        ));
+    static toDomainObject(sectionNumber: 1|2|3|4, audioScript: string, speakerAccent: 'American' | 'British' | 'Canadian' | 'Australian', speakingRate: number): dto.NewAudioReqDTO {
+        return {
+            sectionNumber: sectionNumber,
+            audioScript: audioScript,
+            speakerAccent: speakerAccent,
+            speakingRate: speakingRate
+        };
     }
 };
 

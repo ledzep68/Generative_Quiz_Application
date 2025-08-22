@@ -1,5 +1,6 @@
 import {Request, Response} from "express";
 import {randomUUID, UUID} from "crypto";
+import session from "express-session";
 
 import * as dto from "./lquiz.dto.ts"; 
 
@@ -13,6 +14,89 @@ import * as errorhandler from "./errors/errorhandlers.ts";
 
 import { z } from "zod";
 import * as businessschema from "./schemas/lquizbusinessschema.ts";
+
+
+//セッション開始
+export async function initializeLQuizController(req: Request, res: Response ): Promise<void> {
+    const newLQuestionInfo= mapper.NewLQuestionInfoMapper.toDomainObject(req.body.QuestionReqDTO);
+    /*
+    NewLQuestionInfo: {
+        requestedNumOfLQuizs: number;
+        sectionNumber: number;
+        speakingRate: number;
+        speakerAccent?: 'American' | 'British' | 'Canadian' | 'Australian'}
+    */
+    await apiservice.initializeNewQuestionSet(req.session, newLQuestionInfo);
+};
+
+//Part2問題&音声データ生成
+export async function generatePart2LQuizController(req: Request, res: Response): Promise<void> {
+    const sessionData = req.session;
+    //sessionData自体のチェック
+    if (!sessionData) {
+        throw new Error("Session not found");
+    }
+    //questionSetのチェック
+    if (!sessionData.questionSet) {
+        throw new Error("Question set not initialized. Please start a new quiz session.");
+    }
+    const questionSet = sessionData.questionSet;
+    console.log("questionSet: ", questionSet);
+    const {sectionNumber, currentIndex, totalQuestionNum, speakerAccentList, settingList, speakingRate} = questionSet;
+    //currentIndexをtotalQuestionNumと比較
+    if(currentIndex >= totalQuestionNum){
+        throw new Error("Index out of range");
+    };
+    try{
+        //currentIndex<totalQuestionNumの場合
+        //問題ID生成
+        const questionHash = businessservice.generateHash(req.session.id);
+        console.log("questionHash: ", questionHash);
+        const lQuestionID = await businessservice.generateLQuestionID(sectionNumber, questionHash);
+        console.log("lQuestionID: ", lQuestionID);
+        //問題生成
+        const questionData = await apiservice.generatePart2Question(req.session); 
+        console.log("questionData: ", questionData);
+        const audioScriptWithPauses = await apiservice.addPausesToPart2AudioScript(questionData.audioScript);
+        console.log("audioScriptWithPauses: ", audioScriptWithPauses);
+        const newAudioReqDTO = mapper.generatedQuestionDataToTTSReqMapper.toDomainObject(
+            sectionNumber, 
+            audioScriptWithPauses, 
+            questionData.speakerAccent,
+            speakingRate as number
+        );
+        console.log("newAudioReqDTO: ", newAudioReqDTO);
+        const audioFilePath = await apiservice.generateAudioContent(newAudioReqDTO, lQuestionID);
+        console.log("audioFilePath: ", audioFilePath);
+        //question_hash配信
+        res.json(questionHash);
+        //問題データ登録
+        await businessservice.newQuestionDataInsert(questionData, audioFilePath, questionHash, speakingRate as number);
+    } catch (error) {
+        console.error('Part2 クイズ生成エラー:', error);
+        const { response } = errorhandler.generateLQuestionErrorHandler(error as Error);
+        res.status(response.status).json(response);
+    }
+};
+//Part3,4問題&音声データ生成　part2と生成フローが異なるのでエンドポイントを分割した
+export async function generatePart34LQuizController(req: Request, res: Response): Promise<void> {
+    //currentIndexをtotalQuestionNumと比較
+    //currentIndex<totalQuestionNum
+        //問題生成
+            //sectionNumberで条件分岐
+                //Part3,4
+                    //問題・音声生成
+                    //question_hash配信
+                    //日本語訳生成
+                    //解説生成
+    //currentIndex>=totalQuestionNum
+        //インデックス不正エラー
+}
+//セッション情報更新
+export async function updateSessionController(req: Request, res: Response): Promise<void> {}
+
+//殺生情報リセット　エラー発生時用
+export async function resetSessionController(req: Request, res: Response): Promise<void> {}
 
 //新規クイズ生成・出題
 export async function generateQuestionController(req: Request, res: Response): Promise<void>{

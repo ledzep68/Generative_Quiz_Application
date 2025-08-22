@@ -16,48 +16,41 @@ import * as dto from "../lquiz.dto.ts";
 
 import crypto from 'crypto';
 
-//問題ID用の8桁hashの生成
-export function generateHash(reqDTO: dto.RandomNewQuestionReqDTO): string[] {
-    const hashList: string[] = [];
-    for (let i = 0; i < reqDTO.requestedNumOfLQuizs; i++) {
-        const timestamp = Date.now();
-        const source = `${JSON.stringify(reqDTO)}_${timestamp}`;
-        const hash = crypto.createHash('sha256').update(source).digest('hex').substring(0, 8);
-        hashList.push(hash);
-    };
-    return hashList
+//問題ID用の12桁hashの生成
+export function generateHash(sessionId: string): string {
+    const timestamp = Date.now();
+    const source = `${JSON.stringify(sessionId)}_${timestamp}`;
+    const hash = crypto.createHash('sha256').update(source).digest('hex').substring(0, 12);
+    return hash
 };
 
 //問題ID生成
-export function generateLQuestionID(reqDTO: dto.RandomNewQuestionReqDTO, hashList: string[]): string[] {
-    const lQuestionIDList: string[] = [];
-    for (let i = 0; i < reqDTO.requestedNumOfLQuizs; i++) {
-        const lQuestionID = `listening-part${reqDTO.sectionNumber}-${hashList[i]}`;
-        lQuestionIDList.push(lQuestionID);
-    };
-    return lQuestionIDList
+export function generateLQuestionID(sectionNumber: 1|2|3|4, hash: string): string {
+    const lQuestionID = `listening-part${sectionNumber}-${hash}`;
+    return lQuestionID
 };
 
 
-//新規問題の挿入　バッチ処理
+//新規問題の挿入
 export async function newQuestionDataInsert(
-    generatedQuestionDataList: dto.GeneratedQuestionDataResDTO[], 
-    audioURLList: domein.AudioURL[],
+    generatedQuestionData: dto.GeneratedQuestionDataResDTO, 
+    audioFilePath: domein.AudioFilePath,
+    questionHash: string,
     speakingRate: number
 ): Promise<void> {
     const client = await model.dbGetConnect();
     try{
-        // トランザクション開始
+        //トランザクション開始
         await client.query('BEGIN');
-        // 引数の要素を一括でentityにマッピング
-        const insertNewDataList = dbmapper.QuestionDataToEntityMapper.toEntityList(generatedQuestionDataList, audioURLList, speakingRate);
-        console.log(insertNewDataList);
-        // 新規問題の挿入
-        await model.newQuestionBatchInsert(client, insertNewDataList);
-        // コミット
+        //引数の要素を一括でentityにマッピング
+        const questionDataForInsert = dbmapper.QuestionDataToEntityMapper.toEntityList(generatedQuestionData, audioFilePath, questionHash, speakingRate);
+        console.log(questionDataForInsert);
+        //新規問題の挿入
+        await model.newQuestionInsert(client, questionDataForInsert);
+        //コミット
         await client.query('COMMIT');
     } catch (error) {
-        // エラー時はロールバック
+        //エラー時はロールバック
         await client.query('ROLLBACK');
         console.log('INSERTエラー:', error);
         throw new Error("問題の登録に失敗しました");
@@ -66,6 +59,7 @@ export async function newQuestionDataInsert(
     }
 };
 
+/*
 //既存問題IDを指定して問題データ取得
 export async function answeredQuestionDataExtract(domObj: domein.ReviewQuestionInfo[]): Promise<domein.LQuestionData[]> {
     const client = await model.dbGetConnect();
@@ -109,7 +103,7 @@ export async function answeredQuestionDataRandomExtract(domObj: domein.ReviewQue
     }
 };
 
-
+*/
 
 /* answerController */
 

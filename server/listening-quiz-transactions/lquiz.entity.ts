@@ -11,7 +11,7 @@ export interface LQuestionEntity {
     questionHash?: string; //後で実装
     audioScript: string;
     jpnAudioScript: string,
-    answerOption: "A"|"B"|"C"|"D";
+    answerOption: ("A"|"B"|"C"|"D")[]; //選択肢配列　part3,4は複数回答のため
     sectionNumber: 1|2|3|4;
     explanation: string;
     speakerAccent: 'American' | 'British' | 'Canadian' | 'Australian'; 

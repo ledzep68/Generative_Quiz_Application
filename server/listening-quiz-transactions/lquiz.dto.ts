@@ -67,10 +67,10 @@ export class NewQuizGenerateReqDTO {
 //lQuestionIdは生成対象ではなく、AIにも渡さない（セキュリティリスク考慮）ので除外
 export interface GeneratedQuestionDataResDTO {
     audioScript: string,
-    jpnAudioScript: string,
+    jpnAudioScript?: string,
     answerOption: ("A"|"B"|"C"|"D")[],
     sectionNumber: 1|2|3|4,
-    explanation: string,
+    explanation?: string,
     speakerAccent: "American" | "British" | "Canadian" | "Australian"
 };
 

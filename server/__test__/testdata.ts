@@ -1,19 +1,29 @@
-import fs from 'fs/promises';
+import {Request, Response} from "express";
+import fs from 'fs';
+//import fs from 'fs/promises';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import os from 'os';
 import {config} from 'dotenv';
+
+import * as controller from '../listening-quiz-transactions/lquizcontrollers.ts';
 import * as apierror from '../listening-quiz-transactions/errors/lquiz.apierrors.ts';
 import * as schema from '../listening-quiz-transactions/schemas/lquizapischema.ts';
 import {JPN_AUDIO_SCRIPT_FORMAT} from '../listening-quiz-transactions/services/services.types.ts';
 import * as apiservice from '../listening-quiz-transactions/services/lquizapiservice.ts';
+
+
 import * as dto from '../listening-quiz-transactions/lquiz.dto.ts';
 import z from 'zod';
+import session from 'express-session';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 config({path: path.join(__dirname, '../.env')});
-//process.env.GOOGLE_APPLICATION_CREDENTIALS = path.resolve(__dirname, '../credentials/listening-quiz-audio-generator-b5d3be486e8f.json');
+const projectRoot = path.resolve(__dirname, '../');  // serverディレクトリ
+const credentialsPath = path.join(projectRoot, 'credentials/listening-quiz-audio-generator-b5d3be486e8f.json');
+
+process.env.GOOGLE_APPLICATION_CREDENTIALS = credentialsPath;
 
 
 export async function callChatGPTForPart2AudioScript(prompt: string): Promise<{audioScript: string, answerOption: string}> {
@@ -630,3 +640,137 @@ async function generateAudioContentTest() {
     console.log(`✅ 音声データ連結テスト成功: ${audioFilePath}`);
 };
 */
+
+export function createDummyRequest(): Partial<Request> {
+    return {
+        session: {
+            id: 'test-session-12345',
+            questionSet: {
+                sectionNumber: 2,
+                totalQuestionNum: 5,
+                currentIndex: 0,
+                speakerAccentList: ['American', 'British', 'Canadian', 'Australian', 'American'],
+                settingList: [
+                    { location: 'airport', speaker: 'traveler', situation: 'facility inquiry' },
+                    { location: 'office', speaker: 'employee', situation: 'work progress' },
+                    { location: 'restaurant', speaker: 'customer', situation: 'order taking' },
+                    { location: 'hotel', speaker: 'guest', situation: 'check-in' },
+                    { location: 'store', speaker: 'shopper', situation: 'product inquiry' }
+                ],
+                speakingRate: 1.0
+            },
+            // 最小限のセッションプロパティ
+            save: (callback?: (err: any) => void) => {
+                if (callback) callback(null);
+            },
+            destroy: (callback?: (err: any) => void) => {
+                if (callback) callback(null);
+            }
+        } as any,
+        body: {},
+        headers: {},
+        method: 'POST',
+        url: '/api/question/part2/generate'
+    };
+}
+
+interface TestResponse {
+    res: Partial<Response>;
+    responseData: any;
+    statusCode: number;
+}
+
+export function createDummyResponse(): TestResponse {
+    let responseData: any = null;
+    let statusCode: number = 200;
+    
+    const res: Partial<Response> = {
+        json: (data: any) => {
+            responseData = data;
+            console.log('📤 レスポンス:', data);
+            return res as Response;
+        },
+        status: (code: number) => {
+            statusCode = code;
+            console.log(`📊 ステータス: ${code}`);
+            return {
+                json: (data: any) => {
+                    responseData = data;
+                    console.log(`❌ エラーレスポンス [${code}]:`, data);
+                    return res as Response;
+                }
+            } as any;
+        }
+    };
+    return { 
+        res, 
+        get responseData() { return responseData; }, 
+        get statusCode() { return statusCode; } 
+    };
+}
+
+async function testPart2Integration() {
+    console.log('🚀 Part2統合テスト開始');
+    console.log('=====================================');
+    
+    // Arrange
+    const req = createDummyRequest() as Request;
+    const { res, responseData, statusCode } = createDummyResponse();
+    
+    // テスト開始時刻
+    const startTime = Date.now();
+    console.log(`⏰ 開始時刻: ${new Date().toISOString()}`);
+    
+    try {
+        // Act - 実際のController実行
+        console.log('📋 セッション情報:');
+        console.log('  - sectionNumber:', req.session.questionSet?.sectionNumber);
+        console.log('  - currentIndex:', req.session.questionSet?.currentIndex);
+        console.log('  - totalQuestionNum:', req.session.questionSet?.totalQuestionNum);
+        console.log('  - speakingRate:', req.session.questionSet?.speakingRate);
+        
+        await controller.generatePart2LQuizController(req, res as Response);
+        
+        // Assert - 結果検証
+        const endTime = Date.now();
+        const executionTime = endTime - startTime;
+        
+        console.log('=====================================');
+        console.log('✅ テスト完了');
+        console.log(`⏱️  総処理時間: ${executionTime}ms (${(executionTime/1000).toFixed(2)}秒)`);
+        
+        // レスポンス検証
+        if (responseData) {
+            console.log('📊 結果検証:');
+            console.log(`  - questionHash: ${responseData} (${typeof responseData})`);
+            console.log(`  - hash長さ: ${responseData.length}文字`);
+            
+            if (typeof responseData === 'string' && responseData.length === 12) {
+                console.log('✅ questionHash形式: OK');
+            } else {
+                console.log('❌ questionHash形式: NG');
+            }
+        }
+        
+        // DB確認（オプション）
+        console.log('📋 次の確認項目:');
+        console.log('  - DBに問題データが保存されているか');
+        console.log('  - 音声ファイルが生成されているか');
+        console.log('  - セッションのcurrentIndexは更新されたか');
+        
+    } catch (error) {
+        const endTime = Date.now();
+        console.log('=====================================');
+        console.log('❌ テスト失敗');
+        console.log(`⏱️  実行時間: ${endTime - startTime}ms`);
+        console.error('💥 エラー詳細:', error);
+        
+        if (error instanceof Error) {
+            console.error('📝 エラーメッセージ:', error.message);
+            console.error('📚 スタックトレース:', error.stack);
+        }
+    }
+}
+
+// テスト実行
+testPart2Integration();

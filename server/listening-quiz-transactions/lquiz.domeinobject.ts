@@ -13,7 +13,7 @@ export interface NewLQuestionInfo {
     speakerAccent?: 'American' | 'British' | 'Canadian' | 'Australian',
     speakingRate: number //必須　デフォルト値は1.0
 };
-
+/*
 //復習問題取得用
 export class ReviewQuestionInfo {
     constructor(
@@ -26,6 +26,7 @@ export class ReviewQuestionInfo {
         public speakingRate?: number //新規生成時のみ使用
     ){}
 };
+*/
 
 //音声URLデータ
 export interface AudioFilePath {
@@ -79,7 +80,7 @@ export interface NewLAnswerData {
 };
 
 //解答データ検索用ドメインオブジェクト
-export interface AnswerScripts {
+export interface AnswerScript {
     lQuestionID: string,
     answerOption: "A"|"B"|"C"|"D",
     audioScript: string,

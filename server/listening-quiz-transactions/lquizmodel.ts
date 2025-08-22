@@ -42,29 +42,28 @@ export async function dbRelease(client: PoolClient): Promise<void> {
 };
 
 //新規クイズデータの挿入
-export async function newQuestionBatchInsert(client: PoolClient, insertNewDataList: entity.LQuestionEntity[]): Promise<QueryResult> {
+export async function newQuestionInsert(client: PoolClient, dataForInsert: entity.LQuestionEntity): Promise<QueryResult> {
     try{
-        const placeholders = insertNewDataList.map((_, index) => {
-            const baseIndex = index * 10 + 1;
-            return `($${baseIndex}, $${baseIndex + 1}, $${baseIndex + 2}, $${baseIndex + 3}, $${baseIndex + 4}, $${baseIndex + 5}, $${baseIndex + 6}, $${baseIndex + 7}, $${baseIndex + 8}, $${baseIndex + 9})`;
-        }).join(', ');
+        // プレースホルダーを動的生成
+        const placeholders = `($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`;
         
+        const values = [
+            dataForInsert.lQuestionID,
+            dataForInsert.questionHash,
+            dataForInsert.audioScript,
+            dataForInsert.jpnAudioScript,
+            dataForInsert.answerOption,
+            dataForInsert.sectionNumber,
+            dataForInsert.explanation,
+            dataForInsert.speakerAccent,
+            dataForInsert.speakingRate,
+            dataForInsert.duration,
+            dataForInsert.audioFilePath
+        ];
+
         const sql = `INSERT INTO listening_questions 
-                    (l_question_id, audio_script, jpn_audio_script, answer_option, section_num, explanation, speaker_accent, speaking_rate, duration, audio_file_path) 
+                    (l_question_id, question_hash, audio_script, jpn_audio_script, answer_option, section_num, explanation, speaker_accent, speaking_rate, duration, audio_file_path) 
                     VALUES ${placeholders}`;
-        
-        const values = insertNewDataList.flatMap(insertNewData => [
-            insertNewData.lQuestionID,
-            insertNewData.audioScript,
-            insertNewData.jpnAudioScript,
-            insertNewData.answerOption,
-            insertNewData.sectionNumber,
-            insertNewData.explanation,
-            insertNewData.speakerAccent,
-            insertNewData.speakingRate,
-            insertNewData.duration,
-            insertNewData.audioFilePath
-        ]);
         
         return await client.query(sql, values);
     } catch (error) {
