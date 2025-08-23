@@ -37,7 +37,7 @@ export interface QuestionResDTO {
     //explanation: string,
     speakerAccent: "American" | "British" | "Canadian" | "Australian",
     speakingRate: number,
-    duration: number
+    duration?: number
     //audioURL: string
 };
 /*
