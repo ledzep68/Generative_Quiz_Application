@@ -6,7 +6,7 @@ userservice.tsの機能:
 
 *********************************************/
 
-import crypto, {randomUUID} from "crypto";
+import crypto, {UUID, randomUUID} from "crypto";
 import { userDBGetConnect, userDBNewDataRecord, userDBLoginDataExtract, userDBRelease, userDBDisconnect } from "./usermodels.ts";
 import { PoolClient } from "pg";
 import { UserDTO } from "./userdto.ts";
@@ -35,12 +35,13 @@ export async function userDBConnect(): Promise<PoolClient> {
 
 
 //ユーザー新規登録
+//管理者承認にしたい
 export async function userDataRegister(client: PoolClient, userDTO: UserDTO): Promise<boolean> {
     const userId = userDTO.userId;
-    const username = userDTO.username;
-    const hashedpassword = userDTO.hashedpassword;
+    const userName = userDTO.userName;
+    const hashedPassword = userDTO.hashedPassword;
     try{
-        if(typeof userId === 'string' && typeof username === 'string' && typeof hashedpassword === 'string'){
+        if(typeof userId === 'string' && typeof userName === 'string' && typeof hashedPassword === 'string'){
             await userDBNewDataRecord(client, userDTO);
             return true
         } else {
@@ -54,13 +55,16 @@ export async function userDataRegister(client: PoolClient, userDTO: UserDTO): Pr
 };
 
 //ログイン処理
-export async function userLogin(client: PoolClient, userDTO: UserDTO): Promise<boolean> {
-    const username = userDTO.username;
-    const hashedpassword = userDTO.hashedpassword;
+export async function userLogin(client: PoolClient, userDTO: UserDTO): Promise<{userId: UUID, loginResult: boolean}> {
+    const userName = userDTO.userName;
+    const hashedPassword = userDTO.hashedPassword;
     try{
-        if(typeof username === 'string' && typeof hashedpassword === 'string') {
-            const Result = await userDBLoginDataExtract(client, userDTO)
-            return Result.rows.length !== 0 ? true : false; //trueならログイン成功, falseならログイン失敗
+        if(typeof userName === 'string' && typeof hashedPassword === 'string') {
+            const result = await userDBLoginDataExtract(client, userDTO)
+            return {
+                userId: result.rows[0].user_id,
+                loginResult: result.rows.length !== 0 ? true : false //trueならログイン成功, falseならログイン失敗
+            }; 
         } else {
             throw new userbusinesserrors.ValidationError("usernameかhashedpasswordがstring型ではありません");
         }
@@ -70,3 +74,34 @@ export async function userLogin(client: PoolClient, userDTO: UserDTO): Promise<b
         await userDBRelease(client);
     }      
 };
+
+//セッション初期化・開始
+export async function initializeUserSession(userId: UUID, session: Express.Request["session"]): Promise<void> {
+    return new Promise((resolve, reject) => {
+        //セッション再生成（固定ID不可）
+        session.regenerate((err) => {
+            if (err) {
+                console.error(`Session regeneration failed for user ${userId}:`, err);
+                reject(new Error('Failed to regenerate session'));
+                return;
+            }
+            
+            //userId設定
+            session.userId = userId; 
+            //questionSetは初期化時点では未設定
+            
+            //ログ出力
+            console.info(`User session initialized: userId=${userId}, sessionId=${session.id}`);
+            
+            //セッション保存
+            session.save((err) => {
+                if (err) {
+                    console.error(`Session save failed for user ${userId}:`, err);
+                    reject(new Error('Failed to save session'));
+                    return;
+                }
+                resolve();
+            });
+        });
+    });
+}

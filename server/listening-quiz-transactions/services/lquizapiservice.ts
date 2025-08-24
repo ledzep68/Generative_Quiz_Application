@@ -35,12 +35,13 @@ export type AccentType = keyof typeof ACCENT_PATTERNS;
 export type SpeakerAccent = typeof ACCENT_PATTERNS[keyof typeof ACCENT_PATTERNS]; 
 
 //問題セット生成初期化時（初回リクエスト時）
-export async function initializeNewQuestionSet(req: Express.Request["session"], domObj: domein.NewLQuestionInfo): Promise<void> {
+//新規登録/ログイン時に初期化したセッションデータnoutiquestionSetだけ追記する
+export async function initializeNewQuestionSet(session: Express.Request["session"], domObj: domein.NewLQuestionInfo): Promise<void> {
     const speakerAccentList = getRandomSpeakerAccent(domObj.requestedNumOfLQuizs);
-
     const settingList = getRandomSettings(domObj.requestedNumOfLQuizs, domObj.sectionNumber);
+
     if(domObj.sectionNumber === 2){
-        req.questionSet = {
+        session.questionSet = {
             sectionNumber: domObj.sectionNumber,
             totalQuestionNum: domObj.requestedNumOfLQuizs,
             currentIndex: 0, //現在の問題番号 min:0, max:9（1-10に対応）
@@ -53,7 +54,7 @@ export async function initializeNewQuestionSet(req: Express.Request["session"], 
         const contentTopicInstructionList = generateContentTopicInstructions(domObj.requestedNumOfLQuizs, settingList);
         const contentFrameworkList = generateContentFrameworks(domObj.sectionNumber, settingList);
         
-        req.questionSet = {
+        session.questionSet = {
             sectionNumber: domObj.sectionNumber,
             totalQuestionNum: domObj.requestedNumOfLQuizs,
             currentIndex: 0,
@@ -64,7 +65,19 @@ export async function initializeNewQuestionSet(req: Express.Request["session"], 
             contentFrameworkTextList: contentFrameworkList,
             speakingRate: domObj.speakingRate
         }
-    }
+    };
+
+    return new Promise((resolve, reject) => {
+        session.save((err) => {
+            if (err) {
+                console.error('Failed to save questionSet to session:', err);
+                reject(new Error('Failed to initialize question set'));
+            } else {
+                console.info(`Question set initialized: section=${domObj.sectionNumber}, totalQuestions=${domObj.requestedNumOfLQuizs}`);
+                resolve();
+            }
+        });
+    });
 }
 
 //ランダム選択関数 リクエストされた問題数分のアクセントを返す
@@ -1888,7 +1901,7 @@ export class TOEICSSMLGenerator {
         return content
             .replace(/\[pause\]/g, '<break time="1.5s"/>')
             .replace(/\[short pause\]/g, '<break time="0.8s"/>');
-    }
+    };
     
     /**
      * SSMLの特殊文字をエスケープ
@@ -1902,7 +1915,7 @@ export class TOEICSSMLGenerator {
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&apos;');
-    }
+    };
     
     /**
      * 最終的なSSMLを組み立て
@@ -2064,19 +2077,19 @@ export async function validateSSML(ssml: string): Promise<void> {
 };
 export async function validateDetailSSML(ssml: string, expectedPartNumber?: 1|2|3|4): Promise<void> {
     
-    // 基本検証を実行
+    //基本検証を実行
     await validateSSML(ssml);
     
-    // art別の詳細検証
+    //Part別の詳細検証
     if (expectedPartNumber) {
         const voiceTags = ssml.match(/<voice\s+name="[^"]+"\s*>/g) || [];
         
-        // Part別の期待話者数
+        //Part別の期待話者数
         const expectedSpeakers = {
-            1: 1, // ナレーターのみ
-            2: 2, // 質問者 + ナレーター
-            3: 3, // 会話者1 + 会話者2 + ナレーター
-            4: 2  // 発表者 + ナレーター
+            1: 1, //ナレーターのみ
+            2: 2, //質問者 + ナレーター
+            3: 3, //会話者1 + 会話者2 + ナレーター
+            4: 2  //発表者 + ナレーター
         };
         
         const expected = expectedSpeakers[expectedPartNumber];
@@ -2086,7 +2099,7 @@ export async function validateDetailSSML(ssml: string, expectedPartNumber?: 1|2|
             );
         }
         
-        // ナレーター固定の確認（Part1は全員ナレーター、他Partは最後がナレーター）
+        //ナレーター固定の確認（Part1は全員ナレーター、他Partは最後がナレーター）
         const narratorVoice = 'en-US-Wavenet-B';
         if (expectedPartNumber === 1) {
             // Part1: 全てナレーター
@@ -2115,12 +2128,12 @@ export async function validateDetailSSML(ssml: string, expectedPartNumber?: 1|2|
 export async function saveAudioFile(audioBuffer: Buffer, lQuestionID: string, duration?: number): Promise<domein.AudioFilePath> {
     
     try {
-        // フォルダ作成
+        //フォルダ作成 命名形式 listening-partX-${lQuestionID}
         const audioDir = createAudioDirectory(lQuestionID);
         await fs.mkdir(audioDir, { recursive: true });
         console.log(`音声フォルダ作成完了`);
         
-        // ファイル名生成と保存
+        //ファイル名生成と保存
         const audioFilePath = generateAudioFilePath(audioDir);
         await fs.writeFile(audioFilePath, audioBuffer);
 

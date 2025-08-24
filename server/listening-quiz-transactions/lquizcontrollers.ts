@@ -15,18 +15,27 @@ import * as errorhandler from "./errors/errorhandlers.ts";
 import { z } from "zod";
 import * as businessschema from "./schemas/lquizbusinessschema.ts";
 
-
-//セッション開始
-export async function initializeLQuizController(req: Request, res: Response ): Promise<void> {
-    const newLQuestionInfo= mapper.NewLQuestionInfoMapper.toDomainObject(req.body.QuestionReqDTO);
-    /*
-    NewLQuestionInfo: {
-        requestedNumOfLQuizs: number;
-        sectionNumber: number;
-        speakingRate: number;
-        speakerAccent?: 'American' | 'British' | 'Canadian' | 'Australian'}
-    */
-    await apiservice.initializeNewQuestionSet(req.session, newLQuestionInfo);
+//セッションのうちクイズ関連データの初期化
+export async function initializeQuizSessionController(req: Request, res: Response): Promise<void> {
+    try {
+        const newLQuestionInfo = mapper.NewLQuestionInfoMapper.toDomainObject(req.body.RandomNewQuestionReqDTO);
+        
+        //セッション特定処理の実装は不要（express-sessionが自動処理）
+        //req.session は既に現在のユーザーのセッションを指している
+        
+        //questionSetを作成しセッションに格納
+        await apiservice.initializeNewQuestionSet(req.session, newLQuestionInfo);
+        
+        res.json({
+            success: true,
+            sessionId: req.session.id,  //デバッグ用
+            message: 'Quiz session initialized'
+        });
+        
+    } catch (error) {
+        console.error('Session initialization error:', error as Error);
+        res.status(500).json({ error: 'Failed to initialize quiz session' });
+    }
 };
 
 //Part2問題&音声データ生成
@@ -42,7 +51,13 @@ export async function generatePart2LQuizController(req: Request, res: Response):
     }
     const questionSet = sessionData.questionSet;
     console.log("questionSet: ", questionSet);
+    //問題番号更新
+    const requestedIndex = req.body.currentIndex; //フロントエンドから送信
+    questionSet.currentIndex = requestedIndex;
+    console.log("currentIndex: ", questionSet.currentIndex);
+
     const {sectionNumber, currentIndex, totalQuestionNum, speakerAccentList, settingList, speakingRate} = questionSet;
+    
     //currentIndexをtotalQuestionNumと比較
     if(currentIndex >= totalQuestionNum){
         throw new Error("Index out of range");
@@ -68,16 +83,24 @@ export async function generatePart2LQuizController(req: Request, res: Response):
         console.log("newAudioReqDTO: ", newAudioReqDTO);
         const audioFilePath = await apiservice.generateAudioContent(newAudioReqDTO, lQuestionID);
         console.log("audioFilePath: ", audioFilePath);
-        //question_hash配信
-        res.json(questionHash);
+
         //問題データ登録
         await businessservice.newQuestionDataInsert(questionData, audioFilePath, questionHash, speakingRate as number);
+
+        //レスポンス　question_hash配信
+        res.status(200).json({
+            questionHash: questionHash,
+            currentIndex: currentIndex,
+            message: 'Question generated and saved successfully'
+        });
+
     } catch (error) {
         console.error('Part2 クイズ生成エラー:', error);
         const { response } = errorhandler.generateLQuestionErrorHandler(error as Error);
         res.status(response.status).json(response);
     }
 };
+
 //Part3,4問題&音声データ生成　part2と生成フローが異なるのでエンドポイントを分割した
 export async function generatePart34LQuizController(req: Request, res: Response): Promise<void> {
     //currentIndexをtotalQuestionNumと比較
@@ -91,13 +114,51 @@ export async function generatePart34LQuizController(req: Request, res: Response)
                     //解説生成
     //currentIndex>=totalQuestionNum
         //インデックス不正エラー
-}
-//セッション情報更新
-export async function updateSessionController(req: Request, res: Response): Promise<void> {}
+};
 
-//殺生情報リセット　エラー発生時用
-export async function resetSessionController(req: Request, res: Response): Promise<void> {}
+//セッション情報リセット　正常終了時用
+export async function resetSessionController(req: Request, res: Response): Promise<void> {
+    try{
+        //完了ログの記録
+        console.info(`Quiz session completed successfully: userID=${req.session.userID}`);
+        
+        //セッション情報を空にする（userId, questionSet, sessionID全て削除）
+        await new Promise<void>((resolve, reject) => {
+            req.session.destroy((err) => err ? reject(err) : resolve());
+        });
+        
+        res.status(200).json({ 
+            success: true, 
+            message: 'Session reset successfully'
+        });
 
+    } catch (error) {
+        res.status(500).json({ error: 'Failed to reset session' });
+    }
+};
+
+//セッション情報リセット　エラー発生時用
+export async function resetSessionOnErrorController(req: Request, res: Response): Promise<void> {
+    try {
+        //エラーログの記録
+        console.error(`Quiz session reset due to error: userID=${req.session.userID}, errorType=${req.body.errorType}, errorMessage=${req.body.errorMessage}`);
+    
+        //セッション情報を空にする（userId, questionSet, sessionID全て削除）
+        await new Promise<void>((resolve, reject) => {
+            req.session.destroy((err) => err ? reject(err) : resolve());
+        });
+        
+        res.status(200).json({ 
+            success: true, 
+            message: 'Session reset due to error'
+        });
+        
+    } catch (error) {
+        res.status(500).json({ error: 'Failed to reset session' });
+    }
+};
+
+/*
 //新規クイズ生成・出題
 export async function generateQuestionController(req: Request, res: Response): Promise<void>{
     try{
@@ -149,7 +210,7 @@ export async function generateQuestionController(req: Request, res: Response): P
         res.status(response.status).json(response);
     }
 };
-
+*/
 /*
 //既存問題の出題（ID指定方式）
 export async function reviewQuestionController(req: Request, res: Response): Promise<void> {

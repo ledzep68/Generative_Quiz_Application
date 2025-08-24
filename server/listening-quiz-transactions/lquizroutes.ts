@@ -4,10 +4,20 @@ import * as controller from "./lquizcontrollers.ts";
 
 const lQuizRouter = Express.Router();
 
+//セッション初期化処理
+//URL: http://localhost:3000/api/lquiz/initialize-session
+lQuizRouter.post("/initialize-session", controller.initializeQuizSessionController);
+
 //問題生成処理
-lQuizRouter.post("/new-quiz-generate", controller.generateQuestionController);
+//Part1 URL: http://localhost:3000/api/lquiz/new-quiz-generate-1
+//未実装
+//Part2 URL: http://localhost:3000/api/lquiz/new-quiz-generate-2
+lQuizRouter.post("/new-quiz-generate-2", controller.generatePart2LQuizController);
+//Part3,4 URL: http://localhost:3000/api/lquiz/new-quiz-generate-2
+lQuizRouter.post("/new-quiz-generate-3or4", controller.generatePart34LQuizController);
 
 //回答処理
+//URL: http://localhost:3000/api/lquiz/answer
 lQuizRouter.post("/answer", controller.answerController);
 
 export default lQuizRouter;

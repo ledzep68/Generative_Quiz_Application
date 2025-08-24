@@ -13,8 +13,8 @@ export function audioDeliveryControllerErrorHandler(error: Error): {response: an
         'AudioFileAccessError': {
             response: audioDeliveryControllerResponses.AUDIO_FILE_ACCESS_ERROR
         },
-        'InvalidQuestionIdError': {
-            response: audioDeliveryControllerResponses.INVALID_QUESTION_ID
+        'InvalidQuestionHashError': {
+            response: audioDeliveryControllerResponses.INVALID_QUESTION_HASH
         },
         'AudioDeliveryError': {
             response: audioDeliveryControllerResponses.AUDIO_DELIVERY_ERROR
@@ -25,10 +25,10 @@ export function audioDeliveryControllerErrorHandler(error: Error): {response: an
 
         // 汎用バリデーションエラー
         'ValidationError': {
-            response: audioDeliveryControllerResponses.INVALID_QUESTION_ID
+            response: audioDeliveryControllerResponses.INVALID_QUESTION_HASH
         },
         'ZodError': {
-            response: audioDeliveryControllerResponses.INVALID_QUESTION_ID
+            response: audioDeliveryControllerResponses.INVALID_QUESTION_HASH
         },
         
         // Models層で発生するエラー

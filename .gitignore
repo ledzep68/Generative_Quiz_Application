@@ -15,3 +15,5 @@ wasted-prompts/
 prompts/
 
 testdata.ts
+
+**/*resources*/

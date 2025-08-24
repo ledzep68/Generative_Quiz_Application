@@ -34,12 +34,12 @@ export async function userDBGetConnect(): Promise<PoolClient> {
     }
 };
 
-//新規登録
+//新規登録　created_at・updated_atは自動的に更新される
 export async function userDBNewDataRecord(client: PoolClient, userDTO: UserDTO): Promise<QueryResult> {
     try{
         const userId = userDTO.userId;
-        const username = userDTO.username;
-        const hashedpassword = userDTO.hashedpassword;
+        const username = userDTO.userName;
+        const hashedpassword = userDTO.hashedPassword;
         const sql = "INSERT INTO users (user_id, user_name, hashed_password) VALUES ($1, $2, $3)";
         const values = [userId, username, hashedpassword];
         return await client.query(sql, values);
@@ -52,8 +52,8 @@ export async function userDBNewDataRecord(client: PoolClient, userDTO: UserDTO):
 //ログイン用のデータ取得
 export async function userDBLoginDataExtract(client: PoolClient, userDTO: UserDTO): Promise<QueryResult> { 
     try{
-        const username = userDTO.username;
-        const hashedpassword = userDTO.hashedpassword;
+        const username = userDTO.userName;
+        const hashedpassword = userDTO.hashedPassword;
         const sql ="SELECT user_id FROM users WHERE user_name = $1 AND hashed_password = $2";
         const values = [username, hashedpassword];
         return await client.query(sql, values);

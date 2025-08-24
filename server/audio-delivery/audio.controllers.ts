@@ -1,37 +1,29 @@
 import { Request, response, Response } from "express";
-import z from "zod";
 import fs from 'fs/promises';
 import path from 'path';
 
 import * as service from "./audio.services.ts";
 import * as errors from "./errors/audio.businesserrors.ts";
 import { audioDeliveryControllerErrorHandler } from "./errors/errorhandlers.ts"
-import { error } from "console";
 
 /*
 GETリクエスト⇨audioデータ配信（一個ずつ）
 */
-
 async function audioDeliveryController(req: Request, res: Response): Promise<void> {
-    console.log('=== Audio API Hit ==='); // ★ 最初に追加
-    console.log('Method:', req.method);
-    console.log('URL:', req.url);
-    console.log('params:', req.params);
-    const {lQuestionId} = req.params;
+    const {questionHash} = req.params;
     
     try {
         //バリデーション
-        if (!lQuestionId || lQuestionId.trim() === '') {
-            //console.log(errors.InvalidQuestionIdError, "問題IDが指定されていません");
-            throw new errors.InvalidQuestionIdError("問題IDが指定されていません");
+        if (!questionHash || questionHash.trim() === '') {
+            throw new errors.InvalidQuestionHashError("問題ハッシュが指定されていません");
         };
         
-        //問題IDから音声ファイルパスを取得
-        const audioFilePath = await service.audioFilePathExtract(lQuestionId);
+        //問題ハッシュから音声ファイルパスを検索・取得
+        const audioFilePath = await service.audioFilePathExtract(questionHash);
         console.log('audioFilePath: ', audioFilePath);
         
         if (!audioFilePath) {
-            throw new errors.QuestionNotFoundError(`問題ID: ${lQuestionId} に対応する音声ファイルが見つかりません`);
+            throw new errors.QuestionNotFoundError(`問題ハッシュ: ${questionHash} に対応する音声ファイルが見つかりません`);
         };
         
         //ファイル存在確認

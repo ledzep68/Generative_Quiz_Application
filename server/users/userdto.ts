@@ -1,18 +1,13 @@
 /*********************************************
 
-userdto.tsの機能: コントローラ、ビジネスロジック、モデルといったモジュール間で受け渡されるデータ構造を定義する
+userdto.tsの機能: クライアント/サーバ間で授受されるデータ形式を定義する
 
 *********************************************/
+import { UUID } from "crypto";
 
-export class UserDTO {
-    constructor(userId?: string, username?: string, password?: string, hashedpassword?: string) {
-        this.userId = userId;
-        this.username = username;
-        //this.password = password;
-        this.hashedpassword = hashedpassword
-    };
-    userId?: string;
-    username?: string;
-    //password?: string;
-    hashedpassword?: string
+export interface UserDTO {
+    userId: UUID;
+    userName: string;
+    password: string;
+    hashedPassword: string;
 }

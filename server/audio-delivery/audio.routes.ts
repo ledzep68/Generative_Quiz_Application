@@ -4,7 +4,7 @@ import audioDeliveryController from "./audio.controllers.ts";
 const audioRouter = express.Router();
 
 //audioデータ配信（一個ずつ）
-//URL: http://localhost:3000/audio/question/${lQuestionId}
-audioRouter.get('/question/:lQuestionId', audioDeliveryController);
+//URL: http://localhost:3000/api/audio/${questionHash}
+audioRouter.get('/:questionHash', audioDeliveryController);
 
 export default audioRouter;

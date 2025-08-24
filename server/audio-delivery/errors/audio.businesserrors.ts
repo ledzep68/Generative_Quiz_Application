@@ -41,14 +41,14 @@ export class AudioFileAccessError extends Error implements AudioDeliveryError {
     }
 }
 
-// 無効な問題IDエラー
-export class InvalidQuestionIdError extends Error implements AudioDeliveryError {
+// 無効な問題ハッシュエラー
+export class InvalidQuestionHashError extends Error implements AudioDeliveryError {
     constructor(
-        message: string = "無効な問題IDです",
-        public status: number = audioDeliveryControllerResponses.INVALID_QUESTION_ID.status
+        message: string = "無効なhash値です",
+        public status: number = audioDeliveryControllerResponses.INVALID_QUESTION_HASH.status
     ) {
         super(message);
-        this.name = "InvalidQuestionIdError";
+        this.name = "InvalidQuestionHashError";
         this.status = status;
     }
 }

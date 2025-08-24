@@ -12,7 +12,6 @@ function RegisterForm() {
         navigate('/main-menu');
     };
 
-    
     return (
         <Container maxWidth="sm">
             <Box

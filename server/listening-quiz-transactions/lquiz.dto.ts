@@ -10,6 +10,7 @@ import { SpeakerAccent } from "./services/lquizapiservice.ts";
 
 //ユーザーからの新規クイズリクエストスキーマ（ランダム生成、ID非指定）
 export interface RandomNewQuestionReqDTO {
+    userID: UUID,
     sectionNumber: 1|2|3|4,
     requestedNumOfLQuizs: number,
     speakerAccent?: 'American' | 'British' | 'Canadian' | 'Australian',
@@ -20,7 +21,7 @@ export interface RandomNewQuestionReqDTO {
 export class RandomReviewQuestionReqDTO {
     constructor(
         /*public lQuestionID: string,*/
-        public userID: string,
+        public userID: UUID,
         public sectionNumber: 1|2|3|4,
         public reviewTag: boolean,
         public requestedNumOfLQuizs?: number,

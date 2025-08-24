@@ -8,7 +8,6 @@ export interface RandomNewQuestionReqDTO {
     speakerAccent?: "American" | "British" | "Canadian" | "Australian"
 };
 
-
 //復習クイズリクエストスキーマ（ランダム、ID非指定）
 export interface RandomReviewQuestionReqDTO {
     userID: string,

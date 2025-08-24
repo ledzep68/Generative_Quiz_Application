@@ -25,9 +25,10 @@ app.use(session({
     secret: process.env.SESSION_SECRET as string, //sessionIDに電子署名を付与(HMAC_SHA256) sessionIDと電子署名をセットで授受し、改ざん検知
     resave: false,
     saveUninitialized: false,
+    rolling: true,  //アクティブ時に時間延長
     cookie: { 
-        maxAge: 1000 * 60 * 60 * 24, //24h 学習セッションが継続する間の秒数
-        httpOnly: true
+        maxAge: 1000 * 60 * 30,  //30分でタイムアウト→セッションデータ解放
+        httpOnly: true,
         //secure: true HTTPS時のみ有効化（後で実装）
         //sameSite: 'lax' クロスオリジンなサイトからのリクエスト制限　CSRF対策
     }

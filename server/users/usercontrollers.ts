@@ -7,7 +7,7 @@ usercontrollers.tsの機能:
 *********************************************/
 
 import { Request, Response } from "express";
-import { userPasswordEncrypt, userIdGenerate, userDataRegister, userDBConnect, userLogin } from "./userservice.ts";
+import { userPasswordEncrypt, userIdGenerate, userDataRegister, userDBConnect, userLogin, initializeUserSession } from "./userservice.ts";
 import { UserDTO } from "./userdto.ts";
 import { UserResponses } from "./usersjson.ts";
 import { userRegisterBusinessErrorHandler, userLoginBusinessErrorHandler } from "./errors/errorhandlers.ts";
@@ -29,7 +29,7 @@ export async function userRegisterController(req: Request, res: Response): Promi
         const userId = userIdGenerate();
 
         //UserDTOにマッピング
-        const userDTO = new UserDTO(userId, ValidatedData.username, ValidatedData.password, hashedpassword);
+        const userDTO = {userId: userId, userName: ValidatedData.userName, password: ValidatedData.password, hashedPassword: hashedpassword} as UserDTO;
 
         //DB接続　poolからコネクションを払い出す
         const client = await userDBConnect(); //失敗時DBCOnnectErrorをthrow
@@ -70,17 +70,21 @@ export async function userLoginController(req: Request, res: Response): Promise<
         const hashedpassword = userPasswordEncrypt(ValidatedData.password); //失敗時ValidationErrorをthrow
 
         //UserDTOにマッピング
-        const userDTO = new UserDTO(undefined, ValidatedData.username, ValidatedData.password, hashedpassword);
+        const userDTO = {userName: ValidatedData.userName, hashedPassword: hashedpassword} as UserDTO;
 
         //db接続　poolからコネクションを払い出す
         const client = await userDBConnect(); //失敗時DBCOnnectErrorをthrow
 
         //ログイン処理
-        const loginresult = await userLogin(client, userDTO); //DB操作失敗時DBOperationError OR ValidationErrorをthrow
-        loginresult === true ? 
+        const loginResult = await userLogin(client, userDTO); //DB操作失敗時DBOperationError OR ValidationErrorをthrow
+        loginResult.loginResult === true ? 
             res.status(UserResponses.LOGIN_SUCCESS.status /*200*/).json(UserResponses.LOGIN_SUCCESS)
             : res.status(UserResponses.LOGIN_FAILED.status /*401*/).json(UserResponses.LOGIN_FAILED);
         console.log("ログイン判定処理が適切に完了");
+
+        //セッション開始・初期化
+        await initializeUserSession(loginResult.userId, req.session);
+
         return;
     } catch (error) {
         if(error instanceof z.ZodError){ //入力値のバリデーション
@@ -99,3 +103,5 @@ export async function userLoginController(req: Request, res: Response): Promise<
         }
     };
 }
+
+//ユーザー情報消去処理

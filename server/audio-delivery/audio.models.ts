@@ -41,10 +41,10 @@ export async function dbRelease(client: PoolClient): Promise<void> {
 };
 
 //audio_file_path取得
-export async function audioFilePathExtract(client: PoolClient, lQuestionID: string): Promise<QueryResult> {
+export async function audioFilePathExtract(client: PoolClient, questionHash: string): Promise<QueryResult> {
     try {
-        const sql = "SELECT audio_file_path FROM listening_questions WHERE l_question_id = $1";
-        const values = [lQuestionID];
+        const sql = "SELECT audio_file_path FROM listening_questions WHERE question_hash = $1";
+        const values = [questionHash];
         return await client.query(sql, values);
     } catch (error) {
         console.log('DB操作エラー (SELECT):', error);

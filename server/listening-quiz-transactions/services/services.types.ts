@@ -1,7 +1,9 @@
 import session from 'express-session';
+import { UUID } from "crypto";
 
-declare module 'express-session' {
+/*declare module 'express-session' {
     interface SessionData {
+        userID: UUID;
         questionSet?: {
             sectionNumber: 1 | 2 | 3 | 4;
             //問題番号管理用パラメータ
@@ -17,7 +19,7 @@ declare module 'express-session' {
             speakingRate?: number;
         }
     }
-};
+};*/
 
 //audioScriptタグ構造定義用
 //基本的な話者パターン定義

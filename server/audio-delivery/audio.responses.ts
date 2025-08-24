@@ -55,9 +55,9 @@ export const audioDeliveryControllerResponses = {
         status: 500
     },
 
-    INVALID_QUESTION_ID: {
-        type: "INVALID_QUESTION_ID",
-        title: "無効な問題IDです",
+    INVALID_QUESTION_HASH: {
+        type: "INVALID_QUESTION_HASH",
+        title: "無効なhash値です",
         status: 400
     },
 
