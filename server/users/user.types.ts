@@ -10,7 +10,7 @@ import { UUID } from "crypto";
 //users・listening-quiz-transactionsで共用
 declare module 'express-session' {
     interface SessionData {
-        userID: UUID;
+        userId: UUID;
         questionSet?: {
             sectionNumber: 1 | 2 | 3 | 4;
             //問題番号管理用パラメータ

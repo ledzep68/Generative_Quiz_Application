@@ -1,21 +1,63 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Box, Container, Paper, Typography } from "@mui/material";
+import * as dto from "../dto";
+import * as api from "../api";
+import * as schema from "../schema";
+
 import ButtonComponent from "../../../../shared/components/Button";
 import InputFormComponent from "../../../../shared/components/InputForm";
+import z from "zod";
 
 function LoginForm() {
-    const [userId, setUserId] = useState<string>("");
+    const [userName, setUserName] = useState<string>("");
     const [password, setPassword] = useState<string>("");
+    const [invitationCode, setInvitationCode] = useState<string>("");
     const navigate = useNavigate();
-    const handleLoginClick = () => {
-        navigate('/main-menu');
+    const [fetchLoginAndInitializeSession] = api.useFetchLoginAndInitializeSessionMutation();
+    const [fetchRegisterAndInitializeSession] = api.useFetchRegisterAndInitializeSessionMutation();
+    const handleLoginClick = async () => {
+        //ユーザー入力バリデーション
+        const loginReqDTO = schema.UserLoginValidationSchema.parse({userName: userName, password: password}) as dto.LoginReqDTO;
+        console.log("loginReqDTO: ", loginReqDTO);
+        try{
+            //ログイン・セッション開始リクエスト
+            await fetchLoginAndInitializeSession(loginReqDTO).unwrap(); //wnwrap 成功時のみデータ取得
+            navigate('/main-menu');
+        } catch (error) {
+            if (error instanceof z.ZodError) {
+                console.error('validation error:', error.message);
+                alert('ユーザー名またはパスワードが不正です');
+            } else {
+                console.error('Login error:', error);
+                alert('ログインに失敗しました');
+            }
+        }
     };
-    const handleRegisterClick = () => {
-        navigate('/register');
+    const handleRegisterClick = async () => {
+        //ユーザー入力バリデーション
+        const registerReqDTO = schema.UserRegisterValidationSchema.parse({userName: userName, password: password, invitationCode: invitationCode}) as dto.RegisterReqDTO;
+        try{
+            //新規登録・セッション開始リクエスト
+            await fetchRegisterAndInitializeSession(registerReqDTO).unwrap(); //wnwrap 成功時のみデータ取得
+            navigate('/main-menu');
+        } catch (error) {
+            if (error instanceof z.ZodError) {
+                console.error('validation error:', error.message);
+                alert('ユーザー名またはパスワードまたは招待コードが不正です');
+            } else {
+                console.error('Login error:', error);
+                alert('ユーザー登録に失敗しました');
+            }
+        }
     };
 
-    
+    useEffect(() => {
+        console.log("userName: ", userName);
+        console.log("password: ", password);
+        console.log("invitationCode: ", invitationCode);
+    })
+
     return (
         <Container maxWidth="sm">
             <Box
@@ -45,8 +87,8 @@ function LoginForm() {
                     <Box component="form" sx={{ width: '100%' }}>
                         <InputFormComponent 
                             label="ユーザー名"
-                            value={userId}
-                            onChange={setUserId}
+                            value={userName}
+                            onChange={setUserName}
                             fullWidth
                             margin="normal"
                             variant="filled"
@@ -70,7 +112,7 @@ function LoginForm() {
                                 onClick={handleLoginClick}
                                 color="primary"
                                 size="large"
-                                disabled={!userId.trim() || !password.trim()}
+                                disabled={!userName.trim() || !password.trim()}
                                 sx={{ width: '100%', py: 1.5, display: 'flex' }}
                             />
                         </Box>
@@ -89,7 +131,7 @@ function LoginForm() {
                         <Box sx={{ mb: 2 }}>
                             <ButtonComponent 
                                 variant="outlined"
-                                label="新規登録に進む"
+                                label="新規登録"
                                 onClick={handleRegisterClick}
                                 color="primary"
                                 size="large"

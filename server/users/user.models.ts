@@ -6,8 +6,8 @@ usermodels.tsの機能: ビジネス処理におけるDBの操作のみを提供
 *********************************************/
 
 import { Pool, PoolClient, QueryResult } from "pg";
-import { UserDTO } from "./userdto.js";
-import * as userdberrors from "./errors/userdberrors.ts";
+import { UserData } from "./user.domeinobject.ts";
+import * as userdberrors from "./errors/user.dberrors.ts";
 import {config} from "dotenv";
 import path from 'path'; 
 import { fileURLToPath } from 'url'; 
@@ -35,11 +35,11 @@ export async function userDBGetConnect(): Promise<PoolClient> {
 };
 
 //新規登録　created_at・updated_atは自動的に更新される
-export async function userDBNewDataRecord(client: PoolClient, userDTO: UserDTO): Promise<QueryResult> {
+export async function userDBNewDataRecord(client: PoolClient, domObj: UserData): Promise<QueryResult> {
     try{
-        const userId = userDTO.userId;
-        const username = userDTO.userName;
-        const hashedpassword = userDTO.hashedPassword;
+        const userId = domObj.userId;
+        const username = domObj.userName;
+        const hashedpassword = domObj.hashedPassword;
         const sql = "INSERT INTO users (user_id, user_name, hashed_password) VALUES ($1, $2, $3)";
         const values = [userId, username, hashedpassword];
         return await client.query(sql, values);
@@ -50,10 +50,10 @@ export async function userDBNewDataRecord(client: PoolClient, userDTO: UserDTO):
 };
 
 //ログイン用のデータ取得
-export async function userDBLoginDataExtract(client: PoolClient, userDTO: UserDTO): Promise<QueryResult> { 
+export async function userDBLoginDataExtract(client: PoolClient, domObj: UserData): Promise<QueryResult> { 
     try{
-        const username = userDTO.userName;
-        const hashedpassword = userDTO.hashedPassword;
+        const username = domObj.userName;
+        const hashedpassword = domObj.hashedPassword;
         const sql ="SELECT user_id FROM users WHERE user_name = $1 AND hashed_password = $2";
         const values = [username, hashedpassword];
         return await client.query(sql, values);

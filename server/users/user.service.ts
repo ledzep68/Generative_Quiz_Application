@@ -7,10 +7,10 @@ userservice.tsの機能:
 *********************************************/
 
 import crypto, {UUID, randomUUID} from "crypto";
-import { userDBGetConnect, userDBNewDataRecord, userDBLoginDataExtract, userDBRelease, userDBDisconnect } from "./usermodels.ts";
+import { userDBGetConnect, userDBNewDataRecord, userDBLoginDataExtract, userDBRelease, userDBDisconnect } from "./user.models.ts";
 import { PoolClient } from "pg";
-import { UserDTO } from "./userdto.ts";
-import * as userbusinesserrors from "./errors/userbusinesserrors.ts";
+import { UserData } from "./user.domeinobject.ts";
+import * as userbusinesserrors from "./errors/user.businesserrors.ts";
 
 //ユーザーIDの生成
 export function userIdGenerate(){
@@ -36,13 +36,13 @@ export async function userDBConnect(): Promise<PoolClient> {
 
 //ユーザー新規登録
 //管理者承認にしたい
-export async function userDataRegister(client: PoolClient, userDTO: UserDTO): Promise<boolean> {
-    const userId = userDTO.userId;
-    const userName = userDTO.userName;
-    const hashedPassword = userDTO.hashedPassword;
+export async function userDataRegister(client: PoolClient, domObj: UserData): Promise<boolean> {
+    const userId = domObj.userId;
+    const userName = domObj.userName;
+    const hashedPassword = domObj.hashedPassword;
     try{
         if(typeof userId === 'string' && typeof userName === 'string' && typeof hashedPassword === 'string'){
-            await userDBNewDataRecord(client, userDTO);
+            await userDBNewDataRecord(client, domObj);
             return true
         } else {
             throw new userbusinesserrors.ValidationError("userIdかusernameかhashedpasswordがstring型ではありません");
@@ -55,12 +55,12 @@ export async function userDataRegister(client: PoolClient, userDTO: UserDTO): Pr
 };
 
 //ログイン処理
-export async function userLogin(client: PoolClient, userDTO: UserDTO): Promise<{userId: UUID, loginResult: boolean}> {
-    const userName = userDTO.userName;
-    const hashedPassword = userDTO.hashedPassword;
+export async function userLogin(client: PoolClient, domObj: UserData): Promise<{userId: UUID, loginResult: boolean}> {
+    const userName = domObj.userName;
+    const hashedPassword = domObj.hashedPassword;
     try{
         if(typeof userName === 'string' && typeof hashedPassword === 'string') {
-            const result = await userDBLoginDataExtract(client, userDTO)
+            const result = await userDBLoginDataExtract(client, domObj);
             return {
                 userId: result.rows[0].user_id,
                 loginResult: result.rows.length !== 0 ? true : false //trueならログイン成功, falseならログイン失敗

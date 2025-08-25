@@ -1,12 +1,16 @@
 import {UUID} from "crypto";
 
 //新規クイズリクエストスキーマ（ランダム生成、ID非指定）
+//初回リクエストのみ送信　2問目以降はcurrentIndexだけ送信
 export interface RandomNewQuestionReqDTO {
     sectionNumber :1|2|3|4,
     requestedNumOfLQuizs: 1|2|3|4|5|6|7|8|9|10,
     speakingRate?: number,
-    speakerAccent?: "American" | "British" | "Canadian" | "Australian"
+    speakerAccent?: "American" | "British" | "Canadian" | "Australian",
 };
+
+//2回目以降
+//{currentIndex: number}
 
 //復習クイズリクエストスキーマ（ランダム、ID非指定）
 export interface RandomReviewQuestionReqDTO {

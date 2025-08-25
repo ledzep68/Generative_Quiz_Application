@@ -6,7 +6,7 @@ import { config } from "dotenv"
 
 import session from 'express-session';
 
-import usersRouter from "./users/userroutes.ts"
+import usersRouter from "./users/user.routes.ts"
 import lQuizRouter from "./listening-quiz-transactions/lquizroutes.ts"
 import audioRouter from "./audio-delivery/audio.routes.ts"
 
@@ -48,7 +48,7 @@ app.use(
     )
 );
 
-app.use('/api/users', usersRouter);
+app.use('/api/auth', usersRouter);
 app.use('/api/lquiz', lQuizRouter);
 app.use('/api/audio', audioRouter);
 

@@ -7,36 +7,44 @@ usercontrollers.tsの機能:
 *********************************************/
 
 import { Request, Response } from "express";
-import { userPasswordEncrypt, userIdGenerate, userDataRegister, userDBConnect, userLogin, initializeUserSession } from "./userservice.ts";
-import { UserDTO } from "./userdto.ts";
-import { UserResponses } from "./usersjson.ts";
+import { userPasswordEncrypt, userIdGenerate, userDataRegister, userDBConnect, userLogin, initializeUserSession } from "./user.service.ts";
+import * as dto from "./user.dto.ts";
+import { UserData } from "./user.domeinobject.ts";
+import { UserResponses } from "./user.response.ts";
 import { userRegisterBusinessErrorHandler, userLoginBusinessErrorHandler } from "./errors/errorhandlers.ts";
-import * as userschema from "./userschema.ts";
+import * as userschema from "./user.schema.ts";
 import { z } from "zod";
 
 //ユーザー新規登録処理
 export async function userRegisterController(req: Request, res: Response): Promise<void> {
     try{
-        const { username, password } = req.body;
+        const registerReqDTO = req.body;
 
         //バリデーション 失敗時z.ZodErrorをthrow
-        const ValidatedData = userschema.UserRegisterValidationSchema.parse({username, password});
+        const validatedData = userschema.UserRegisterValidationSchema.parse(registerReqDTO);
+
+        //invitaionCodeを確認（管理者）
+        const invitationCode = validatedData.invitaionCode
 
         //passwordをハッシュ化　失敗時ValidationErrorをthrow
-        const hashedpassword = userPasswordEncrypt(ValidatedData.password);
+        const hashedPassword = userPasswordEncrypt(validatedData.password);
 
         //ユーザーID生成
         const userId = userIdGenerate();
 
-        //UserDTOにマッピング
-        const userDTO = {userId: userId, userName: ValidatedData.userName, password: ValidatedData.password, hashedPassword: hashedpassword} as UserDTO;
-
+        //ドメインオブジェクトにマッピング
+        const userData = {userName: validatedData.userName, hashedPassword: hashedPassword} as UserData;
+    
         //DB接続　poolからコネクションを払い出す
         const client = await userDBConnect(); //失敗時DBCOnnectErrorをthrow
         //ユーザー新規登録
-        const result = await userDataRegister(client, userDTO) //失敗時DBOperationError OR ValidationErrorをthrow
+        const result = await userDataRegister(client, userData) //失敗時DBOperationError OR ValidationErrorをthrow
         res.status(200).json(UserResponses.USER_REGISTER_SUCCESS);
         console.log("ユーザー新規登録成功");
+
+        //セッション開始・初期化
+        await initializeUserSession(userId, req.session);
+
         return;
     } catch (error) {
         if(error instanceof z.ZodError){ //入力値のバリデーション
@@ -61,22 +69,24 @@ export async function userRegisterController(req: Request, res: Response): Promi
 //ログイン処理
 export async function userLoginController(req: Request, res: Response): Promise<void> {
     try{
-        const { username, password } = req.body;
+        const loginReqDTO = req.body;
+        console.log('loginReqDTO: ', loginReqDTO);
 
         //バリデーション
-        const ValidatedData = userschema.UserLoginValidationSchema.parse({username, password}); //失敗時z.ZodErrorをthrow
+        const validatedData = userschema.UserLoginValidationSchema.parse(loginReqDTO); //失敗時z.ZodErrorをthrow
 
         //passwordをハッシュ化
-        const hashedpassword = userPasswordEncrypt(ValidatedData.password); //失敗時ValidationErrorをthrow
+        const hashedPassword = userPasswordEncrypt(validatedData.password); //失敗時ValidationErrorをthrow
 
-        //UserDTOにマッピング
-        const userDTO = {userName: ValidatedData.userName, hashedPassword: hashedpassword} as UserDTO;
+        //ドメインオブジェクトにマッピング
+        const userData = {userName: validatedData.userName, hashedPassword: hashedPassword} as UserData;
 
         //db接続　poolからコネクションを払い出す
         const client = await userDBConnect(); //失敗時DBCOnnectErrorをthrow
+        console.log("client: ", client);
 
         //ログイン処理
-        const loginResult = await userLogin(client, userDTO); //DB操作失敗時DBOperationError OR ValidationErrorをthrow
+        const loginResult = await userLogin(client, userData); //DB操作失敗時DBOperationError OR ValidationErrorをthrow
         loginResult.loginResult === true ? 
             res.status(UserResponses.LOGIN_SUCCESS.status /*200*/).json(UserResponses.LOGIN_SUCCESS)
             : res.status(UserResponses.LOGIN_FAILED.status /*401*/).json(UserResponses.LOGIN_FAILED);

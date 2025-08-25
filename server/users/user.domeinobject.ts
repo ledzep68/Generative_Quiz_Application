@@ -1,11 +1,11 @@
 /*********************************************
 
-userdto.tsの機能: クライアント/サーバ間で授受されるデータ形式を定義する
+user.domeinobject.tsの機能: 
 
 *********************************************/
 import { UUID } from "crypto";
 
-export interface UserDTO {
+export interface UserData {
     userId: UUID;
     userName: string;
     password: string;

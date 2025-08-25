@@ -1,8 +1,8 @@
 import express from "express";
 import request from "supertest";
-import UsersRouter from "../users/userroutes.ts";
-import {userLoginController, userRegisterController} from "../users/usercontrollers.ts";
-import * as UserResponse from "../users/usersjson.ts"
+import UsersRouter from "../users/user.routes.ts";
+import {userLoginController, userRegisterController} from "../users/user.controllers.ts";
+import * as UserResponse from "../users/user.response.ts"
 
 jest.mock("../users/usercontrollers", () => ({
     userRegisterController: jest.fn().mockImplementation((req, res)=>{res.status(200).json(UserResponse.UserResponses.USER_REGISTER_SUCCESS)}),

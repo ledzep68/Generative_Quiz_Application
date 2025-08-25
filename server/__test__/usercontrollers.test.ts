@@ -1,11 +1,11 @@
-import {userLoginController, userRegisterController} from "../users/usercontrollers.ts";
+import {userLoginController, userRegisterController} from "../users/user.controllers.ts";
 import * as pgmock from "pgmock2";
 import { PoolClient } from "pg";
-import { userIdGenerate, userPasswordEncrypt, userDataRegister, userLogin, userDBConnect } from "../users/userservice.ts";
-import { UserDTO } from "../users/userdto.ts";
-import * as UserResponse from "../users/usersjson.ts";
+import { userIdGenerate, userPasswordEncrypt, userDataRegister, userLogin, userDBConnect } from "../users/user.service.ts";
+import { UserDTO } from "../users/user.dto.ts";
+import * as UserResponse from "../users/user.response.ts";
 import { Request, Response } from 'express';
-import * as userdberrors from "../users/errors/userdberrors.ts";
+import * as userdberrors from "../users/errors/user.dberrors.ts";
 
 vi.mock('../users/userservice', () => ({
   userPasswordEncrypt: vi.fn().mockImplementation((password: string) => {return "hashedtest"}),
