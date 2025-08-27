@@ -28,7 +28,7 @@ import CheckBoxComponent from "../src/shared/components/CheckBox";
 import AnswerButtonComponent from "../src/features/listening-quiz-management/transaaction/components/AnswerButton.tsx";
 import QuizInterruptPopup from "../src/features/listening-quiz-management/transaaction/components/InterruptPopUp.tsx";
 
-import * as newQuestionSlice from "../src/features/listening-quiz-management/transaaction/newquiz.slice";
+import * as newQuestionSlice from "../src/features/listening-quiz-management/transaaction/newquestion.slice.ts";
 import * as uiSlice from "../src/features/listening-quiz-management/transaaction/ui.slice.ts";
 import * as audioSlice from "../src/features/listening-quiz-management/transaaction/audio.slice.ts";
 import * as indexSlice from "../src/features/listening-quiz-management/transaaction/index-management.slice.ts"

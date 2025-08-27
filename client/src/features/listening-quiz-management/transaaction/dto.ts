@@ -30,7 +30,8 @@ export interface ReviewQuestionReqDTO {
     speakingRate?: number
 };
 
-//サーバーからのクイズレスポンスDTO 新規・既存共通
+/*
+//サーバーからのクイズレスポンスDTO 新規・既存共通　使わない questionHashを使う
 export interface QuestionResDTO {
     lQuestionID: string,
     //audioScript: string,
@@ -43,6 +44,7 @@ export interface QuestionResDTO {
     duration?: number
     //audioURL: string
 };
+*/
 /*
 //OpenAI APIへのクイズリクエストプロンプト
 //prompt中でresで期待するクイズデータのスキーマを指定

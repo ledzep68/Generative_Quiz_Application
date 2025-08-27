@@ -26,7 +26,7 @@ import CheckBoxComponent from "../../../../shared/components/CheckBox";
 import AnswerButtonComponent from "./AnswerButton.tsx";
 import QuizInterruptPopup from "./InterruptPopUp.tsx";
 
-import * as newQuestionSlice from "../newquiz.slice";
+import * as newQuestionSlice from "../newquestion.slice.ts";
 import * as uiSlice from "../ui.slice.ts";
 import * as audioSlice from "../audio.slice.ts";
 import * as indexSlice from "../index-management.slice.ts"
@@ -51,21 +51,31 @@ function ListeningQuizPage() {
     );
 };
 
+/*
 //待機画面
 //問題数、パート番号、アクセント入力
 // ボタン押下
 //     reducer呼び出し、stateを待機状態に更新
-//     クイズ生成API呼び出し
+//     クイズ生成API呼び出し 初回リクエストのみ下記形式
+            export interface RandomNewQuestionReqDTO {
+                sectionNumber: 1|2|3|4,
+                requestedNumOfLQuizs: number,
+                speakerAccent?: 'American' | 'British' | 'Canadian' | 'Australian',
+                speakingRate: number //必須　デフォルト値1.0
+            };
+            2回目以降はcurrentIndexのみ
 //         APIからクイズデータを受け取り
 //         audioURLをもとにAPIに音声データをリクエスト（問題1問ごとにリクエスト）
 //         音声データレスポンスが届いたことを確認したらstateを回答状態に更新し、回答画面に遷移
+*/
 function StandByScreen() {
     //状態遷移　初期状態はstandby
     const screenState = useAppSelector(state => state.uiManagement.currentScreen);
 
     const navigate = useNavigate();
     const dispatch = useAppDispatch();
-    const [fetchNewQuestions] = api.useFetchNewQuestionsMutation();
+    const [initiateSession] = api.useInitiateSessionMutation();
+    const [fetchPart2NewQuestions] = api.useFetchPart2NewQuestionsMutation();
     const [fetchAudio] = api.useLazyFetchAudioQuery();
     
     //クイズリクエスト用selector
@@ -73,11 +83,11 @@ function StandByScreen() {
     const { sectionNumber, requestedNumOfLQuizs, speakingRate, speakerAccent } = requestQuestionParams;
     //音声リクエスト用selector
     const requestAudioParams = useAppSelector(state => state.audioManagement.requestParams);
-    const { currentLQuestionId } = requestAudioParams;
+    //const { questionHash } = requestAudioParams;
     const audioBlob = useAppSelector(state => state.audioManagement.audioData) as File;
-    //問題番号管理用selector
+    //index管理用selector
     const indexParams = useAppSelector(state => state.indexManagement);
-    const { lQuestionIdList, currentQuestionIndex } = indexParams;
+    const { currentIndex } = indexParams;
 
     const handleSectionChange = (event: SelectChangeEvent<unknown>) => {
         dispatch(newQuestionSlice.setRequestParams({
@@ -97,7 +107,21 @@ function StandByScreen() {
         }));*/
     };
 
-    const handleQuizInit = async (event: React.MouseEvent): Promise<void> => {
+    const fetchQuizHandler = (event: React.MouseEvent) => {
+        switch(sectionNumber) {
+            case 2: 
+                handlePart2QuizInit();
+                break;
+            case 3:
+            case 4:
+                handlePart34QuizInit();
+                break;
+            default:
+                console.error('Invalid section number');
+        }
+    };
+
+    const handlePart2QuizInit = async (): Promise<void> => {
         dispatch(newQuestionSlice.setRequestStatus('pending'));
         //Redux stateからDTOを構築
         const randomNewQuestionReqDTO: dto.RandomNewQuestionReqDTO = {
@@ -107,29 +131,26 @@ function StandByScreen() {
         };
         //hooksに渡す
         try {
+            //クイズセッション開始
+            await initiateSession(randomNewQuestionReqDTO);
+            console.log("session initialized successfully")
             //クイズ生成api呼び出し
-            const questionFetchResult = await fetchNewQuestions(randomNewQuestionReqDTO).unwrap();
+            const fetchResult = await fetchPart2NewQuestions({currentIndex}).unwrap();
+            console.log("fetchResult: ", fetchResult)
+            const questionHash = fetchResult.questionHash
             dispatch(newQuestionSlice.setRequestStatus('success'));
-            const lQuestionIdList: string[] = questionFetchResult.map(question => question.lQuestionID)
-            //クイズデータをredux storeに保存
-            dispatch(newQuestionSlice.setQuestions(questionFetchResult));
 
-            const currentLQuestionId = lQuestionIdList[currentQuestionIndex]; //初期状態は0
+            //クイズhash値をredux storeに保存
+            dispatch(newQuestionSlice.setQuestionHash(questionHash));
 
             //音声合成api呼び出し&音声データをredux storeに保存
-            dispatch(audioSlice.setAudioRequest(currentLQuestionId))
-            await handleFetchAudio(currentLQuestionId as string);
+            dispatch(audioSlice.setAudioRequest(questionHash))
+            await handleFetchAudio(questionHash as string);
             dispatch(audioSlice.setRequestStatus('success'));
             dispatch(audioSlice.setIsAudioReadyToPlay(true));
 
             //Index管理StateにlQuestionIdListと問題indexを保存
-            dispatch(indexSlice.setLQuestionIdList(lQuestionIdList));
-            dispatch(indexSlice.setCurrentIndex(0));
-            
-            //回答状態に移行
-            if (screenState === 'standby') {
-                dispatch(uiSlice.setCurrentScreen('answer'));
-            };
+            //dispatch(indexSlice.setCurrentIndex(0));
 
             //Redux storeの状態を確認
             console.log("Audio fetch SUCCESS");
@@ -139,6 +160,11 @@ function StandByScreen() {
             
             console.log("audio fetch SUCCESS");
 
+            //回答状態に移行
+            if (screenState === 'standby') {
+                dispatch(uiSlice.setCurrentScreen('answer'));
+            };
+
         } catch (error) {
             //クイズリクエスト失敗の場合の処理
             dispatch(newQuestionSlice.setRequestStatus('failed'));
@@ -147,10 +173,15 @@ function StandByScreen() {
             //else 音声リクエスト失敗処理
         }
     };
-    const handleFetchAudio = async (lQuestionId: string) => {
+
+    const handlePart34QuizInit = async (): Promise<void> => {
+            
+    }
+
+    const handleFetchAudio = async (questionHash: string) => {
         try {
             //Node.js BlobをブラウザBlob（File（ブラウザBlobを継承したクラス））に変換（URL生成のため必須）
-            const audioData = await fetchAudio(lQuestionId).unwrap() as File;
+            const audioData = await fetchAudio(questionHash).unwrap() as File;
             console.log("Fetched audio data:", {
                 name: audioData.name,
                 size: audioData.size,
@@ -166,19 +197,12 @@ function StandByScreen() {
         }
     };
 
-    /* //lQuestionID[]のうち1問目の音声データ取得
-            dispatch(audioSlice.setAudioRequest(questionFetchResult.map.))
-            const lQuestionId = requestAudioParams.lQuestionId
-            const audioFetchResult = await fetchAudio(lQuestionId).unwrap();
-            //音声データをRedux storeに保存
-            dispatch(audioSlice.setAudioData(audioFetchResult))
-            //answer状態（answerScreen()）に遷移
-            setCurrentView('answer');*/
-
     const handleBack = () => {
         dispatch(newQuestionSlice.resetRequest());
+        //クイズセッションデータ破棄リクエスト
         navigate('/main-menu')
     };
+
     return (
     <Box 
         sx={{ 
@@ -238,7 +262,7 @@ function StandByScreen() {
                         <ButtonComponent 
                             variant="contained"
                             label="問題を開始する"
-                            onClick={handleQuizInit}
+                            onClick={fetchQuizHandler}
                             color="primary"
                             size="medium"
                             disabled={!sectionNumber || !requestedNumOfLQuizs}

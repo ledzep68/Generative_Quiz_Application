@@ -7,6 +7,7 @@ usercontrollers.tsの機能:
 *********************************************/
 
 import { Request, Response } from "express";
+import { UUID } from "crypto";
 import { userPasswordEncrypt, userIdGenerate, userDataRegister, userDBConnect, userLogin, initializeUserSession } from "./user.service.ts";
 import * as dto from "./user.dto.ts";
 import { UserData } from "./user.domeinobject.ts";
@@ -83,18 +84,19 @@ export async function userLoginController(req: Request, res: Response): Promise<
 
         //db接続　poolからコネクションを払い出す
         const client = await userDBConnect(); //失敗時DBCOnnectErrorをthrow
-        console.log("client: ", client);
 
         //ログイン処理
         const loginResult = await userLogin(client, userData); //DB操作失敗時DBOperationError OR ValidationErrorをthrow
-        loginResult.loginResult === true ? 
-            res.status(UserResponses.LOGIN_SUCCESS.status /*200*/).json(UserResponses.LOGIN_SUCCESS)
-            : res.status(UserResponses.LOGIN_FAILED.status /*401*/).json(UserResponses.LOGIN_FAILED);
+        console.log("loginResult: ", loginResult)
+        if(loginResult.loginResult === true){
+            res.status(UserResponses.LOGIN_SUCCESS.status /*200*/).json(UserResponses.LOGIN_SUCCESS);
+            //セッション開始・初期化
+            await initializeUserSession(loginResult.userId as UUID, req.session)
+        } else {
+            res.status(UserResponses.LOGIN_FAILED.status /*401*/).json(UserResponses.LOGIN_FAILED)
+        }
         console.log("ログイン判定処理が適切に完了");
-
-        //セッション開始・初期化
-        await initializeUserSession(loginResult.userId, req.session);
-
+        
         return;
     } catch (error) {
         if(error instanceof z.ZodError){ //入力値のバリデーション

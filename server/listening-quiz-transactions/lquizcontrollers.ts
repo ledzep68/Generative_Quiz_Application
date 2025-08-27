@@ -18,7 +18,7 @@ import * as businessschema from "./schemas/lquizbusinessschema.ts";
 //セッションのうちクイズ関連データの初期化
 export async function initializeQuizSessionController(req: Request, res: Response): Promise<void> {
     try {
-        const newLQuestionInfo = mapper.NewLQuestionInfoMapper.toDomainObject(req.body.RandomNewQuestionReqDTO);
+        const newLQuestionInfo = mapper.NewLQuestionInfoMapper.toDomainObject(req.body);
         
         //セッション特定処理の実装は不要（express-sessionが自動処理）
         //req.session は既に現在のユーザーのセッションを指している

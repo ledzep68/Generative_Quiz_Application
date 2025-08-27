@@ -4,39 +4,15 @@ import z from "zod";
 import * as dto from "./dto.ts";
 import * as type from "./types.ts";
 
-    // 複数問題のテストデータ配列
-const testQuestionDataList: dto.QuestionResDTO[] = [
-    {
-        lQuestionID: "listening-part4-q001",
-        sectionNumber: 2,
-        speakerAccent: "American",
-        speakingRate: 150,
-        duration: 12
-    },
-    {
-        lQuestionID: "listening-part4-q002",
-        sectionNumber: 2,
-        speakerAccent: "American",
-        speakingRate: 150,
-        duration: 12
-    },
-    {
-        lQuestionID: "listening-part4-q003", 
-        sectionNumber: 2,
-        speakerAccent: "British",
-        speakingRate: 140,
-        duration: 15
-    }
-];
-
 const initialState: type.RandomNewQuestionRequestState = {
     requestParams: {
         sectionNumber: 2,
-        requestedNumOfLQuizs: 3,
+        requestedNumOfLQuizs: 1,
         speakingRate: undefined,
         speakerAccent: undefined
     },
-    questions: testQuestionDataList,//undefined,
+    questionHash: undefined,
+    
     isValid: undefined,
     validationErrors: [],
     requestStatus: 'idle',
@@ -108,8 +84,8 @@ export const newRandomQuestionRequestSlice = createSlice({
                     break;
             }
         },
-        setQuestions: (state, action) => {
-            state.questions = action.payload;
+        setQuestionHash: (state, action) => {
+            state.questionHash = action.payload;
         },
         resetRequest: (state) => {
             //完全リセット
@@ -120,4 +96,4 @@ export const newRandomQuestionRequestSlice = createSlice({
     }
 });
 
-export const { setRequestParams, setRequestStatus, setQuestions, resetRequest } = newRandomQuestionRequestSlice.actions;
+export const { setRequestParams, setRequestStatus, setQuestionHash, resetRequest } = newRandomQuestionRequestSlice.actions;

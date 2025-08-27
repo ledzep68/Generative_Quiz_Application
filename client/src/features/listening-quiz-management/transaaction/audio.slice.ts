@@ -10,7 +10,7 @@ const testBlob = new File([], 'audio_segment.mp3', { type: 'audio/mpeg' });
 
 const initialState: type.AudioState = {
     requestParams: {
-        currentLQuestionId: undefined
+        questionHash: undefined
     },
 
     audioData: testBlob,
@@ -26,22 +26,15 @@ const initialState: type.AudioState = {
 };
 
 //バリデーション
-const RequestValidationSchema = z.object({
-    lQuestionId: z.string()
-});
-
-function validateParams (state: type.AudioState): z.ZodSafeParseResult<{ lQuestionId: string; }> {
-    return RequestValidationSchema.safeParse({
-        lQuestionId: state.requestParams.currentLQuestionId
-    });
-};
+const validateParams = (state: type.AudioState) => 
+    z.string().length(12).safeParse(state.requestParams.questionHash);
 
 export const audioRequestSlice = createSlice({
     name: "audioRequest",
     initialState,
     reducers: {
         setAudioRequest: (state, action: PayloadAction<string>) => {
-            state.requestParams.currentLQuestionId = action.payload;
+            state.requestParams.questionHash = action.payload;
             state.submittedAt = Date.now();
             const validationResult = validateParams(state);
             state.isValid = validationResult.success;

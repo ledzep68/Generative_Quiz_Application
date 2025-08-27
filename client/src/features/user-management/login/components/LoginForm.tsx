@@ -17,17 +17,16 @@ function LoginForm() {
     const [fetchLoginAndInitializeSession] = api.useFetchLoginAndInitializeSessionMutation();
     const [fetchRegisterAndInitializeSession] = api.useFetchRegisterAndInitializeSessionMutation();
     const handleLoginClick = async () => {
-        //ユーザー入力バリデーション
-        const loginReqDTO = schema.UserLoginValidationSchema.parse({userName: userName, password: password}) as dto.LoginReqDTO;
-        console.log("loginReqDTO: ", loginReqDTO);
         try{
+            //ユーザー入力バリデーション
+            const loginReqDTO = schema.UserLoginValidationSchema.parse({userName: userName, password: password}) as dto.LoginReqDTO;
             //ログイン・セッション開始リクエスト
             await fetchLoginAndInitializeSession(loginReqDTO).unwrap(); //wnwrap 成功時のみデータ取得
             navigate('/main-menu');
         } catch (error) {
             if (error instanceof z.ZodError) {
-                console.error('validation error:', error.message);
-                alert('ユーザー名またはパスワードが不正です');
+                const errorMessages = error.issues.map(issue => issue.message);
+                alert(errorMessages.join('\n'));
             } else {
                 console.error('Login error:', error);
                 alert('ログインに失敗しました');
@@ -51,12 +50,6 @@ function LoginForm() {
             }
         }
     };
-
-    useEffect(() => {
-        console.log("userName: ", userName);
-        console.log("password: ", password);
-        console.log("invitationCode: ", invitationCode);
-    })
 
     return (
         <Container maxWidth="sm">
@@ -130,6 +123,7 @@ function LoginForm() {
                         {/* 新規登録ボタン*/}
                         <Box sx={{ mb: 2 }}>
                             <ButtonComponent 
+                                disabled={true} //一時的に無効化
                                 variant="outlined"
                                 label="新規登録"
                                 onClick={handleRegisterClick}

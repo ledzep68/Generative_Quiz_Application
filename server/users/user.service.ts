@@ -6,7 +6,7 @@ userservice.tsの機能:
 
 *********************************************/
 
-import crypto, {UUID, randomUUID} from "crypto";
+import crypto, {UUID, hash, randomUUID} from "crypto";
 import { userDBGetConnect, userDBNewDataRecord, userDBLoginDataExtract, userDBRelease, userDBDisconnect } from "./user.models.ts";
 import { PoolClient } from "pg";
 import { UserData } from "./user.domeinobject.ts";
@@ -22,6 +22,7 @@ export function userIdGenerate(){
 export function userPasswordEncrypt(password: string) {
     if(typeof password === 'string') {
         const hashedPassword = crypto.createHash("sha256").update(password).digest("hex");
+        console.log(hashedPassword)
         return hashedPassword
     } else {
         throw new userbusinesserrors.ValidationError("passwordがstring型ではありません");
@@ -55,19 +56,16 @@ export async function userDataRegister(client: PoolClient, domObj: UserData): Pr
 };
 
 //ログイン処理
-export async function userLogin(client: PoolClient, domObj: UserData): Promise<{userId: UUID, loginResult: boolean}> {
+export async function userLogin(client: PoolClient, domObj: UserData): Promise<{userId?: UUID, loginResult: boolean}> {
     const userName = domObj.userName;
     const hashedPassword = domObj.hashedPassword;
     try{
-        if(typeof userName === 'string' && typeof hashedPassword === 'string') {
-            const result = await userDBLoginDataExtract(client, domObj);
-            return {
-                userId: result.rows[0].user_id,
-                loginResult: result.rows.length !== 0 ? true : false //trueならログイン成功, falseならログイン失敗
-            }; 
-        } else {
-            throw new userbusinesserrors.ValidationError("usernameかhashedpasswordがstring型ではありません");
-        }
+        const result = await userDBLoginDataExtract(client, domObj);
+        console.log("result: ", result)
+        return {
+            userId: result.rows.length !== 0 ? result.rows[0].user_id : undefined,
+            loginResult: result.rows.length !== 0 ? true : false //trueならログイン成功, falseならログイン失敗
+        }; 
     } catch (error) {
         throw error
     } finally {
