@@ -28,7 +28,7 @@ export interface AudioState extends stateManagementParameters {
     requestParams: {
         questionHash?: string
     },
-    audioData?: File
+    audioData?: Blob
     //音声再生準備完了
     isAudioReadyToPlay: boolean
     //音声再生開始

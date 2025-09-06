@@ -2167,5 +2167,5 @@ function createAudioDirectory(lQuestionID: string): string {
  * @returns ファイルパス
  */
 function generateAudioFilePath(audioDir: string): string {
-    return path.join(audioDir, 'audio.mp3');
+    return path.join(audioDir, 'audio_segment.mp3');
 }

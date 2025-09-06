@@ -99,8 +99,8 @@ export class ExistingLQuizReqDTO {
 
 //回答データPOST（リクエスト）
 export interface UserAnswerReqDTO {
-    lQuestionID: string,
-    userID: UUID,
+    questionHash: string,
+    //userID: UUID,
     userAnswerOption?: "A"|"B"|"C"|"D",
     reviewTag: boolean,
     answerDate?: Date

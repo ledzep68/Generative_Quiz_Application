@@ -35,15 +35,15 @@ const newQuizApi = createApi({
         }),
         //音声データリクエスト
         fetchAudio: builder.query<Blob, string>({
-            query: (lQuestionId: string) => (
+            query: (questionHash: string) => (
                 {
-                    url: `/audio/question/${lQuestionId}`,//?t=${Date.now()}`,
+                    url: `/audio/${questionHash}`,//コロン不要
                     method: 'GET',
                     responseHandler: (response) => response.blob()
                 }
             )
         }),
-        fetchAnswer: builder.mutation<dto.UserAnswerResDTO[], dto.UserAnswerReqDTO[]>({
+        fetchAnswer: builder.mutation<dto.UserAnswerResDTO, dto.UserAnswerReqDTO>({
             query: (data) => (
                 {
                     url: `/lquiz/answer`,

@@ -5,27 +5,27 @@ import * as dto from "./dto.ts";
 import {UUID} from "crypto";
 import * as type from "./types.ts";
 
-const testRequestParams: dto.UserAnswerReqDTO[] = [{
-    lQuestionID: "",
-    userID: "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+const testRequestParams: dto.UserAnswerReqDTO = {
+    questionHash: "",
+    //userID: "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
     userAnswerOption: undefined,
     reviewTag: false,
     answerDate: undefined
-}];
+};
 
-const testAnswerData: dto.UserAnswerResDTO[] = [{
+const testAnswerData: dto.UserAnswerResDTO = {
     //lQuestionID: "test",
     answerOption: "A",
     isCorrect: true,
     audioScript: "test",
     jpnAudioScript: "test",
     explanation: "test"
-}];
+};
 
 const initialState: type.AnswerRequestState = {
     requestParams: testRequestParams,
 
-    answerData: [],
+    answerData: undefined,
 
     isValid: false,
     validationErrors: [],
@@ -34,14 +34,14 @@ const initialState: type.AnswerRequestState = {
 };
 
 //バリデーション
-const RequestValidationSchema = z.array(z.object({
-    lQuestionID: z.string(),
-    userID: z.string().regex(/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i) as z.ZodType<UUID>,
+const RequestValidationSchema = z.object({
+    questionHash: z.string(),
+    //userID: z.string().regex(/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i) as z.ZodType<UUID>,
     userAnswerOption: z.union([z.literal("A"), z.literal("B"), z.literal("C"), z.literal("D")]),
     reviewTag: z.boolean(),
     answerDate: z.date()
-}));
-const validateParams = (state: type.AnswerRequestState): z.ZodSafeParseResult<dto.UserAnswerReqDTO[]> => {
+});
+const validateParams = (state: type.AnswerRequestState): z.ZodSafeParseResult<dto.UserAnswerReqDTO> => {
     return RequestValidationSchema.safeParse(state.requestParams);
 };
 
@@ -49,7 +49,7 @@ export const answerSlice = createSlice({
     name: "answerManagement",
     initialState,
     reducers: {
-        setRequestParams: (state, action: PayloadAction<dto.UserAnswerReqDTO[]>) => {
+        setRequestParams: (state, action: PayloadAction<dto.UserAnswerReqDTO>) => {
             console.log('setRequestParams:', action.payload);
             state.requestParams = action.payload;
             
@@ -60,13 +60,12 @@ export const answerSlice = createSlice({
                 : validationResult.error.issues.map((issue) => issue.message);
         },
         //特定インデックスの回答を更新
-        updateRequestParam: (state, action: PayloadAction<{index: number, data: Partial<dto.UserAnswerReqDTO>}>) => {
-            const { index, data } = action.payload;
+        updateRequestParam: (state, action: PayloadAction<Partial<dto.UserAnswerReqDTO>>) => {
+            const requestParam = action.payload;
             if (!state.requestParams) {
-                state.requestParams = [];
+                state.requestParams = undefined;
             };
-            if (state.requestParams[index]) {
-                state.requestParams[index] = { ...state.requestParams[index], ...data };
+            if (state.requestParams) {
                 const validationResult = validateParams(state);
                 state.isValid = validationResult.success;
                 state.validationErrors = validationResult.success 
@@ -74,7 +73,7 @@ export const answerSlice = createSlice({
                     : validationResult.error.issues.map((issue) => issue.message);
             };
         },
-        setAnswerData: (state, action: PayloadAction<dto.UserAnswerResDTO[]>) => { 
+        setAnswerData: (state, action: PayloadAction<dto.UserAnswerResDTO>) => { 
             state.answerData = action.payload;
         },
         setRequestStatus: (state, action: PayloadAction<'idle' | 'pending' | 'success' | 'failed'>) => {
@@ -119,23 +118,3 @@ export const {
 } = answerSlice.actions;
 
 export default answerSlice.reducer;
-
-
-
-//回答データリクエスト
-export interface AnswerReqDTO {
-    lQuestionID: string, 
-    userID: string, 
-    userAnswerOption: "A"|"B"|"C"|"D", 
-    answerDate: Date,
-    reviewTag?: boolean
-};
-
-//正誤・解答データレスポンス
-export interface AnswerResDTO {
-    lQuestionID: string,
-    trueOrFalse: boolean,
-    audioScript: string,
-    jpnAudioScript: string,
-    explanation: string
-}

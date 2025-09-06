@@ -5,7 +5,7 @@ import * as dto from "./dto.ts";
 import * as type from "./types.ts";
 
 
-const testBlob = new File([], 'audio_segment.mp3', { type: 'audio/mpeg' });
+//const testBlob = new File([], 'audio_segment.mp3', { type: 'audio/mpeg' });
 
 
 const initialState: type.AudioState = {
@@ -13,7 +13,7 @@ const initialState: type.AudioState = {
         questionHash: undefined
     },
 
-    audioData: testBlob,
+    audioData: undefined,
 
     isAudioReadyToPlay: true,//false,
 
@@ -43,7 +43,7 @@ export const audioRequestSlice = createSlice({
                 : validationResult.error.issues.map((issue) => issue.message);
         },
         //音声データ受信
-        setAudioData: (state, action: PayloadAction<File>) => {
+        setAudioData: (state, action: PayloadAction<Blob>) => {
             state.audioData = action.payload;
         },
         setRequestStatus: (state, action: PayloadAction<'idle' | 'pending' | 'success' | 'failed'>) => {
