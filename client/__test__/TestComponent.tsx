@@ -191,19 +191,19 @@ function TestScreen() {
             //回答レスポンスが届いたことを確認
             //stateを結果状態に更新し、結果画面（Result.tsx）に遷移(Navigate)
             //Redux stateからDTOを構築
-            const testAnswerReqDTO: dto.UserAnswerReqDTO[] = [{
-                lQuestionID: "listening-part4-q001",
-                userID: "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
-                userAnswerOption: "A",
-                reviewTag: false,
+            const testAnswerReqDTO: dto.UserAnswerReqDTO = {
+                questionHash: "ca4d7e8f6294",
+                userAnswerOption: ["A"],
+                reviewTag: true,
                 answerDate: new Date()
-            }];
+            };
             try{
                 //回答内容をAPIに送る
                 const answerResult = await fetchAnswer(testAnswerReqDTO);
-                console.log(answerResult);
+                console.log("fetch結果: ", answerResult);
                 //回答レスポンスをredux storeに保存
-                dispatch(answerSlice.setAnswerData(answerResult.data as dto.UserAnswerResDTO[]));
+                dispatch(answerSlice.setAnswerData(answerResult.data as dto.UserAnswerResDTO));
+                console.log("解答レスポンス: ", answerResult.data);
     
                 //stateを'result'に更新し、結果状態に遷移
                 //dispatch(uiSlice.setCurrentScreen('result'));

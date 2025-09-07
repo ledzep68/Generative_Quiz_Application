@@ -99,18 +99,16 @@ export class ExistingLQuizReqDTO {
 
 //回答データPOST（リクエスト）
 export interface UserAnswerReqDTO {
-    questionHash: string,
-    //userID: UUID,
-    userAnswerOption?: "A"|"B"|"C"|"D",
-    reviewTag: boolean,
+    questionHash?: string,
+    userAnswerOption?: ("A"|"B"|"C"|"D")[],
+    reviewTag?: boolean,
     answerDate?: Date
 };
 
 //正誤・解答データレスポンス
 export interface UserAnswerResDTO {
-    //lQuestionID: string,
-    isCorrect: boolean,
-    answerOption: "A"|"B"|"C"|"D",
+    isCorrectList: boolean[],
+    answerOption: ("A"|"B"|"C"|"D")[],
     audioScript: string,
     jpnAudioScript: string,
     explanation: string

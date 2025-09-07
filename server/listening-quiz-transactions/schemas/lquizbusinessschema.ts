@@ -7,7 +7,7 @@ export function randomNewQuestionReqValidate(reqDTO: dto.RandomNewQuestionReqDTO
             sectionNumber: z
                 .union([z.literal(1), z.literal(2), z.literal(3), z.literal(4)]),
             requestedNumOfLQuizs: z
-                .number(),
+                .union([z.literal(1), z.literal(2), z.literal(3), z.literal(4), z.literal(5), z.literal(6), z.literal(7), z.literal(8), z.literal(9), z.literal(10)]),
             speakerAccent: z //任意
                 .union([z.literal("American"), z.literal("Canadian"), z.literal("British"), z.literal("Australian")]).optional(),
             speakingRate: z
@@ -16,7 +16,7 @@ export function randomNewQuestionReqValidate(reqDTO: dto.RandomNewQuestionReqDTO
     );
     return randomNewQuestionReqValidationSchema.parse(reqDTO);
 };
-
+/*
 //復習クイズデータID指定取得用　ユーザーの入力値　QuestionReqDTO[]のバリデーション関数　配列
 export function questionReqValidate(reqDTO: dto.ReviewQuestionReqDTO){
     const questionReqValidationSchema: z.ZodSchema<dto.ReviewQuestionReqDTO[]> = z.array(
@@ -36,6 +36,7 @@ export function questionReqValidate(reqDTO: dto.ReviewQuestionReqDTO){
     );
     return questionReqValidationSchema.parse(reqDTO);
 };
+
 //復習クイズデータランダム取得用　ユーザーの入力値　QuestionReqDTOのバリデーション関数　非配列
 export function randomQuestionReqValidate(reqDTO: dto.RandomReviewQuestionReqDTO){
     const questionRandomReqValidationSchema: z.ZodSchema<dto.RandomReviewQuestionReqDTO> = z.object(
@@ -55,26 +56,22 @@ export function randomQuestionReqValidate(reqDTO: dto.RandomReviewQuestionReqDTO
     );
     return questionRandomReqValidationSchema.parse(reqDTO);
 };
+*/
 
 //ユーザーの入力値　UserAnswerReqDTOのバリデーション関数
 export function userAnswerReqValidate(reqDTO: unknown){
-    const userAnswerReqValidationSchema = z.array(
-        z.object(
+    const userAnswerReqValidationSchema = z.object(
             {
-            lQuestionID: z
+            questionHash: z
                 .string(),
-            userID: z
-                .string()
-                .uuid(),
             userAnswerOption: z
-                .enum(["A", "B", "C", "D"]),
+                .array(z.enum(["A", "B", "C", "D"])),
             reviewTag: z
                 .boolean(),
             answerDate: z
                 .string().datetime().transform(str => new Date(str))
             }
-        )
-    );
-    return userAnswerReqValidationSchema.parse(reqDTO) as dto.UserAnswerReqDTO[];
+        );
+    return userAnswerReqValidationSchema.parse(reqDTO) as dto.UserAnswerReqDTO;
 }
 

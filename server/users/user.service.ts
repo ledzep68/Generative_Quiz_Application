@@ -102,4 +102,4 @@ export async function initializeUserSession(userId: UUID, session: Express.Reque
             });
         });
     });
-}
+};

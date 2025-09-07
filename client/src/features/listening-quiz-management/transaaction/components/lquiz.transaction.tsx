@@ -75,6 +75,7 @@ function StandByScreen() {
     const navigate = useNavigate();
     const dispatch = useAppDispatch();
     const [initiateSession] = api.useInitiateSessionMutation();
+    const [resetUserAndQuizSession] = api.useResetUserAndQuizSessionMutation
     const [fetchPart2NewQuestions] = api.useFetchPart2NewQuestionsMutation();
     const [fetchAudio] = api.useLazyFetchAudioQuery();
     
@@ -107,14 +108,14 @@ function StandByScreen() {
         }));*/
     };
 
-    const fetchQuizHandler = (event: React.MouseEvent) => {
+    const fetchQuizHandler = async (event: React.MouseEvent) => {
         switch(sectionNumber) {
             case 2: 
-                handlePart2QuizInit();
+                await handlePart2QuizInit();
                 break;
             case 3:
             case 4:
-                handlePart34QuizInit();
+                await handlePart34QuizInit();
                 break;
             default:
                 console.error('Invalid section number');
@@ -195,9 +196,8 @@ function StandByScreen() {
         }
     };
 
-    const handleBack = () => {
+    const handleBack = async () => {
         dispatch(newQuestionSlice.resetRequest());
-        //クイズセッションデータ破棄リクエスト
         navigate('/main-menu')
     };
 
@@ -299,7 +299,7 @@ function AnswerScreen() {
     const indexParams = useAppSelector(state => state.indexManagement);
     const { currentIndex = 0 } = indexParams;
 
-    //クイズデータselector（現在のindexの問題だけ取得）
+    //クイズデータselector（現在の問題のhashだけ取得）
     const questionHash = useAppSelector(state => state.newRandomQuestionRequest.questionHash) 
     //const currentQuestion = questionDataList[currentIndex];
     //if (!currentQuestion) {
@@ -322,20 +322,19 @@ function AnswerScreen() {
 
     const navigate = useNavigate();
     const dispatch = useAppDispatch();
+    const [resetQuizSession] = api.useResetQuizSessionMutation();
+    const [resetUserAndQuizSession] = api.useResetUserAndQuizSessionMutation();
     const [fetchAnswer] = api.useFetchAnswerMutation();
 
-    const handleUserAnswerChange = (answer: string) => {
-        dispatch(answerSlice.updateRequestParam({
-            index: 0,
-            data: { userAnswerOption: answer as 'A'|'B'|'C'|'D' }
-        }));
+    const handleUserAnswerChange = (answer: ('A'|'B'|'C'|'D')[]) => {
+        dispatch(answerSlice.updateRequestParam(
+            { userAnswerOption: answer as ('A'|'B'|'C'|'D')[] }
+        ));
     };
 
     const handleReviewTagChange = (checked: boolean) => {
-        dispatch(answerSlice.updateRequestParam({
-            index: 0,
-            data: { reviewTag: checked }
-        }))
+        dispatch(answerSlice.updateRequestParam({ reviewTag: checked }
+        ));
     };
 
     //デバッグ用
@@ -418,7 +417,6 @@ function AnswerScreen() {
             }
             const answerReqDTO: dto.UserAnswerReqDTO = {
                 questionHash: questionHash,
-                //userID: userID,
                 userAnswerOption: userAnswerOption,
                 reviewTag: reviewTag,
                 answerDate: new Date()
@@ -443,24 +441,29 @@ function AnswerScreen() {
     //中断ポップアップ
     const [showInterruptPopup, setShowInterruptPopup] = useState(false);
 
-    const handleQuit = () => {
-    setShowInterruptPopup(true);
+    const handleQuit = async () => {
+        setShowInterruptPopup(true);
+        //全セッション破棄
+        await resetUserAndQuizSession();
     };
 
     const handleClosePopup = () => {
-    setShowInterruptPopup(false);
+        setShowInterruptPopup(false);
     };
 
-    const handleMainMenu = () => {
-    setShowInterruptPopup(false);
-    navigate('/main-menu');
+    const handleMainMenu = async () => {
+        setShowInterruptPopup(false);
+        //クイズセッション破棄
+        await resetQuizSession();
+        navigate('/main-menu');
     };
 
-    const handleLogout = () => {
-    setShowInterruptPopup(false);
-    //各種リセット処理
-    //ログアウト処理
-    navigate('/login');
+    const handleLogout = async () => {
+        setShowInterruptPopup(false);
+        //全セッション破棄
+        await resetUserAndQuizSession();
+        //ログイン画面に遷移
+        navigate('/login');
     };
 
     return (

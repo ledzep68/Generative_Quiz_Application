@@ -9,6 +9,9 @@ import * as entity from "../lquiz.entity.ts";
 import * as domein from "../lquiz.domeinobject.ts";
 import { QueryResult } from "pg";
 
+import { parse } from "postgres-array";
+import {UUID} from "crypto";
+
 //新規クイズデータ記録用　domein.GeneratedLQuestionData→entity.LQuestionEntity
 //dto + AudioURL → entity.LQuestionEntity への直接マッピング
 export class QuestionDataToEntityMapper {
@@ -51,36 +54,35 @@ export class LQuestionExtractedDataMapper {
         ))
     }
 }
+*/
 
-//回答結果データ登録用のクラス　entityインターフェース
+//回答結果データ新規登録用のクラス　entityインターフェース
 export class AnswerDataToEntityMapper {
-    static toDomeinObject(domObj: domein.NewLAnswerData): entity.LAnswerResultEntity {
+    static toEntityList(domObj: domein.NewLAnswerData, attempts: {totalAttempts: number[], correctAttempts: number[]}): entity.LAnswerResultEntity {
         return {
             lAnswerID: domObj.lAnswerID,
             lQuestionID: domObj.lQuestionID,
-            userID: domObj.userID,
+            userID: domObj.userID as UUID,
             latestUserAnswerOption: domObj.userAnswerOption,
-            latestIsCorrect: domObj.isCorrect,
+            latestIsCorrect: domObj.isCorrectList,
             reviewTag: domObj.reviewTag,
-            totalAttempts: 1,
-            correctAttempts: domObj.isCorrect ? 1 : 0,
+            totalAttempts: attempts.totalAttempts,
+            correctAttempts: attempts.correctAttempts,
             firstAnsweredAt: domObj.answerDate,
             lastAnsweredAt: domObj.answerDate
         };
-    } 
-}
-*/
+    }
+};
 
 //得られた解答データQueryResultをドメインオブジェクトにマッピング
 export class AnswerScriptsListMapper {
-    static toDomainObject(queryResult: QueryResult): domein.AnswerScript {
-        return queryResult.rows.map((row)=>({
-            lQuestionID: row.l_question_id,
-            answerOption: row.answer_option,
-            audioScript: row.audio_script,
-            jpnAudioScript: row.jpn_audio_script,
-            explanation: row.explanation
-        }))
+    static toDomainObject(queryResult: QueryResult): domein.AnswerScripts {
+        return {
+            answerOption: parse(queryResult.rows[0].answer_option) as ("A"|"B"|"C"|"D")[],
+            audioScript: queryResult.rows[0].audio_script,
+            jpnAudioScript: queryResult.rows[0].jpn_audio_script,
+            explanation: queryResult.rows[0].explanation
+        }
     }
 }
 

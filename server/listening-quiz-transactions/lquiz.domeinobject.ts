@@ -8,7 +8,6 @@ import { UUID } from "crypto";
 
 //新規問題生成用
 export interface NewLQuestionInfo {
-    userID: UUID,
     sectionNumber: 1|2|3|4,
     requestedNumOfLQuizs: 1|2|3|4|5|6|7|8|9|10,
     speakerAccent?: 'American' | 'British' | 'Canadian' | 'Australian',
@@ -41,7 +40,7 @@ export interface NewLQuestionData {
     lQuestionID: string;
     audioScript: string;
     jpnAudioScript: string;
-    answerOption: "A"|"B"|"C"|"D";
+    answerOption: ("A"|"B"|"C"|"D")[];
     sectionNumber: 1|2|3|4;
     explanation: string;
     duration: number;
@@ -49,41 +48,34 @@ export interface NewLQuestionData {
 }
 
 //***lquizAnswerController***/
-//クイズ出題用データオブジェクト
-export class LQuestionData {
-    constructor(
-        public lQuestionId: string,
-        public audioScript: string,
-        public jpnAudioScript: string,
-        public answerOption: "A"|"B"|"C"|"D",
-        public sectionNumber: 1|2|3|4,
-        public explanation: string,
-        public duration: number,
-        public audioFilePath: string
-    ){}
+
+//正誤判定用ドメインオブジェクト
+export interface IsCorrectData {
+    questionHash: string,
+    userAnswerOption: ("A"|"B"|"C"|"D")[]
 };
 
-//　正誤判定用ドメインオブジェクト
-export interface IsCorrectData {
+//正誤判定結果ドメインオブジェクト
+export interface IsCorrectResult {
     lQuestionID: string,
-    userAnswerOption: "A"|"B"|"C"|"D"
+    isCorrectList: boolean[]
 };
 
 //回答データ新規DB登録用ドメインオブジェクト
 export interface NewLAnswerData {
     lAnswerID: UUID,
-    userID: UUID,
+    userID?: UUID,
     lQuestionID: string,
-    userAnswerOption: "A"|"B"|"C"|"D",
-    isCorrect: boolean,
+    questionHash: string,
+    userAnswerOption: ("A"|"B"|"C"|"D")[],
+    isCorrectList: boolean[],
     reviewTag: boolean,
     answerDate: Date
 };
 
-//解答データ検索用ドメインオブジェクト
-export interface AnswerScript {
-    lQuestionID: string,
-    answerOption: "A"|"B"|"C"|"D",
+//ユーザ送信用解答データドメインオブジェクト
+export interface AnswerScripts {
+    answerOption: ("A"|"B"|"C"|"D")[],
     audioScript: string,
     jpnAudioScript: string,
     explanation: string

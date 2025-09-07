@@ -25,6 +25,8 @@ export const openAIResponseSchema = z.object({
     }).optional()
 });
 
+/*
+//questionHashだけ返すので不要
 //レスポンスの中のクイズデータのバリデーション
 export const generatedQuestionDataResDTOSchema: z.ZodSchema<dto.GeneratedQuestionDataResDTO[]> = z.array(z.object({
     audioScript: z.string(),
@@ -37,6 +39,7 @@ export const generatedQuestionDataResDTOSchema: z.ZodSchema<dto.GeneratedQuestio
     //lQuestionID: z.string().uuid().optional()
 })
 );
+*/
 
 //音声データのバリデーション
 

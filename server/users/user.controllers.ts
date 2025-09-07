@@ -117,3 +117,16 @@ export async function userLoginController(req: Request, res: Response): Promise<
 }
 
 //ユーザー情報消去処理
+
+//ログアウト時・アプリ終了時セッション終了処理
+export async function resetUserAndQuizSessionController(req: Request, res: Response): Promise<void> {
+    req.session.destroy((err) => {
+        if (err) {
+            console.error('Failed to reset user and quiz session:', err);
+            res.status(500).json({ error: 'Failed to reset user and quiz session' });
+        } else {
+            console.info('User and quiz session reset');
+            res.status(200).json({ message: 'User and quiz session reset' });
+        }
+    });
+}

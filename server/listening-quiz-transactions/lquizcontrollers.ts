@@ -26,7 +26,7 @@ export async function initializeQuizSessionController(req: Request, res: Respons
         //questionSetを作成しセッションに格納
         await apiservice.initializeNewQuestionSet(req.session, newLQuestionInfo);
         
-        res.json({
+        res.status(200).json({
             success: true,
             sessionId: req.session.id,  //デバッグ用
             message: 'Quiz session initialized'
@@ -37,6 +37,24 @@ export async function initializeQuizSessionController(req: Request, res: Respons
         res.status(500).json({ error: 'Failed to initialize quiz session' });
     }
 };
+
+export async function resetQuizSessionController(req: Request, res: Response): Promise<void> {
+    try {
+        //完了ログの記録
+        console.info(`Quiz session completed successfully: userID=${req.session.userId}`);
+        //クイズセッション情報を空にする（questionSetだけ削除）
+        await apiservice.resetQuestionSet(req.session);
+        
+        res.status(200).json({ 
+            success: true, 
+            message: 'Quiz Session reset successfully'
+        });
+        
+    } catch (error) {
+        console.error('Session reset error:', error as Error);
+        res.status(500).json({ error: 'Failed to reset session' });
+    }
+}
 
 //Part2問題&音声データ生成
 export async function generatePart2LQuizController(req: Request, res: Response): Promise<void> {
@@ -114,48 +132,6 @@ export async function generatePart34LQuizController(req: Request, res: Response)
                     //解説生成
     //currentIndex>=totalQuestionNum
         //インデックス不正エラー
-};
-
-//セッション情報リセット　正常終了時用
-export async function resetSessionController(req: Request, res: Response): Promise<void> {
-    try{
-        //完了ログの記録
-        console.info(`Quiz session completed successfully: userID=${req.session.userID}`);
-        
-        //セッション情報を空にする（userId, questionSet, sessionID全て削除）
-        await new Promise<void>((resolve, reject) => {
-            req.session.destroy((err) => err ? reject(err) : resolve());
-        });
-        
-        res.status(200).json({ 
-            success: true, 
-            message: 'Session reset successfully'
-        });
-
-    } catch (error) {
-        res.status(500).json({ error: 'Failed to reset session' });
-    }
-};
-
-//セッション情報リセット　エラー発生時用
-export async function resetSessionOnErrorController(req: Request, res: Response): Promise<void> {
-    try {
-        //エラーログの記録
-        console.error(`Quiz session reset due to error: userID=${req.session.userID}, errorType=${req.body.errorType}, errorMessage=${req.body.errorMessage}`);
-    
-        //セッション情報を空にする（userId, questionSet, sessionID全て削除）
-        await new Promise<void>((resolve, reject) => {
-            req.session.destroy((err) => err ? reject(err) : resolve());
-        });
-        
-        res.status(200).json({ 
-            success: true, 
-            message: 'Session reset due to error'
-        });
-        
-    } catch (error) {
-        res.status(500).json({ error: 'Failed to reset session' });
-    }
 };
 
 /*
@@ -264,27 +240,31 @@ export async function answerController(req: Request, res: Response): Promise<voi
         console.log("validation success: ", validatedUserAnswerReqDTO);
 
         //正誤処理用ドメインオブジェクト作成
-        const isCorrectDomObjList = mapper.IsCorrectMapper.toDomainObject(validatedUserAnswerReqDTO);
-        console.log("mapping success: ", isCorrectDomObjList);
+        const isCorrectDomObj = mapper.IsCorrectMapper.toDomainObject(validatedUserAnswerReqDTO);
+        console.log("mapping success: ", isCorrectDomObj);
 
-        //正誤判定 LQuestionIDからListeningQuestions参照、UserAnswerOptionとAnswerOptionを比較しTrueOrFalseに正誤を登録
-        const isCorrectList = await businessservice.trueOrFalseJudge(isCorrectDomObjList);
-        console.log("true or false judge success: ", isCorrectList);
+        //正誤判定 questionHashからListeningQuestions参照、UserAnswerOption配列とAnswerOption配列の各要素を比較しisCollectList配列に正誤を登録
+        const isCorrectResult = await businessservice.trueOrFalseJudge(isCorrectDomObj);
+        console.log("true or false judge success: ", isCorrectResult);
         //lAnswerIDを新規生成
-        const lAnswerIDList: UUID[] = businessservice.lAnswerIdGenerate(validatedUserAnswerReqDTO.length);
+        const lAnswerID = businessservice.lAnswerIdGenerate();
+
+        //セッション情報からuserIDを取得
+        const userID = req.session.userId as UUID;
         //回答記録用ドメインオブジェクトlAnswerDataDomObjに結果マッピング
-        const lAnswerDataDomObj = mapper.LAnswerRecordMapper.toDomainObject(validatedUserAnswerReqDTO, isCorrectList, lAnswerIDList);
+        const lAnswerDataDomObj = mapper.LAnswerRecordMapper.toDomainObject(validatedUserAnswerReqDTO, isCorrectResult, lAnswerID, userID);
+
+        //attemptsを計算
+        const attempts = await businessservice.attemptsCount(isCorrectResult, userID);
+
         //ListeningAnswerResultsに登録
-        await businessservice.answerResultDataInsert(lAnswerDataDomObj);
+        await businessservice.answerResultDataInsert(lAnswerDataDomObj, attempts);
 
-        //LQuestionIDからListeningQuestions参照、AudioScript, JPNAudioScript, Explanationを取得
-        const lQuestionIDList = validatedUserAnswerReqDTO.map(dto => dto.lQuestionID);
+        const answerScriptsDomObj = await businessservice.answerDataExtract(isCorrectResult.lQuestionID);
 
-        const answerScriptsDomObjList = await businessservice.answerDataExtract(lQuestionIDList);
-
-        const userAnswerResDTOList = await mapper.UserAnswerResDTOMapper.toDomainObject(lQuestionIDList, isCorrectList, answerScriptsDomObjList);
+        const userAnswerResDTO = await mapper.UserAnswerResDTOMapper.toDataTransferObject(isCorrectResult, answerScriptsDomObj);
         //ユーザーに、userAnswerResDTOの形で結果（TrueOrFalse）と解答（lQuestionID, AudioScript, JPNAudioScript, Explanation）を送信
-        res.status(200).json(userAnswerResDTOList); //dtoを使用すべき
+        res.status(200).json(userAnswerResDTO);
         return;
     } catch (error) {
         console.error('回答処理エラー', error);
@@ -293,7 +273,9 @@ export async function answerController(req: Request, res: Response): Promise<voi
     }
 };
 
+/*
 //ランキング
 export async function rankingController(req: Request, res: Response): Promise<void> {
 
 }
+*/

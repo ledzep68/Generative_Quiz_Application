@@ -22,6 +22,24 @@ const newQuizApi = createApi({
             }),
             invalidatesTags: ['Session']
         }),
+        //クイズセッション終了リクエスト
+        resetQuizSession: builder.mutation<void, void>({
+            query: () => ({
+                url: `/lquiz/reset-quiz-session`,
+                method: 'POST', 
+                body: undefined
+            }),
+            invalidatesTags: ['Session']
+        }),
+        //全セッション（ユーザーセッション・クイズセッション）終了リクエスト
+        resetUserAndQuizSession: builder.mutation<void, void>({
+            query: () => ({
+                url: `/auth/reset-user-and-quiz-session`,
+                method: 'POST', 
+                body: undefined
+            }),
+            invalidatesTags: ['Session']
+        }),
         //part2新規クイズリクエスト
         fetchPart2NewQuestions: builder.mutation<{questionHash: string}, {currentIndex: number}>({
             query: (data) => (
@@ -57,6 +75,8 @@ const newQuizApi = createApi({
 });
 export const {
     useInitiateSessionMutation,
+    useResetQuizSessionMutation,
+    useResetUserAndQuizSessionMutation,
     useFetchPart2NewQuestionsMutation,
     useLazyFetchAudioQuery, //手動実行　関数名にLazyと入れるだけで実現
     useFetchAnswerMutation

@@ -5,25 +5,26 @@ import * as dto from "./dto.ts";
 import {UUID} from "crypto";
 import * as type from "./types.ts";
 
+//テスト用
 const testRequestParams: dto.UserAnswerReqDTO = {
-    questionHash: "",
+    questionHash: "ca4d7e8f6294",
     //userID: "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
-    userAnswerOption: undefined,
-    reviewTag: false,
-    answerDate: undefined
+    userAnswerOption: ["A"],
+    reviewTag: true,
+    answerDate: new Date()
 };
 
 const testAnswerData: dto.UserAnswerResDTO = {
     //lQuestionID: "test",
-    answerOption: "A",
-    isCorrect: true,
+    answerOption: ["A"],
+    isCorrectList: [true],
     audioScript: "test",
     jpnAudioScript: "test",
     explanation: "test"
 };
 
 const initialState: type.AnswerRequestState = {
-    requestParams: testRequestParams,
+    requestParams: testRequestParams, //2025/9/7　テストのため一時的に変更
 
     answerData: undefined,
 
@@ -37,7 +38,7 @@ const initialState: type.AnswerRequestState = {
 const RequestValidationSchema = z.object({
     questionHash: z.string(),
     //userID: z.string().regex(/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i) as z.ZodType<UUID>,
-    userAnswerOption: z.union([z.literal("A"), z.literal("B"), z.literal("C"), z.literal("D")]),
+    userAnswerOption: z.array(z.union([z.literal("A"), z.literal("B"), z.literal("C"), z.literal("D")])),
     reviewTag: z.boolean(),
     answerDate: z.date()
 });
@@ -59,19 +60,14 @@ export const answerSlice = createSlice({
                 ? [] 
                 : validationResult.error.issues.map((issue) => issue.message);
         },
-        //特定インデックスの回答を更新
+        //回答を更新
         updateRequestParam: (state, action: PayloadAction<Partial<dto.UserAnswerReqDTO>>) => {
-            const requestParam = action.payload;
-            if (!state.requestParams) {
-                state.requestParams = undefined;
-            };
-            if (state.requestParams) {
-                const validationResult = validateParams(state);
-                state.isValid = validationResult.success;
-                state.validationErrors = validationResult.success 
-                    ? [] 
-                    : validationResult.error.issues.map((issue) => issue.message);
-            };
+            state.requestParams = {...state.requestParams, ...action.payload};
+            const validationResult = validateParams(state);
+            state.isValid = validationResult.success;
+            state.validationErrors = validationResult.success 
+                ? [] 
+                : validationResult.error.issues.map((issue) => issue.message);
         },
         setAnswerData: (state, action: PayloadAction<dto.UserAnswerResDTO>) => { 
             state.answerData = action.payload;
@@ -98,12 +94,12 @@ export const answerSlice = createSlice({
             }
         },
         clearRequestParams: (state) => {
-            state.requestParams = [];
+            state.requestParams = undefined;
             state.isValid = false;
             state.validationErrors = [];
         },
         clearAnswerData: (state) => {
-            state.answerData = [];
+            state.answerData = undefined;
         }
     }
 });

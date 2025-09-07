@@ -8,6 +8,10 @@ const lQuizRouter = Express.Router();
 //URL: http://localhost:3000/api/lquiz/initialize-session
 lQuizRouter.post("/initialize-quiz-session", controller.initializeQuizSessionController);
 
+//セッション終了処理
+//URL: http://localhost:3000/api/lquiz/reset-session
+lQuizRouter.post("/reset-quiz-session", controller.resetQuizSessionController);
+
 //問題生成処理
 //Part1 URL: http://localhost:3000/api/lquiz/new-quiz-generate-1
 //未実装

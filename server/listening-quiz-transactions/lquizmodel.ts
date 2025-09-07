@@ -1,10 +1,13 @@
 import { Pool, PoolClient, QueryResult } from "pg";
+import { parse } from "postgres-array";
+
 import * as domein from "./lquiz.domeinobject.ts";
 import * as mapper from "./mappers/lquiz.dbmapper.ts";
 import * as entity from "./lquiz.entity.ts"
 import * as dberror from "./errors/lquiz.dberrors.ts";
 import {config} from "dotenv";
 import { omit } from "zod/v4-mini";
+import {UUID} from "crypto";
 
 import path from 'path'; 
 import { fileURLToPath } from 'url'; 
@@ -72,7 +75,7 @@ export async function newQuestionInsert(client: PoolClient, dataForInsert: entit
     }
 };
 
-
+/*
 //指定された問題番号の既存問題のIDをlistening_answer_resultsから取得
 export async function answeredQuestionIdSelect(client: PoolClient, domObjList: domein.ReviewQuestionInfo[]): Promise<QueryResult> {
     try{
@@ -117,16 +120,14 @@ export async function answeredQuestionDataRandomSelect(client: PoolClient, domOb
         throw new dberror.DBQuestionDataError("問題データの検索に失敗しました");
     }
 };
+*/
 
 //正誤判定用の解答番号取得
-export async function answerOptionExtract(client: PoolClient, lQuestionIDList: string[]): Promise<QueryResult> { 
+export async function answerOptionExtract(client: PoolClient, questionHash: string): Promise<QueryResult> { 
     try{
-        //プレースホルダーを動的に生成
-        const placeholders = lQuestionIDList.map((_, index) => `$${index + 1}`).join(', ');
-        console.log("placeholders: ", placeholders);
-        const sql = `SELECT l_question_id, answer_option FROM listening_questions WHERE l_question_id IN (${placeholders})`;
-        const values = lQuestionIDList;
-        return await client.query(sql, values);
+        const sql = `SELECT l_question_id, answer_option FROM listening_questions WHERE question_hash = $1`;
+        const value = [questionHash];
+        return await client.query(sql, value);
     } catch (error) {
         console.log('DB操作エラー (SELECT):', error);
         throw new dberror.DBQuestionDataError("問題データの検索に失敗しました");
@@ -134,38 +135,40 @@ export async function answerOptionExtract(client: PoolClient, lQuestionIDList: s
 };
 
 //解答データ取得
-export async function answerDataBatchExtract(client: PoolClient, lQuestionIDList: string[]): Promise<QueryResult> { 
+export async function answerDataExtract(client: PoolClient, lQuestionID: string): Promise<QueryResult> { 
     try{
-        //プレースホルダーを動的に生成
-        const placeholders = lQuestionIDList.map((_, index) => `$${index + 1}`).join(', ');
-        const sql = `SELECT l_question_id, answer_option, audio_script, jpn_audio_script, explanation FROM listening_questions WHERE l_question_id IN (${placeholders})`;
-        const values = lQuestionIDList;
-        return await client.query(sql, values);
+        const sql = `SELECT l_question_id, answer_option, audio_script, jpn_audio_script, explanation FROM listening_questions WHERE l_question_id = $1`;
+        const value = [lQuestionID];
+        return await client.query(sql, value);
     } catch (error) {
-        console.log('DB操作エラー (BATCH SELECT):', error);
+        console.log('DB操作エラー (SELECT):', error);
         throw new dberror.DBQuestionDataError("解答データの取得に失敗しました");
     }
 };
 
-//回答結果データ登録　バッチ処理
-export async function answerResultDataBatchInsert(client: PoolClient, insertAnswerDataList: entity.LAnswerResultEntity[]): Promise<QueryResult> {
+export async function attemptsExtract(client: PoolClient, lQuestionID: string, userID: UUID): Promise<QueryResult> {
+    try{
+        const sql = `SELECT total_attempts, correct_attempts FROM listening_answer_results WHERE user_id = $1 AND l_question_id = $2`;
+        const value = [userID, lQuestionID];
+        return await client.query(sql, value);
+    } catch (error) {
+        console.log('DB操作エラー (SELECT):', error);
+        throw new dberror.DBQuestionDataError("解答データの取得に失敗しました");
+    }
+}
+
+//回答結果データ登録
+export async function answerResultDataBatchInsert(client: PoolClient, insertAnswerData: entity.LAnswerResultEntity): Promise<QueryResult> {
     try {
-        if (insertAnswerDataList.length === 0) {
+        if (!insertAnswerData) {
             throw new Error("挿入データが空です");
         }
-
-        // プレースホルダーを動的生成
-        const placeholders = insertAnswerDataList.map((_, index) => {
-            const baseIndex = index * 10; // 10カラム分
-            return `($${baseIndex + 1}, $${baseIndex + 2}, $${baseIndex + 3}, $${baseIndex + 4}, $${baseIndex + 5}, $${baseIndex + 6}, $${baseIndex + 7}, $${baseIndex + 8}, $${baseIndex + 9}, $${baseIndex + 10})`;
-        }).join(', ');
         
         const sql = `INSERT INTO listening_answer_results 
                     (l_answer_id, user_id, l_question_id, latest_user_answer, latest_is_correct, total_attempts, correct_attempts, review_tag, first_answered_at, last_answered_at) 
-                    VALUES ${placeholders}`;
+                    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`;
         
-        // 全データを平坦（一次元）な配列に変換
-        const values = insertAnswerDataList.flatMap(insertAnswerData => [
+        const value = [
             insertAnswerData.lAnswerID,
             insertAnswerData.userID,
             insertAnswerData.lQuestionID,
@@ -176,12 +179,12 @@ export async function answerResultDataBatchInsert(client: PoolClient, insertAnsw
             insertAnswerData.reviewTag,
             insertAnswerData.firstAnsweredAt,
             insertAnswerData.lastAnsweredAt
-        ]);
+        ];
         
-        return await client.query(sql, values);
+        return await client.query(sql, value);
         
     } catch (error) {
-        console.log('DB操作エラー (BATCH INSERT):', error);
+        console.log('DB操作エラー (INSERT):', error);
         throw new dberror.DBAnswerDataError("回答結果データの登録に失敗しました");
     }
 };

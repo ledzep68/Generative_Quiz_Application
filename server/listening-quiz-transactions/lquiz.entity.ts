@@ -39,10 +39,10 @@ export interface LAnswerResultEntity {
     lAnswerID: UUID;
     userID: UUID;
     lQuestionID: string;
-    latestUserAnswerOption: "A"|"B"|"C"|"D";  // 最新の回答
-    latestIsCorrect: boolean;   // 最新の回答結果
-    totalAttempts: number;        // 挑戦回数
-    correctAttempts: number;      // 正解回数
+    latestUserAnswerOption: ("A"|"B"|"C"|"D")[];  //最新の回答
+    latestIsCorrect: boolean[];   //最新の回答結果
+    totalAttempts: number[];        //挑戦回数　各回答ごとに記録
+    correctAttempts: number[];      //正解回数　各回答ごとに記録
     reviewTag?: boolean;
     firstAnsweredAt: Date;  //最初に回答するボタンを押下した日時
     lastAnsweredAt: Date;   //ユーザが回答するボタンを押下した日時

@@ -32,10 +32,12 @@ export class generatedQuestionDataToTTSReqMapper {
     }
 };
 
+/*
+//不要
 export class NewQuestionResMapper {
     static toEntityList(
-            generatedQuestionDataList: dto.GeneratedQuestionDataResDTO[], 
-            audioURLList: domein.AudioURL[],
+            generatedQuestionData: dto.GeneratedQuestionDataResDTO, 
+            audioFilePath: domein.AudioFilePath,
             speakingRate: number
         ): dto.QuestionResDTO[] {
             return generatedQuestionDataList.map((questionData, index) => {
@@ -51,6 +53,7 @@ export class NewQuestionResMapper {
             });
         }
 };
+*/
 
 /*
 //service 復習クイズデータID指定取得用
@@ -97,47 +100,39 @@ export class LQuestionDataDomObjToDTOMapper {
 
 //service 正誤判定モジュール用　配列対応済
 export class IsCorrectMapper {
-   static toDomainObject(reqDTOList: dto.UserAnswerReqDTO[]): domein.IsCorrectData[] {
-       return reqDTOList.map(dto => ({
-           lQuestionID: dto.lQuestionID,
-           userAnswerOption: dto.userAnswerOption
-       }));
-   }
+   static toDomainObject(reqDTO: dto.UserAnswerReqDTO): domein.IsCorrectData {
+       return {
+           questionHash: reqDTO.questionHash,
+           userAnswerOption: reqDTO.userAnswerOption
+       }
+    };
 }
 
 //service 回答データ登録モジュール用 配列対応済
 export class LAnswerRecordMapper {
-    static toDomainObject(reqDTOList: dto.UserAnswerReqDTO[], isCorrectList: boolean[], lAnswerIDList: UUID[]): domein.NewLAnswerData[] {
-        const domObjs: domein.NewLAnswerData[] = [];
-        for (let i = 0; i < reqDTOList.length; i++) {
-            domObjs.push({
-                lAnswerID: lAnswerIDList[i],
-                userID: reqDTOList[i].userID, 
-                lQuestionID: reqDTOList[i].lQuestionID, 
-                userAnswerOption: reqDTOList[i].userAnswerOption, 
-                isCorrect: isCorrectList[i],
-                reviewTag: reqDTOList[i].reviewTag, 
-                answerDate: reqDTOList[i].answerDate as Date
-            });
+    static toDomainObject(reqDTO: dto.UserAnswerReqDTO, isCorrectResult: domein.IsCorrectResult, lAnswerID: UUID, userID: UUID): domein.NewLAnswerData {
+        return {
+            lAnswerID: lAnswerID,
+            userID: userID,
+            lQuestionID: isCorrectResult.lQuestionID,
+            questionHash: reqDTO.questionHash, 
+            userAnswerOption: reqDTO.userAnswerOption, 
+            isCorrectList: isCorrectResult.isCorrectList,
+            reviewTag: reqDTO.reviewTag, 
+            answerDate: reqDTO.answerDate as Date
         };
-        return domObjs;
     }
 };
 
 //service userAnswerResDTOへのマッピング
 export class UserAnswerResDTOMapper {
-    static toDomainObject(lQuestionIDList: string[], isCorrectList: boolean[], domObjList: domein.AnswerScripts[]): dto.UserAnswerResDTO[] {
-        const resDTOs: dto.UserAnswerResDTO[] = [];
-        for (let i = 0; i < lQuestionIDList.length; i++) {
-            resDTOs.push({
-                //lQuestionIDList[i],
-                answerOption: domObjList[i].answerOption,
-                isCorrect: isCorrectList[i],
-                audioScript: domObjList[i].audioScript,
-                jpnAudioScript: domObjList[i].jpnAudioScript,
-                explanation: domObjList[i].explanation
-            });
+    static toDataTransferObject(isCorrectResult: domein.IsCorrectResult, domObj: domein.AnswerScripts): dto.UserAnswerResDTO {
+        return {
+            answerOption: domObj.answerOption,
+            isCorrectList: isCorrectResult.isCorrectList,
+            audioScript: domObj.audioScript,
+            jpnAudioScript: domObj.jpnAudioScript,
+            explanation: domObj.explanation
         };
-        return resDTOs;
     }
 }

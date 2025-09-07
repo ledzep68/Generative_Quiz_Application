@@ -11,7 +11,7 @@ import { SpeakerAccent } from "./services/lquizapiservice.ts";
 //ユーザーからの新規クイズリクエストスキーマ（ランダム生成、ID非指定）
 export interface RandomNewQuestionReqDTO {
     sectionNumber: 1|2|3|4,
-    requestedNumOfLQuizs: number,
+    requestedNumOfLQuizs: 1|2|3|4|5|6|7|8|9|10,
     speakerAccent?: 'American' | 'British' | 'Canadian' | 'Australian',
     speakingRate: number //必須　デフォルト値1.0
 };
@@ -39,6 +39,8 @@ export class ReviewQuestionReqDTO {
     ){}
 };
 
+/*
+//questionHashしか送らないので不要
 //ユーザーへのクイズレスポンスDTO 新規・既存共通
 export class QuestionResDTO {
     constructor(
@@ -53,6 +55,7 @@ export class QuestionResDTO {
         public duration: number
     ){}
 };
+*/
 
 //OpenAI APIへのクイズリクエストプロンプト
 //prompt中でresで期待するクイズデータのスキーマを指定
@@ -103,8 +106,7 @@ export class ExistingLQuizReqDTO {
 
 //ユーザーからの回答データPOST（リクエスト）
 export interface UserAnswerReqDTO {
-    lQuestionID: string,
-    userID: UUID,
+    questionHash: string,
     userAnswerOption: ("A"|"B"|"C"|"D")[],
     reviewTag: boolean,
     answerDate?: Date
@@ -112,8 +114,7 @@ export interface UserAnswerReqDTO {
 
 //ユーザーへの正誤・解答データ送信（レスポンス）
 export interface UserAnswerResDTO {
-    //lQuestionID: string,
-    isCorrect: boolean,
+    isCorrectList: boolean[],
     answerOption: ("A"|"B"|"C"|"D")[],
     audioScript: string,
     jpnAudioScript: string,

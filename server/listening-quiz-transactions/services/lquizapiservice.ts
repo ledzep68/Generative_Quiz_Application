@@ -34,6 +34,7 @@ config({path: path.join(__dirname, '../../.env')});
 export type AccentType = keyof typeof ACCENT_PATTERNS; 
 export type SpeakerAccent = typeof ACCENT_PATTERNS[keyof typeof ACCENT_PATTERNS]; 
 
+//クイズセッション開始処理
 //問題セット生成初期化時（初回リクエスト時）
 //新規登録/ログイン時に初期化したセッションデータnoutiquestionSetだけ追記する
 export async function initializeNewQuestionSet(session: Express.Request["session"], domObj: domein.NewLQuestionInfo): Promise<void> {
@@ -71,9 +72,27 @@ export async function initializeNewQuestionSet(session: Express.Request["session
         session.save((err) => {
             if (err) {
                 console.error('Failed to save questionSet to session:', err);
-                reject(new Error('Failed to initialize question set'));
+                reject(new Error('Failed to initialize questionSet'));
             } else {
                 console.info(`Question set initialized: section=${domObj.sectionNumber}, totalQuestions=${domObj.requestedNumOfLQuizs}`);
+                resolve();
+            }
+        });
+    });
+}
+
+//クイズセッション終了処理
+//問題セット生成終了時（最後のリクエスト時）
+export async function resetQuestionSet(session: Express.Request["session"]): Promise<void> {
+    session.questionSet = undefined;
+
+    return new Promise((resolve, reject) => {
+        session.save((err) => {
+            if (err) {
+                console.error('Failed to reset questionSet to session:', err);
+                reject(new Error('Failed to reset questionSet'));
+            } else {
+                console.info(`Question set reset`);
                 resolve();
             }
         });
