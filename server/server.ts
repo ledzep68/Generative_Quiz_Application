@@ -20,11 +20,27 @@ const __dirname = path.dirname(__filename);
 
 config({path: path.join(__dirname, '.env')});
 
+app.use((req, res, next) => {
+    console.log('--- リクエスト開始 ---');
+    console.log('URL:', req.url);
+    console.log('受信Cookie:', req.headers.cookie);
+    
+    // レスポンス送信時のログ
+    const originalEnd = res.end;
+    res.end = function(chunk, encoding) {
+        console.log('送信Set-Cookie:', res.getHeaders()['set-cookie']);
+        console.log('--- リクエスト終了 ---');
+        return originalEnd.call(this, chunk, encoding);
+    };
+    
+    next();
+});
+
 //セッション管理
 app.use(session({
     secret: process.env.SESSION_SECRET as string, //sessionIDに電子署名を付与(HMAC_SHA256) sessionIDと電子署名をセットで授受し、改ざん検知
     resave: false,
-    saveUninitialized: false,
+    saveUninitialized: true,
     rolling: true,  //アクティブ時に時間延長
     cookie: { 
         maxAge: 1000 * 60 * 30,  //30分でタイムアウト→セッションデータ解放

@@ -3,7 +3,7 @@
 userdto.tsの機能: クライアント/サーバ間で授受されるデータ形式を定義する
 
 *********************************************/
-import { UUID } from "crypto";
+import { UUID, randomUUID } from "crypto";
 
 export interface RegisterReqDTO {
     userName: string;

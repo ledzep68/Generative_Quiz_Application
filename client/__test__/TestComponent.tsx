@@ -40,6 +40,9 @@ import * as type from "../src/features/listening-quiz-management/transaaction/ty
 import { useAppSelector, useAppDispatch } from "../src/shared/hooks/redux-hooks.ts";
 import { current } from "@reduxjs/toolkit";
 
+import * as userdto from "../src/features/user-management/login/dto.ts";
+import * as userapi from "../src/features/user-management/login/api.ts";
+
 //テスト画面
 function TestScreen() {
     //状態遷移　初期状態はstandby
@@ -51,6 +54,8 @@ function TestScreen() {
     const [fetchAnswer] = api.useFetchAnswerMutation();
 
     const [fetchAudio] = api.useLazyFetchAudioQuery();
+
+    const [fetchLoginAndInitializeSession] = userapi.useFetchLoginAndInitializeSessionMutation();
     
     //クイズリクエスト用selector
     const requestQuestionParams = useAppSelector(state => state.newRandomQuestionRequest.requestParams);
@@ -186,6 +191,18 @@ function TestScreen() {
             console.log("audio play failed");
         }
     };
+    const handleLogin = async () =>{
+        const testLoginReqDTO: userdto.LoginReqDTO = {
+            userName: "englishlearner",
+            password: "testUser0908"
+        }
+        try{
+            await fetchLoginAndInitializeSession(testLoginReqDTO).unwrap();
+            console.log("ログイン成功");
+        } catch (error) {
+            console.log("ログイン失敗: ", error);
+        }
+    };
     const handleAnswer = async () => {
             //回答内容をAPIに送る
             //回答レスポンスが届いたことを確認
@@ -245,6 +262,14 @@ function TestScreen() {
                             label="音声再生テスト"
                             onClick={handleAudioPlay}
                             disabled={isPlaying}
+                            color="primary"
+                            size="medium"
+                            sx={{ width: '100%', py: 1 }}
+                        />
+                        <ButtonComponent 
+                            variant="outlined"
+                            label="ログインテスト"
+                            onClick={handleLogin}
                             color="primary"
                             size="medium"
                             sx={{ width: '100%', py: 1 }}

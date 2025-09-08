@@ -15,6 +15,8 @@ import * as errorhandler from "./errors/errorhandlers.ts";
 import { z } from "zod";
 import * as businessschema from "./schemas/lquizbusinessschema.ts";
 
+import "../users/user.types.ts";
+
 //セッションのうちクイズ関連データの初期化
 export async function initializeQuizSessionController(req: Request, res: Response): Promise<void> {
     try {
@@ -251,18 +253,26 @@ export async function answerController(req: Request, res: Response): Promise<voi
 
         //セッション情報からuserIDを取得
         const userID = req.session.userId as UUID;
+        console.log("セッションobject: ", req.session);
+        console.log("セッションID: ", req.session.id);
+        console.log("セッションuserId: ", req.session.userId);
+        console.log("userID: ", userID);
         //回答記録用ドメインオブジェクトlAnswerDataDomObjに結果マッピング
         const lAnswerDataDomObj = mapper.LAnswerRecordMapper.toDomainObject(validatedUserAnswerReqDTO, isCorrectResult, lAnswerID, userID);
+        console.log("lAnswerDataDomObj: ", lAnswerDataDomObj);
 
         //attemptsを計算
         const attempts = await businessservice.attemptsCount(isCorrectResult, userID);
+        console.log("attempts: ", attempts);
 
         //ListeningAnswerResultsに登録
         await businessservice.answerResultDataInsert(lAnswerDataDomObj, attempts);
 
         const answerScriptsDomObj = await businessservice.answerDataExtract(isCorrectResult.lQuestionID);
+        console.log("answerScriptsDomObj: ", answerScriptsDomObj);
 
         const userAnswerResDTO = await mapper.UserAnswerResDTOMapper.toDataTransferObject(isCorrectResult, answerScriptsDomObj);
+        console.log("userAnswerResDTO: ", userAnswerResDTO);
         //ユーザーに、userAnswerResDTOの形で結果（TrueOrFalse）と解答（lQuestionID, AudioScript, JPNAudioScript, Explanation）を送信
         res.status(200).json(userAnswerResDTO);
         return;

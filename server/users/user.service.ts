@@ -76,8 +76,9 @@ export async function userLogin(client: PoolClient, domObj: UserData): Promise<{
 //セッション初期化・開始
 export async function initializeUserSession(userId: UUID, session: Express.Request["session"]): Promise<void> {
     return new Promise((resolve, reject) => {
+        console.log("userId: ", userId);
         //セッション再生成（固定ID不可）
-        session.regenerate((err) => {
+            session.regenerate((err) => {
             if (err) {
                 console.error(`Session regeneration failed for user ${userId}:`, err);
                 reject(new Error('Failed to regenerate session'));
@@ -87,6 +88,9 @@ export async function initializeUserSession(userId: UUID, session: Express.Reque
             //userId設定
             session.userId = userId; 
             //questionSetは初期化時点では未設定
+            console.log("login時セッションobject: ", session);
+            console.log("login時セッションID: ", session.id);
+            console.log("login時セッションuserId: ", session.userId);
             
             //ログ出力
             console.info(`User session initialized: userId=${userId}, sessionId=${session.id}`);
