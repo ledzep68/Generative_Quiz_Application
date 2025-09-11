@@ -100,7 +100,7 @@ export class ExistingLQuizReqDTO {
 //回答データPOST（リクエスト）
 export interface UserAnswerReqDTO {
     questionHash?: string,
-    userAnswerOption?: ("A"|"B"|"C"|"D")[],
+    userAnswerOption?: ("A"|"B"|"C"|"D"|null)[],
     reviewTag?: boolean,
     answerDate?: Date
 };
@@ -108,7 +108,7 @@ export interface UserAnswerReqDTO {
 //正誤・解答データレスポンス
 export interface UserAnswerResDTO {
     isCorrectList: boolean[],
-    answerOption: ("A"|"B"|"C"|"D")[],
+    answerOption: ("A"|"B"|"C"|"D"|null)[],
     audioScript: string,
     jpnAudioScript: string,
     explanation: string

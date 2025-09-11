@@ -50,6 +50,30 @@ export const answerSlice = createSlice({
     name: "answerManagement",
     initialState,
     reducers: {
+        // 小問ごとの回答を更新
+        updateSubQuestionAnswer: (state, action: PayloadAction<{
+            sectionNumber: 1 | 2 | 3 | 4;
+            subQuestionIndex: 0 | 1 | 2;  // 小問のindex (0, 1, 2)
+            answer: 'A' | 'B' | 'C' | 'D' | null;  // 回答内容
+        }>) => {
+            const { sectionNumber, subQuestionIndex, answer } = action.payload;
+            
+            //userAnswerOptionが未初期化の場合は初期化
+            if (!state.requestParams?.userAnswerOption) {
+                state.requestParams ??= {};
+                state.requestParams.userAnswerOption = [null, null, null];
+            }
+            
+            //指定されたindexに回答を設定
+            state.requestParams.userAnswerOption[subQuestionIndex] = answer;
+            
+            //バリデーション実行
+            const validationResult = validateParams(state);
+            state.isValid = validationResult.success;
+            state.validationErrors = validationResult.success 
+                ? [] 
+                : validationResult.error.issues.map((issue) => issue.message);
+        },
         setRequestParams: (state, action: PayloadAction<dto.UserAnswerReqDTO>) => {
             console.log('setRequestParams:', action.payload);
             state.requestParams = action.payload;
@@ -105,6 +129,7 @@ export const answerSlice = createSlice({
 });
 
 export const {
+    updateSubQuestionAnswer,
     setRequestParams,
     setAnswerData,
     updateRequestParam,

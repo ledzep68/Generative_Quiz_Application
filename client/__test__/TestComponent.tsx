@@ -15,7 +15,7 @@ import {useAudioPlayer} from "react-use-audio-player";
 import ReactAudioPlayer from 'react-audio-player';
 import {URL} from "url";
 
-import { Container, Box, Typography, Paper, SelectChangeEvent, Slider, IconButton } from "@mui/material";
+import { Container, Box, Typography, Paper, SelectChangeEvent, Slider, IconButton, Radio } from "@mui/material";
 import { ContentCutOutlined, Settings } from "@mui/icons-material";
 import { PlayArrow, Pause } from '@mui/icons-material';
 
@@ -27,6 +27,7 @@ import MainMenu from "../src/features/main-menu/components/MainMenu";
 import CheckBoxComponent from "../src/shared/components/CheckBox";
 import AnswerButtonComponent from "../src/features/listening-quiz-management/transaaction/components/AnswerButton.tsx";
 import QuizInterruptPopup from "../src/features/listening-quiz-management/transaaction/components/InterruptPopUp.tsx";
+import RadioButtonComponent from "../src/shared/components/RadioButton";
 
 import * as newQuestionSlice from "../src/features/listening-quiz-management/transaaction/newquestion.slice.ts";
 import * as uiSlice from "../src/features/listening-quiz-management/transaaction/ui.slice.ts";
@@ -231,6 +232,24 @@ function TestScreen() {
             //dispatch(uiSlice.setCurrentScreen('result'));
         };
 
+    type QuestionNumber = '1' | '2' | '3';
+    const [selectedQuestion, setSelectedQuestion] = useState<QuestionNumber>('1');
+
+    //小問選択肢の定義
+    const questionOptions = [
+        { value: '1', label: 'Q1' },
+        { value: '2', label: 'Q2' },
+        { value: '3', label: 'Q3' }
+    ];
+
+    //小問変更時のハンドラー
+    const handleQuestionChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+        const questionNumber = event.target.value as QuestionNumber;
+        setSelectedQuestion(questionNumber);
+        console.log(`Q${questionNumber}に切り替えました`);
+        // ここで問題内容の切り替え処理を実行
+    };
+
 
     return (
     <Box 
@@ -281,6 +300,19 @@ function TestScreen() {
                             color="primary"
                             size="medium"
                             sx={{ width: '100%', py: 1 }}
+                        />
+                        {/* TOEIC小問切り替えラジオボタン */}
+                        <RadioButtonComponent
+                            groupLabel="小問を選択"
+                            name="toeic-question-selector"
+                            value={selectedQuestion}
+                            options={questionOptions}
+                            onChange={handleQuestionChange}
+                            row={true}              // 横並び表示
+                            disabled={false}
+                            required={false}
+                            size="medium"
+                            color="primary"
                         />
                     <Box sx={{ width: '100%', px: 2 }}>
 

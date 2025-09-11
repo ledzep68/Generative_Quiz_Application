@@ -25,6 +25,7 @@ import MainMenu from "../../../main-menu/components/MainMenu";
 import CheckBoxComponent from "../../../../shared/components/CheckBox";
 import AnswerButtonComponent from "./AnswerButton.tsx";
 import QuizInterruptPopup from "./InterruptPopUp.tsx";
+import RadioButtonComponent from "../../../../shared/components/RadioButton";
 
 import * as newQuestionSlice from "../newquestion.slice.ts";
 import * as uiSlice from "../ui.slice.ts";
@@ -300,6 +301,7 @@ function AnswerScreen() {
     const { currentIndex = 0 } = indexParams;
 
     //クイズデータselector（現在の問題のhashだけ取得）
+    const sectionNumber = useAppSelector(state => state.newRandomQuestionRequest.requestParams.sectionNumber);
     const questionHash = useAppSelector(state => state.newRandomQuestionRequest.questionHash) 
     //const currentQuestion = questionDataList[currentIndex];
     //if (!currentQuestion) {
@@ -315,6 +317,7 @@ function AnswerScreen() {
     const isAudioReadyToPlay = useAppSelector(state => state.audioManagement.isAudioReadyToPlay);
 
     //回答リクエスト用selector
+    const [currentSubQuestion, setCurrentSubQuestion] = useState<0 | 1 | 2>(0);
     const requestAnswerParams = useAppSelector(state => {
         return state.answerManagement.requestParams
     }) as dto.UserAnswerReqDTO;
@@ -326,9 +329,9 @@ function AnswerScreen() {
     const [resetUserAndQuizSession] = api.useResetUserAndQuizSessionMutation();
     const [fetchAnswer] = api.useFetchAnswerMutation();
 
-    const handleUserAnswerChange = (answer: ('A'|'B'|'C'|'D')[]) => {
+    const handleUserAnswerChange = (answer: ('A'|'B'|'C'|'D'|null)[]) => {
         dispatch(answerSlice.updateRequestParam(
-            { userAnswerOption: answer as ('A'|'B'|'C'|'D')[] }
+            { userAnswerOption: answer as ('A'|'B'|'C'|'D'|null)[] }
         ));
     };
 
@@ -344,6 +347,26 @@ function AnswerScreen() {
         console.log('disabled状態:', !userAnswerOption);
         console.log('reviewTag:', reviewTag);
     }, [userAnswerOption]);
+
+    //小問選択
+    type QuestionNumber = '1' | '2' | '3';
+    const [selectedQuestion, setSelectedQuestion] = useState<QuestionNumber>('1');    
+    const questionOptions = [
+        { value: '1', label: 'Q1' },
+        { value: '2', label: 'Q2' },
+        { value: '3', label: 'Q3' }
+    ];
+    const handleSubQuestionAnswerChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+        const selectedAnswer = event.target.value as 'A' | 'B' | 'C' | 'D' | null;
+        if (sectionNumber === 3 || sectionNumber === 4) {
+            dispatch(answerSlice.updateSubQuestionAnswer({
+                subQuestionIndex: currentSubQuestion,  // 現在の小問index
+                answer: selectedAnswer
+            }));
+        } else {
+            
+        }
+    };
 
     //音声再生
     const {load, error, isPlaying} = useAudioPlayer();
@@ -540,6 +563,20 @@ function AnswerScreen() {
                             sx={{ fontSize: 'body1' }}
                         />
 
+                        {/* TOEIC小問切り替えラジオボタン */}
+                        <RadioButtonComponent
+                            groupLabel="小問を選択"
+                            name="toeic-question-selector"
+                            value={selectedQuestion}
+                            options={questionOptions}
+                            onChange={handleSubQuestionAnswerChange}
+                            row={true}              
+                            disabled={false}
+                            required={false}
+                            size="medium"
+                            color="primary"
+                        />
+
                         {/* ボタン群 */}
                         <Box sx={{ mt: 1, display: 'flex', flexDirection: 'column', gap: 1 }}>
                             <ButtonComponent 
@@ -609,10 +646,10 @@ function ResultScreen() {
     //回答データ取得用selector
     const answerParamList = useAppSelector(state => state.answerManagement.requestParams) as dto.UserAnswerReqDTO[];
     const { userAnswerOption, reviewTag } = answerParamList[0];
-    const answerDataList = useAppSelector(state => {
+    const answerData = useAppSelector(state => {
         return state.answerManagement.answerData
-    }) as dto.UserAnswerResDTO[];
-    const { audioScript, jpnAudioScript, explanation, answerOption, isCorrect } = answerDataList[0];
+    }) as dto.UserAnswerResDTO;
+    const { audioScript, jpnAudioScript, explanation, answerOption, isCorrectList } = answerData;
 
     const navigate = useNavigate();
     const dispatch = useAppDispatch();
@@ -672,10 +709,7 @@ function ResultScreen() {
 
     //復習タグの変更
     const handleReviewTagChange = (checked: boolean) => {
-        dispatch(answerSlice.updateRequestParam({
-            index: 0,
-            data: { reviewTag: checked }
-        }))
+        dispatch(answerSlice.updateRequestParam({ reviewTag: checked }))
     };
 
     // 次の問題に進む
