@@ -123,7 +123,23 @@ export async function generatePart2LQuizController(req: Request, res: Response):
 
 //Part3,4問題&音声データ生成　part2と生成フローが異なるのでエンドポイントを分割した
 export async function generatePart34LQuizController(req: Request, res: Response): Promise<void> {
+    const sessionData = req.session;
+    //sessionData自体のチェック
+    if (!sessionData) {
+        throw new Error("Session not found");
+    }
+    //questionSetのチェック
+    if (!sessionData.questionSet) {
+        throw new Error("Question set not initialized. Please start a new quiz session.");
+    }
+    const questionSet = sessionData.questionSet;
+    console.log("questionSet: ", questionSet);
+    //問題番号更新
+    const requestedIndex = req.body.currentIndex; //フロントエンドから送信
+    questionSet.currentIndex = requestedIndex;
+    console.log("currentIndex: ", questionSet.currentIndex);
     //currentIndexをtotalQuestionNumと比較
+    
     //currentIndex<totalQuestionNum
         //問題生成
             //sectionNumberで条件分岐
@@ -134,6 +150,52 @@ export async function generatePart34LQuizController(req: Request, res: Response)
                     //解説生成
     //currentIndex>=totalQuestionNum
         //インデックス不正エラー
+    const {sectionNumber, currentIndex, totalQuestionNum, speakerAccentList, settingList, contentTopicInstructionList, contentFrameworkTextList, speakingRate} = questionSet;
+
+    //currentIndexをtotalQuestionNumと比較
+    if(currentIndex >= totalQuestionNum){
+        throw new Error("Index out of range");
+    };
+    try{
+        //currentIndex<totalQuestionNumの場合
+        //問題ID生成
+        const questionHash = businessservice.generateHash(req.session.id);
+        console.log("questionHash: ", questionHash);
+        const lQuestionID = await businessservice.generateLQuestionID(sectionNumber, questionHash);
+        console.log("lQuestionID: ", lQuestionID);
+        //問題生成
+        const questionData = await apiservice.generatePart34Question(req.session); 
+        console.log("questionData: ", questionData);
+        const audioScriptWithPauses = await apiservice.addPausesToPart34AudioScript(questionData.audioScript);
+        console.log("audioScriptWithPauses: ", audioScriptWithPauses);
+        const newAudioReqDTO = mapper.generatedQuestionDataToTTSReqMapper.toDomainObject(
+            sectionNumber, 
+            audioScriptWithPauses, 
+            questionData.speakerAccent,
+            speakingRate as number
+        );
+        console.log("newAudioReqDTO: ", newAudioReqDTO);
+        const audioFilePath = await apiservice.generateAudioContent(newAudioReqDTO, lQuestionID);
+        console.log("audioFilePath: ", audioFilePath);
+        //レスポンス　question_hash配信
+        res.status(200).json({
+            questionHash: questionHash,
+            currentIndex: currentIndex,
+            message: 'Question generated and saved successfully'
+        });questionData
+
+        const jpnAudioScript = await apiservice.generatePart34JpnAudioScript(sectionNumber, questionData.audioScript);
+        const explanation = await apiservice.generatePart34Explanation(sectionNumber, speakerAccentList[currentIndex], questionData.audioScript, questionData.answerOption);
+        questionData.jpnAudioScript = jpnAudioScript;
+        questionData.explanation = explanation;
+        //問題データ登録
+        await businessservice.newQuestionDataInsert(questionData, audioFilePath, questionHash, speakingRate as number);
+
+    } catch (error) {
+        console.error('Part', sectionNumber, 'クイズ生成エラー:', error);
+        const { response } = errorhandler.generateLQuestionErrorHandler(error as Error);
+        res.status(response.status).json(response);
+    }
 };
 
 /*

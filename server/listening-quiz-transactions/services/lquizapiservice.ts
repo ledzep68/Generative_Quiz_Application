@@ -11,6 +11,7 @@ import * as domein from "../lquiz.domeinobject.ts";
 import * as dto from "../lquiz.dto.ts";
 import * as apierror from "../errors/lquiz.apierrors.ts";
 import * as schema from "../schemas/lquizapischema.ts";
+
 import {SPEAKER_PATTERNS, JPN_AUDIO_SCRIPT_FORMAT, ACCENT_PATTERNS, TTS_VOICE_CONFIG, PART_SPECIFIC_SCENARIOS, WORD_CONSTRAINTS, TOPIC_MAPPING, SITUATION_ELEMENTS, SPEAKER_ELEMENTS, LOCATION_ELEMENTS} from "./services.types.ts";
 
 import { z } from "zod";
@@ -22,6 +23,7 @@ import os from "os";
 import { fileURLToPath } from "url";
 
 import { config } from "dotenv";
+import { Session } from "inspector/promises";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -212,23 +214,32 @@ export async function generatePart34JpnAudioScript(sectionNumber: 1|2|3|4, audio
 
     return  generatedJpnAudioScript;
 };
-export async function generatePart34Explanation(req: Express.Request["session"], audioScript: string, answerOptionList: ("A" | "B" | "C" | "D")[]/*, requestedIndex: 0|1|2|3|4|5|6|7|8|9/*, domObj: domein.NewLQuestionInfo*/): Promise<string> {
-    if(!req.questionSet){
-        throw new Error("Question set not found in session");
-    };
-    const questionSet = req.questionSet;
-    const sectionNumber = questionSet.sectionNumber;
+export async function generatePart34Explanation(
+    sectionNumber: 1|2|3|4, 
+    speakerAccent: AccentType, 
+    settings: {
+        location: string;
+        speaker: string;
+        situation: string
+    }, 
+    contentTopicInstruction: string,
+    contentFrameworkText: string,
+    audioScript: string, 
+    answerOptionList: ("A" | "B" | "C" | "D")[]/*, requestedIndex: 0|1|2|3|4|5|6|7|8|9/*, domObj: domein.NewLQuestionInfo*/
+): Promise<string> {
+    
+    /*const sectionNumber = questionSet.sectionNumber;
     const currentIndex = questionSet.currentIndex;
 
     const speakerAccentList = questionSet.speakerAccentList;
     //状況設定（多様性担保）（分離）
     const settingList = questionSet.settingList;
     const contentTopicInstructionList = questionSet.contentTopicInstructionList as string[];
-    const contentFrameworkTextList = questionSet.contentFrameworkTextList as string[];
+    const contentFrameworkTextList = questionSet.contentFrameworkTextList as string[];*/
 
-    const relevantAccentFeaturesText = extractAccentSpecificPoints(audioScript, speakerAccentList[currentIndex]);   
+    const relevantAccentFeaturesText = extractAccentSpecificPoints(audioScript, speakerAccent);   
 
-    const explanationPrompt = await generatePart34SingleExplanationPrompt(sectionNumber, speakerAccentList[currentIndex], relevantAccentFeaturesText, audioScript, answerOptionList);
+    const explanationPrompt = await generatePart34SingleExplanationPrompt(sectionNumber, speakerAccent, relevantAccentFeaturesText, audioScript, answerOptionList);
 
     const generatedExplanation = await callChatGPTForExplanation(explanationPrompt);
 

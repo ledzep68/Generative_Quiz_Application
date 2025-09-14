@@ -76,8 +76,10 @@ function StandByScreen() {
     const navigate = useNavigate();
     const dispatch = useAppDispatch();
     const [initiateSession] = api.useInitiateSessionMutation();
-    const [resetUserAndQuizSession] = api.useResetUserAndQuizSessionMutation
+    const [resetUserAndQuizSession] = api.useResetUserAndQuizSessionMutation();
+
     const [fetchPart2NewQuestions] = api.useFetchPart2NewQuestionsMutation();
+    const [fetchPart34NewQuestions] = api.useFetchPart34NewQuestionsMutation();
     const [fetchAudio] = api.useLazyFetchAudioQuery();
     
     //クイズリクエスト用selector
@@ -177,8 +179,54 @@ function StandByScreen() {
     };
 
     const handlePart34QuizInit = async (): Promise<void> => {
+        dispatch(newQuestionSlice.setRequestStatus('pending'));
+        //Redux stateからDTOを構築
+        const randomNewQuestionReqDTO: dto.RandomNewQuestionReqDTO = {
+            sectionNumber,
+            requestedNumOfLQuizs,
+            speakingRate
+        };
+        //hooksに渡す
+        try {
+            //クイズセッション開始
+            await initiateSession(randomNewQuestionReqDTO);
+            console.log("session initialized successfully")
+            //クイズ生成api呼び出し
+            const fetchResult = await fetchPart34NewQuestions({currentIndex}).unwrap();
+            console.log("fetchResult: ", fetchResult)
+            const questionHash = fetchResult.questionHash
+            dispatch(newQuestionSlice.setRequestStatus('success'));
+
+            //クイズhash値をredux storeに保存
+            dispatch(newQuestionSlice.setQuestionHash(questionHash));
+
+            //音声合成api呼び出し&音声データをredux storeに保存
+            dispatch(audioSlice.setAudioRequest(questionHash))
+            await handleFetchAudio(questionHash as string);
+            dispatch(audioSlice.setRequestStatus('success'));
+            dispatch(audioSlice.setIsAudioReadyToPlay(true));
+
+            //Redux storeの状態を確認
+            console.log("Audio fetch SUCCESS");
+            console.log("Audio data in store:", audioBlob);
+
+            dispatch(audioSlice.setIsAudioReadyToPlay(true));
             
-    }
+            console.log("audio fetch SUCCESS");
+
+            //回答状態に移行
+            if (screenState === 'standby') {
+                dispatch(uiSlice.setCurrentScreen('answer'));
+            };
+
+        } catch (error) {
+            //クイズリクエスト失敗の場合の処理
+            dispatch(newQuestionSlice.setRequestStatus('failed'));
+            //失敗後の処理？
+
+            //else 音声リクエスト失敗処理
+        }
+    };
 
     const handleFetchAudio = async (questionHash: string) => {
         try {
@@ -201,6 +249,12 @@ function StandByScreen() {
         dispatch(newQuestionSlice.resetRequest());
         navigate('/main-menu')
     };
+
+    useEffect(() => {
+        console.log("sectionNumber: ", sectionNumber);
+        console.log("requestedNumOfLQuizs: ", requestedNumOfLQuizs);
+        console.log("speakingRate: ", speakingRate);
+    })
 
     return (
     <Box 
@@ -317,7 +371,6 @@ function AnswerScreen() {
     const isAudioReadyToPlay = useAppSelector(state => state.audioManagement.isAudioReadyToPlay);
 
     //回答リクエスト用selector
-    const [currentSubQuestion, setCurrentSubQuestion] = useState<0 | 1 | 2>(0);
     const requestAnswerParams = useAppSelector(state => {
         return state.answerManagement.requestParams
     }) as dto.UserAnswerReqDTO;
@@ -329,11 +382,11 @@ function AnswerScreen() {
     const [resetUserAndQuizSession] = api.useResetUserAndQuizSessionMutation();
     const [fetchAnswer] = api.useFetchAnswerMutation();
 
-    const handleUserAnswerChange = (answer: ('A'|'B'|'C'|'D'|null)[]) => {
+    /*const handleUserAnswerChange = (answer: ('A'|'B'|'C'|'D'|null)[]) => {
         dispatch(answerSlice.updateRequestParam(
             { userAnswerOption: answer as ('A'|'B'|'C'|'D'|null)[] }
         ));
-    };
+    };*/
 
     const handleReviewTagChange = (checked: boolean) => {
         dispatch(answerSlice.updateRequestParam({ reviewTag: checked }
@@ -349,22 +402,30 @@ function AnswerScreen() {
     }, [userAnswerOption]);
 
     //小問選択
-    type QuestionNumber = '1' | '2' | '3';
-    const [selectedQuestion, setSelectedQuestion] = useState<QuestionNumber>('1');    
-    const questionOptions = [
-        { value: '1', label: 'Q1' },
-        { value: '2', label: 'Q2' },
-        { value: '3', label: 'Q3' }
+    type SubQuestionNumber = '0' | '1' | '2';
+    const [selectedSubQuestionIndex, setSelectedSubQuestionIndex] = useState<SubQuestionNumber>('0');    
+    const subQuestionOptions = [
+        { value: '0', label: 'Q1' },
+        { value: '1', label: 'Q2' },
+        { value: '2', label: 'Q3' }
     ];
-    const handleSubQuestionAnswerChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-        const selectedAnswer = event.target.value as 'A' | 'B' | 'C' | 'D' | null;
+    const handleSubQuestionNumberChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+        const selectedSubQuestionIndex = event.target.value as SubQuestionNumber;
+        setSelectedSubQuestionIndex(selectedSubQuestionIndex);
+    };
+    type AnswerOption = 'A' | 'B' | 'C' | 'D' | null;
+    const handleUserAnswerChange = (selectedAnswer: "A" | "B" | "C" | "D") => {
         if (sectionNumber === 3 || sectionNumber === 4) {
             dispatch(answerSlice.updateSubQuestionAnswer({
-                subQuestionIndex: currentSubQuestion,  // 現在の小問index
+                currentSubQuestionIndex: selectedSubQuestionIndex,  //現在の小問index
                 answer: selectedAnswer
             }));
         } else {
-            
+            //Part1,2の場合
+            dispatch(answerSlice.updateSubQuestionAnswer({
+                currentSubQuestionIndex: '0',  //単一要素の配列
+                answer: selectedAnswer
+            }));
         }
     };
 
@@ -432,12 +493,28 @@ function AnswerScreen() {
         //回答レスポンスが届いたことを確認
         //stateを結果状態に更新し、結果画面（Result.tsx）に遷移(Navigate)
         //Redux stateからDTOを構築
+        if (userAnswerOption === undefined || userAnswerOption.includes(null)) {
+            const confirmResult = window.confirm(
+                "未回答の小問があります。解答画面に進みますか？前の問題に戻ることはできません。"
+            );
+            
+            if (!confirmResult) {
+                // 「キャンセル」が選択された場合の処理
+                // 何もしない（現在の問題に留まる）
+                return;
+        };
+
+        //必須パラメータチェック
+        if (!questionHash || !userAnswerOption || reviewTag === undefined) {
+            console.error("必須パラメータが不足しています");
+            dispatch(uiSlice.setCurrentScreen('result'));
+            return;
+        }
+}
         try{
             //await dispatchTestAudio();
             console.log(userAnswerOption, reviewTag);
-            if (!questionHash || !userAnswerOption || reviewTag === undefined) {
-                throw new Error("必須パラメータが不足しています");
-            }
+
             const answerReqDTO: dto.UserAnswerReqDTO = {
                 questionHash: questionHash,
                 userAnswerOption: userAnswerOption,
@@ -488,6 +565,13 @@ function AnswerScreen() {
         //ログイン画面に遷移
         navigate('/login');
     };
+
+    useEffect(() => {
+        console.log("sectionNumber", sectionNumber);
+        console.log("questionHash: ", questionHash);
+        console.log("currentSubQuestion", selectedSubQuestionIndex);
+        console.log("userAnswerOption: ", userAnswerOption);
+    })
 
     return (
         //回答画面
@@ -550,7 +634,6 @@ function AnswerScreen() {
 
                         {/* 回答選択ボタン */}
                         <AnswerButtonComponent
-                            selectedAnswer={userAnswerOption || ''}
                             onAnswerChange={handleUserAnswerChange}
                             sx = {{ display: 'flex', flexDirection: 'column', gap: 1, mt: 2, fontSize: '1rem' }}
                         />
@@ -564,18 +647,19 @@ function AnswerScreen() {
                         />
 
                         {/* TOEIC小問切り替えラジオボタン */}
+                        {sectionNumber !== 1 && sectionNumber !== 2 && (
                         <RadioButtonComponent
                             groupLabel="小問を選択"
                             name="toeic-question-selector"
-                            value={selectedQuestion}
-                            options={questionOptions}
-                            onChange={handleSubQuestionAnswerChange}
+                            value={selectedSubQuestionIndex}
+                            options={subQuestionOptions}
+                            onChange={handleSubQuestionNumberChange}
                             row={true}              
                             disabled={false}
                             required={false}
                             size="medium"
                             color="primary"
-                        />
+                        />)}
 
                         {/* ボタン群 */}
                         <Box sx={{ mt: 1, display: 'flex', flexDirection: 'column', gap: 1 }}>

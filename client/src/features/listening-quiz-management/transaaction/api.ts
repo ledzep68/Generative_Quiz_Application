@@ -51,6 +51,16 @@ const newQuizApi = createApi({
             ),
             invalidatesTags: ['Quiz']
         }),
+        fetchPart34NewQuestions: builder.mutation<{questionHash: string}, {currentIndex: number}>({
+            query: (data) => (
+                {
+                    url: `/lquiz/new-quiz-generate-3or4`, 
+                    method: 'POST',
+                    body: data
+                }
+            ),
+            invalidatesTags: ['Quiz']
+        }),
         //音声データリクエスト
         fetchAudio: builder.query<Blob, string>({
             query: (questionHash: string) => (
@@ -78,6 +88,7 @@ export const {
     useResetQuizSessionMutation,
     useResetUserAndQuizSessionMutation,
     useFetchPart2NewQuestionsMutation,
+    useFetchPart34NewQuestionsMutation,
     useLazyFetchAudioQuery, //手動実行　関数名にLazyと入れるだけで実現
     useFetchAnswerMutation
 } = newQuizApi;

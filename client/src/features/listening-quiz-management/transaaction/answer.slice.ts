@@ -9,7 +9,7 @@ import * as type from "./types.ts";
 const testRequestParams: dto.UserAnswerReqDTO = {
     questionHash: "ca4d7e8f6294",
     //userID: "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
-    userAnswerOption: ["A"],
+    userAnswerOption: [null],
     reviewTag: true,
     answerDate: new Date()
 };
@@ -24,6 +24,8 @@ const testAnswerData: dto.UserAnswerResDTO = {
 };
 
 const initialState: type.AnswerRequestState = {
+    currentSubQuestionIndex: '0',
+
     requestParams: testRequestParams, //2025/9/7　テストのため一時的に変更
 
     answerData: undefined,
@@ -38,7 +40,7 @@ const initialState: type.AnswerRequestState = {
 const RequestValidationSchema = z.object({
     questionHash: z.string(),
     //userID: z.string().regex(/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i) as z.ZodType<UUID>,
-    userAnswerOption: z.array(z.union([z.literal("A"), z.literal("B"), z.literal("C"), z.literal("D")])),
+    userAnswerOption: z.array(z.enum(["A", "B", "C", "D"]).nullable()),
     reviewTag: z.boolean(),
     answerDate: z.date()
 });
@@ -50,13 +52,16 @@ export const answerSlice = createSlice({
     name: "answerManagement",
     initialState,
     reducers: {
-        // 小問ごとの回答を更新
+        //Part3,4 ラジオボタン押下時、小問のindexを更新
+        updateSubQuestionIndex: (state, action: PayloadAction<{currentSubQuestionIndex: '0' | '1' | '2'}>) => {
+            state.currentSubQuestionIndex = action.payload.currentSubQuestionIndex;
+        },
+        //Part3,4 小問ごとの回答を更新 Part1 2では不要
         updateSubQuestionAnswer: (state, action: PayloadAction<{
-            sectionNumber: 1 | 2 | 3 | 4;
-            subQuestionIndex: 0 | 1 | 2;  // 小問のindex (0, 1, 2)
+            currentSubQuestionIndex: '0' | '1' | '2';  // 小問のindex (0, 1, 2)
             answer: 'A' | 'B' | 'C' | 'D' | null;  // 回答内容
         }>) => {
-            const { sectionNumber, subQuestionIndex, answer } = action.payload;
+            const { currentSubQuestionIndex, answer } = action.payload;
             
             //userAnswerOptionが未初期化の場合は初期化
             if (!state.requestParams?.userAnswerOption) {
@@ -65,7 +70,7 @@ export const answerSlice = createSlice({
             }
             
             //指定されたindexに回答を設定
-            state.requestParams.userAnswerOption[subQuestionIndex] = answer;
+            state.requestParams.userAnswerOption[currentSubQuestionIndex] = answer;
             
             //バリデーション実行
             const validationResult = validateParams(state);
@@ -129,6 +134,7 @@ export const answerSlice = createSlice({
 });
 
 export const {
+    updateSubQuestionIndex,
     updateSubQuestionAnswer,
     setRequestParams,
     setAnswerData,

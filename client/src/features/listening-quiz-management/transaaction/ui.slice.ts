@@ -5,7 +5,7 @@ import * as dto from "./dto.ts";
 import * as type from "./types.ts";
 
 const initialState: type.CurrentScreenState = {
-    currentScreen: 'answer'//'standby'
+    currentScreen: 'standby'
 };
 
 export const uiSlice = createSlice({
