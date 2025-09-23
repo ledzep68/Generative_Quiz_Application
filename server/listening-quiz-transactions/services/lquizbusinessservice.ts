@@ -31,8 +31,24 @@ export function generateLQuestionID(sectionNumber: 1|2|3|4, hash: string): strin
     return lQuestionID
 };
 
-
-//新規問題の挿入
+/*
+export interface LQuestionEntity {
+    lQuestionID: string; //listening-partx-XXXXXXXX(hash8桁)
+    questionHash?: string; //後で実装
+    audioScript: string;
+    jpnAudioScript?: string,
+    answerOption: ("A"|"B"|"C"|"D")[]; //選択肢配列　part3,4は複数回答のため
+    sectionNumber: 1|2|3|4;
+    explanation?: string;
+    speakerAccent: 'American' | 'British' | 'Canadian' | 'Australian'; 
+    speakingRate?: number; 
+    duration?: number;
+    audioFilePath: string;
+    createdAt?: Date;
+    updatedAt?: Date;
+};
+*/
+//新規問題の挿入（jpnAudioScript, explanation以外）
 export async function newQuestionDataInsert(
     generatedQuestionData: dto.GeneratedQuestionDataResDTO, 
     audioFilePath: domein.AudioFilePath,
@@ -48,6 +64,29 @@ export async function newQuestionDataInsert(
         console.log(questionDataForInsert);
         //新規問題の挿入
         await model.newQuestionInsert(client, questionDataForInsert);
+        //コミット
+        await client.query('COMMIT');
+    } catch (error) {
+        //エラー時はロールバック
+        await client.query('ROLLBACK');
+        console.log('INSERTエラー:', error);
+        throw new Error("問題の登録に失敗しました");
+    } finally {
+        await model.dbRelease(client);
+    }
+};
+//jpnAudioScript, explanationの挿入
+export async function newJpnAudioScriptExplanationUpdate(
+    jpnAudioScript: string,
+    explanation: string,
+    questionHash: string
+): Promise<void> {
+    const client = await model.dbGetConnect();
+    try{
+        //トランザクション開始
+        await client.query('BEGIN');
+        //新規問題の挿入
+        await model.newJpnAudioScriptExplanationUpdate(client, jpnAudioScript, explanation, questionHash);
         //コミット
         await client.query('COMMIT');
     } catch (error) {

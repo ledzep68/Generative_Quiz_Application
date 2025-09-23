@@ -1,6 +1,7 @@
 import { configureStore } from '@reduxjs/toolkit';
 
 import { loginSlice } from '../features/user-management/login/login.slice';
+import { userApi } from '../features/user-management/login/api';
 
 import { uiSlice } from '../features/listening-quiz-management/transaaction/ui.slice';
 import { newRandomQuestionRequestSlice } from '../features/listening-quiz-management/transaaction/newquestion.slice';
@@ -20,10 +21,17 @@ export const store = configureStore({
         answerManagement: answerSlice.reducer,
     
         //後で他slice追加
+        [userApi.reducerPath]: userApi.reducer,
         [newQuizApi.reducerPath]: newQuizApi.reducer
+
     },
-    middleware: (getDefaultMiddleware) =>
-        getDefaultMiddleware().concat(newQuizApi.middleware),
+    middleware: (getDefaultMiddleware) => 
+        getDefaultMiddleware().concat(
+            [
+                userApi.middleware,
+                newQuizApi.middleware
+            ]
+        )
 });
 
 export type RootState = ReturnType<typeof store.getState>;

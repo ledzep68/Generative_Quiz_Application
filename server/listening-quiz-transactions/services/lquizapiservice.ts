@@ -201,10 +201,10 @@ export async function generatePart34Question(req: Express.Request["session"]/*, 
     //似たような問題の生成をどうやって防止するか？
     return  {
         audioScript: audioScript,
-        //jpnAudioScript　後で生成
+        jpnAudioScript: generatedJpnAudioScript,
         answerOption: answerOptionList,
         sectionNumber: sectionNumber,
-        //explanation　後で生成
+        explanation: generatedExplanation,
         speakerAccent: speakerAccentList[currentIndex]
     };
 };
@@ -217,13 +217,13 @@ export async function generatePart34JpnAudioScript(sectionNumber: 1|2|3|4, audio
 export async function generatePart34Explanation(
     sectionNumber: 1|2|3|4, 
     speakerAccent: AccentType, 
-    settings: {
-        location: string;
-        speaker: string;
-        situation: string
-    }, 
-    contentTopicInstruction: string,
-    contentFrameworkText: string,
+    //settings: {
+    //    location: string;
+    //    speaker: string;
+    //    situation: string
+    //}, 
+    //contentTopicInstruction: string,
+    //contentFrameworkText: string,
     audioScript: string, 
     answerOptionList: ("A" | "B" | "C" | "D")[]/*, requestedIndex: 0|1|2|3|4|5|6|7|8|9/*, domObj: domein.NewLQuestionInfo*/
 ): Promise<string> {
@@ -1354,7 +1354,7 @@ export async function generateAudioContent(dto: dto.NewAudioReqDTO, lQuestionID:
     const voiceSettings = TTS_VOICE_CONFIG[dto.speakerAccent as AccentType];
     //ランダム音声選択
     const selectedVoice = TOEICVoiceSelector.selectVoicesForPart(dto.sectionNumber, voiceSettings.voices, genderSettings);
-    //audioScript分割
+    //audioScript分割）（sectionNumber必要）
     const audioSegmentList = AudioScriptSegmenter.segmentAudioScriptWithGender(dto.audioScript, selectedVoice);
     //SSML生成
     const ssml = await TOEICSSMLGenerator.generateSSML(dto.sectionNumber, audioSegmentList, dto.speakingRate);
@@ -1394,6 +1394,7 @@ function removeStructureTags(audioScript: string): string {
 分割後
 1. 
 
+
 content: 
 2. 
 content: [pause] What service is available throughout the airport? [short pause] A. Free Wi-Fi access [short pause] B. Complimentary meals [short pause] C. Personal shopping assistants [short pause] D. Free parking [pause] What should passengers show to get discounts? [short pause] A. Passport [short pause] B. Boarding pass [short pause] C. Flight ticket [short pause] D. ID card [pause] Where can families find a comfortable space? [short pause] A. Information desks [short pause] B. Family lounges [short pause] C. Business lounges [short pause] D. Security area [pause]
@@ -1426,7 +1427,22 @@ export function addPausesToPart2AudioScript(audioScript: string): string {
 };
 
 /**
- * Part3&4専用: audioScriptに[pause]と[short pause]を付与する関数
+ * Part3&4専用: audioScriptに[Narrator]タグを追加する
+ * [QUESTION_1]の直前に[Narrator]タグを挿入
+ * @param audioScript - 元のaudioScript
+ * @returns [Narrator]タグが追加されたaudioScript
+ */
+export function addNarratorTagToPart34AudioScript(audioScript: string): string {
+    let result = audioScript;
+    
+    // [QUESTION_1]直前に[Narrator]タグを挿入
+    result = result.replace(/(\[QUESTION_1\])/g, '[Narrator] $1');
+    
+    return result;
+}
+
+/**
+ * Part3&4専用: 不要なタグを除去・audioScriptに[pause]と[short pause]を付与する関数
  * @param audioScript - 元のaudioScript
  * @returns pause付きのaudioScript
  * 
@@ -1448,10 +1464,14 @@ export function addPausesToPart34AudioScript(audioScript: string): string {
     //Speaker発言パターン: [Speaker1_MALE/FEMALE] または [Speaker2_MALE/FEMALE] の後
     const speakerPattern = /(\[Speaker[12]_(?:MALE|FEMALE)\]\s+[^[]+?)(\s*)(?=\[)/g;
     
+    //"Content: "と"Questions and Choices: "を除去
+    result = result.replace(/Content:\s*/g, '');
+    result = result.replace(/Questions and Choices:\s*/g, '');
+
     result = result.replace(speakerPattern, (match, speakerContent, whitespace) => {
         //次に来るタグを確認
         const nextTagIndex = match.length;
-        const remainingText = audioScript.substring(audioScript.indexOf(match) + nextTagIndex);
+        const remainingText = result.substring(audioScript.indexOf(match) + nextTagIndex);
         
         if (remainingText.startsWith('[QUESTION')) {
             //質問の直前なら[pause]
@@ -1472,6 +1492,10 @@ export function addPausesToPart34AudioScript(audioScript: string): string {
         return `[CHOICES_${questionNum}] A. [short pause] choice A B. [short pause] choice B C. [short pause] choice C D. [short pause] choice D`;
     });
     
+    //[QUESTION_N]タグと[CHOICES_N]タグを除去（音声生成に不要）
+    result = result.replace(/\[QUESTION_\d+\]\s*/g, '');
+    result = result.replace(/\[CHOICES_\d+\]\s*/g, '');
+
     return result;
 }
 
@@ -1493,22 +1517,22 @@ export class GenderRequirementsExtracter {
         
         switch (sectionNum) {
             case 1:
-                // Part 1: ナレーターのみ（空配列）
+                //Part1: ナレーターのみ（空配列）
                 return [];
                 
             case 2:
-                // Part 2: 質問者のみ（ナレーター除く）
+                //Part2: 質問者のみ（ナレーター除く）
                 const questionerGender = genderTags.Speaker1 || 'MALE'; // デフォルト
                 return [questionerGender];
                 
             case 3:
-                // Part 3: 会話者1 + 会話者2（ナレーター除く）
+                //Part3: 会話者1 + 会話者2（ナレーター除く）
                 const speaker1Gender = genderTags.Speaker1 || 'MALE';
                 const speaker2Gender = genderTags.Speaker2 || 'FEMALE';
                 return [speaker1Gender, speaker2Gender];
                 
             case 4:
-                // Part 4: 発表者のみ（ナレーター除く）
+                //Part4: 発表者のみ（ナレーター除く）
                 const announcerGender = genderTags.Speaker1 || 'FEMALE'; // デフォルト
                 return [announcerGender];
                 
@@ -1532,7 +1556,7 @@ export class GenderRequirementsExtracter {
             Speaker3?: 'MALE' | 'FEMALE';
         } = {};
         
-        // [Speaker1_MALE], [Speaker1_FEMALE]などのパターンを検索
+        //[Speaker1_MALE], [Speaker1_FEMALE]などのパターンを検索
         const speakerGenderPattern = /\[Speaker([123])_(MALE|FEMALE)\]/g;
         let match;
         
@@ -1553,7 +1577,7 @@ export class TOEICVoiceSelector {
         return voices[randomIndex];
     }
 
-    // 指定性別の音声からランダム選択
+    //指定性別の音声からランダム選択
     static selectVoiceByGender(
         voices: readonly {name: string, gender: string}[], 
         requiredGender: 'MALE' | 'FEMALE'
@@ -1561,7 +1585,7 @@ export class TOEICVoiceSelector {
         const filteredVoices = voices.filter(voice => voice.gender === requiredGender);
         
         if (filteredVoices.length === 0) {
-            // フォールバック: 指定性別の音声がない場合は任意の音声を選択
+            //フォールバック: 指定性別の音声がない場合は任意の音声を選択
             return this.selectRandomVoice(voices);
         }
         
@@ -1679,75 +1703,8 @@ export interface AudioSegment {
 }
 
 export class AudioScriptSegmenter {
-    
     /**
-     * audioScriptを[Speaker]タグで分割し、selectedVoiceと統合
-     * 同じSpeakerの連続セグメントは結合する
-     * @param audioScript - 分割対象のaudioScript
-     * @param selectedVoice - 各話者に対応する音声設定配列
-     * @returns 分割されたセグメント配列
-     */
-    static segmentAudioScript(
-        audioScript: string,
-        selectedVoice: {name: string, gender: string}[]
-    ): AudioSegment[] {
-        const segments: AudioSegment[] = [];
-        
-        // [Speaker1], [Speaker2], [Speaker3]のパターンでsplit
-        const parts = audioScript.split(/(\[Speaker[123]\])/);
-        
-        let currentSpeaker: number | null = null;
-        let currentContent: string = '';
-        
-        for (let i = 0; i < parts.length; i++) {
-            const part = parts[i].trim();
-            
-            // [SpeakerN]タグを検出
-            const speakerMatch = part.match(/\[Speaker([123])\]/);
-            if (speakerMatch) {
-                const newSpeaker = parseInt(speakerMatch[1]);
-                
-                // 前のSpeakerのセグメントを保存（話者が変わった場合）
-                if (currentSpeaker !== null && currentContent && currentSpeaker !== newSpeaker) {
-                    const voiceIndex = currentSpeaker - 1;
-                    if (selectedVoice[voiceIndex]) {
-                        segments.push({
-                            speaker: currentSpeaker,
-                            content: currentContent.trim(),
-                            voice: selectedVoice[voiceIndex]
-                        });
-                    }
-                    currentContent = '';
-                }
-                
-                currentSpeaker = newSpeaker;
-                continue;
-            }
-            
-            // 話者が設定されており、内容がある場合
-            if (currentSpeaker !== null && part && !part.startsWith('[')) {
-                // 同じSpeakerの内容を結合
-                currentContent += (currentContent ? ' ' : '') + part;
-            }
-        }
-        
-        // 最後のSpeakerのセグメントを保存
-        if (currentSpeaker !== null && currentContent) {
-            const voiceIndex = currentSpeaker - 1;
-            if (selectedVoice[voiceIndex]) {
-                segments.push({
-                    speaker: currentSpeaker,
-                    content: currentContent.trim(),
-                    voice: selectedVoice[voiceIndex]
-                });
-            }
-        }
-        
-        return segments;
-    }
-    
-    /**
-     * 性別タグ付きSpeakerタグにも対応した分割（結合処理付き）
+     * 性別タグ付きSpeakerタグとNarratorタグに対応した分割（結合処理付き）
      * @param audioScript - [Speaker1_MALE]等の性別タグを含むaudioScript
      * @param selectedVoice - 各話者に対応する音声設定配列
      * @returns 分割されたセグメント配列
@@ -1758,8 +1715,8 @@ export class AudioScriptSegmenter {
     ): AudioSegment[] {
         const segments: AudioSegment[] = [];
         
-        //[Speaker1], [Speaker1_MALE], [Speaker1_FEMALE]等のパターンでsplit
-        const parts = audioScript.split(/(\[Speaker[123](?:_(?:MALE|FEMALE))?\])/);
+        //[Speaker1], [Speaker1_MALE], [Speaker1_FEMALE], [Narrator]等のパターンでsplit
+        const parts = audioScript.split(/(\[Speaker[123](?:_(?:MALE|FEMALE))?\]|\[Narrator\])/);
         console.log('parts: ', parts);
         
         let currentSpeaker: number | null = null;
@@ -1768,51 +1725,70 @@ export class AudioScriptSegmenter {
         for (let i = 0; i < parts.length; i++) {
             const part = parts[i].trim();
             
-            //[SpeakerN]または[SpeakerN_GENDER]タグを検出
-            const speakerMatch = part.match(/\[Speaker([123])(?:_(?:MALE|FEMALE))?\]/);
-            if (speakerMatch) {
-                const newSpeaker = parseInt(speakerMatch[1]);
+            //空文字列はスキップ
+            if (!part) continue;
+            
+            //タグパターンのチェック（[で始まる場合）
+            if (part.startsWith('[')) {
+                //[SpeakerN]または[SpeakerN_GENDER]タグを検出
+                const speakerMatch = part.match(/\[Speaker([123])(?:_(?:MALE|FEMALE))?\]/);
+                //[Narrator]タグを検出
+                const narratorMatch = part.match(/\[Narrator\]/);
+                
+                //無効なタグの場合はエラー
+                if (!speakerMatch && !narratorMatch) {
+                    throw new Error(`Invalid tag detected: ${part}`);
+                }
+                
+                //Narratorの場合はselectedVoice.length、Speakerの場合は番号を取得
+                const newSpeaker = narratorMatch ? selectedVoice.length : parseInt(speakerMatch![1]);
                 console.log('newSpeaker: ', newSpeaker);
                 
-                //前のSpeakerのセグメントを保存（話者が変わった場合）
+                //前の話者のセグメントを保存（話者が変わった場合）
                 if (currentSpeaker !== null && currentContent && currentSpeaker !== newSpeaker) {
                     const voiceIndex = currentSpeaker - 1;
-                    if (selectedVoice[voiceIndex]) {
-                        segments.push({
-                            speaker: currentSpeaker,
-                            content: currentContent.trim(),
-                            voice: selectedVoice[voiceIndex]
-                        });
+                    
+                    //配列範囲外チェック
+                    if (!selectedVoice[voiceIndex]) {
+                        throw new Error(`Voice not found for speaker ${currentSpeaker} at index ${voiceIndex}`);
                     }
+                    
+                    segments.push({
+                        speaker: currentSpeaker,
+                        content: currentContent.trim(),
+                        voice: selectedVoice[voiceIndex]
+                    });
                     currentContent = '';
                 }
                 
+                //新しい話者に切り替え
                 currentSpeaker = newSpeaker;
                 console.log('currentSpeaker: ', currentSpeaker);
                 continue;
             }
             
-            //話者が設定されており、内容がある場合
-            if (currentSpeaker !== null && part && !/^\[Speaker[123](?:_(?:MALE|FEMALE))?\]$/.test(part.trim())) {
+            //話者が設定されており、内容がある場合（タグ以外のテキスト）
+            if (currentSpeaker !== null && part) {
                 currentContent += (currentContent ? ' ' : '') + part;
+                console.log('currentContent: ', currentContent);
             }
-            console.log('currentContent: ', currentContent);
         }
         
-        // 最後のSpeakerのセグメントを保存
+        //最後のSpeakerのセグメントを保存
         if (currentSpeaker !== null && currentContent) {
             const voiceIndex = currentSpeaker - 1;
-            if (selectedVoice[voiceIndex]) {
-                segments.push({
-                    speaker: currentSpeaker,
-                    content: currentContent.trim(),
-                    voice: selectedVoice[voiceIndex]
-                });
+            if (!selectedVoice[voiceIndex]) {
+                throw new Error(`Voice not found for speaker ${currentSpeaker} at index ${voiceIndex}`);
             }
+            
+            segments.push({
+                speaker: currentSpeaker,
+                content: currentContent.trim(),
+                voice: selectedVoice[voiceIndex]
+            });
         }
         
         console.log('segments: ', segments);
-        
         return segments;
     }
 }
@@ -1833,13 +1809,18 @@ export class TOEICSSMLGenerator {
     ): string {
         
         //sectionNumberに基づいて必要な話者数を判定
-        const expectedSpeakers = this.getExpectedSpeakersCount(sectionNumber);
+        const expectedSpeakersCount = this.getExpectedSpeakersCount(sectionNumber);
         
         //AudioSegmentListの妥当性チェック
-        if (audioSegmentList.length !== expectedSpeakers) {
+        /*if (audioSegmentList.length !== expectedSpeakers) {
             throw new Error(`Part ${sectionNumber} requires ${expectedSpeakers} speakers, but got ${audioSegmentList.length}`);
+        }*/
+        const actualSpeakers = new Set(audioSegmentList.map((segment)=>(segment.speaker)))
+        const actualSpeakersCount = actualSpeakers.size
+        if(actualSpeakersCount!==expectedSpeakersCount){
+            throw new Error(`Part ${sectionNumber} requires ${expectedSpeakersCount} speakers, but got ${actualSpeakersCount}`);
         }
-        
+
         //各セグメントのSSMLを生成
         const voiceSegments = audioSegmentList.map((segment, index) => {
             return this.createVoiceSegment(segment, sectionNumber, index, speakingRate);
@@ -1856,7 +1837,7 @@ export class TOEICSSMLGenerator {
     private static getExpectedSpeakersCount(sectionNumber: 1 | 2 | 3 | 4): number {
         switch (sectionNumber) {
             case 1: return 1; //ナレーターのみ
-            case 2: return 2; //質問者 + ナレーター
+            case 2: return 2; //会話者1 + 会話者2
             case 3: return 3; //会話者1 + 会話者2 + ナレーター
             case 4: return 2; //発表者 + ナレーター
             default:
@@ -2061,7 +2042,7 @@ export async function getGoogleAccessToken(): Promise<string> {
     }
 };
 
-//SSMLの構造検証（TOEIC音声生成専用 - 簡略版）
+//SSML構造検証
 export async function validateSSML(ssml: string): Promise<void> {
     
     //基本チェック
@@ -2074,27 +2055,36 @@ export async function validateSSML(ssml: string): Promise<void> {
         throw new apierror.SSMLValidationError('speak要素が見つかりません');
     }
     
+    //全voice要素（セグメント数）とユニークな話者数を取得
+    const voiceTagsTotal = ssml.match(/<voice\s+name="[^"]+"\s*>/g) || [];
+    const voiceNames = [...new Set(
+        voiceTagsTotal.map(tag => tag.match(/name="([^"]+)"/)?.[1])
+            .filter(Boolean)
+    )];
+    
     //voice要素の存在確認
-    const voiceTags = ssml.match(/<voice\s+name="[^"]+"\s*>/g) || [];
-    if (voiceTags.length === 0) {
+    if (voiceTagsTotal.length === 0) {
         throw new apierror.SSMLValidationError('voice要素が見つかりません');
     }
     
-    //TOEIC Part数制限の確認（1-4問）
-    if (voiceTags.length > 4) {
-        throw new apierror.SSMLValidationError(`voice要素数が上限を超えています (最大4個, 実際: ${voiceTags.length}個)`);
+    //TOEIC話者数制限の確認（1-4人）
+    if (voiceNames.length < 1 || voiceNames.length > 4) {
+        throw new apierror.SSMLValidationError(`話者数が範囲外です (1-4人, 実際: ${voiceNames.length}人)`);
     }
     
     //ナレーター固定音声の確認
     const narratorVoice = 'en-US-Wavenet-B';
-    if (!ssml.includes(narratorVoice)) {
+    if (!voiceNames.includes(narratorVoice)) {
         throw new apierror.SSMLValidationError(`固定ナレーター音声(${narratorVoice})が見つかりません`);
     }
     
     //prosody要素の確認（話速設定）
+    //セグメント数と一致する必要がある
     const prosodyTags = ssml.match(/<prosody\s+rate="[^"]+"\s*>/g) || [];
-    if (prosodyTags.length !== voiceTags.length) {
-        throw new apierror.SSMLValidationError(`voice要素とprosody要素の数が一致しません (voice: ${voiceTags.length}, prosody: ${prosodyTags.length})`);
+    if (prosodyTags.length !== voiceTagsTotal.length) {
+        throw new apierror.SSMLValidationError(
+            `voice要素とprosody要素の数が一致しません (voice: ${voiceTagsTotal.length}個, prosody: ${prosodyTags.length}個)`
+        );
     }
     
     //break要素の基本確認（音声制御）
@@ -2103,8 +2093,9 @@ export async function validateSSML(ssml: string): Promise<void> {
         throw new apierror.SSMLValidationError('break要素が見つかりません（音声制御が不正）');
     }
     
-    console.log(`SSML検証完了: ${voiceTags.length}人の話者構成`);
+    console.log(`SSML検証完了: ${voiceNames.length}人の話者構成, ${voiceTagsTotal.length}セグメント`);
 };
+
 export async function validateDetailSSML(ssml: string, expectedPartNumber?: 1|2|3|4): Promise<void> {
     
     //基本検証を実行

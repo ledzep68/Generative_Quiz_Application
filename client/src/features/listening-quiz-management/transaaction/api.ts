@@ -62,14 +62,18 @@ const newQuizApi = createApi({
             invalidatesTags: ['Quiz']
         }),
         //音声データリクエスト
-        fetchAudio: builder.query<Blob, string>({
+        //Blobはシリアル化不可能なのでObjectURLに変換
+        fetchAudio: builder.query<string, string>({
             query: (questionHash: string) => (
                 {
                     url: `/audio/${questionHash}`,//コロン不要
                     method: 'GET',
                     responseHandler: (response) => response.blob()
                 }
-            )
+            ),
+            transformResponse: (response: Blob) => {
+                return URL.createObjectURL(response) //ObjectURLはResult画面か、エラー時に解放する
+            }
         }),
         fetchAnswer: builder.mutation<dto.UserAnswerResDTO, dto.UserAnswerReqDTO>({
             query: (data) => (

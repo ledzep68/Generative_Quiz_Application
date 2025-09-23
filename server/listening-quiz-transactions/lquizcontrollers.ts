@@ -166,7 +166,10 @@ export async function generatePart34LQuizController(req: Request, res: Response)
         //問題生成
         const questionData = await apiservice.generatePart34Question(req.session); 
         console.log("questionData: ", questionData);
-        const audioScriptWithPauses = await apiservice.addPausesToPart34AudioScript(questionData.audioScript);
+        //[Narrator]タグ付加
+        const audioScriptWithNarratorTag = await apiservice.addNarratorTagToPart34AudioScript(questionData.audioScript)
+        //pauseタグ付加、不要な箇所（"Content: "と"Questions and Choices: "）の除去
+        const audioScriptWithPauses = await apiservice.addPausesToPart34AudioScript(audioScriptWithNarratorTag);
         console.log("audioScriptWithPauses: ", audioScriptWithPauses);
         const newAudioReqDTO = mapper.generatedQuestionDataToTTSReqMapper.toDomainObject(
             sectionNumber, 
@@ -177,19 +180,25 @@ export async function generatePart34LQuizController(req: Request, res: Response)
         console.log("newAudioReqDTO: ", newAudioReqDTO);
         const audioFilePath = await apiservice.generateAudioContent(newAudioReqDTO, lQuestionID);
         console.log("audioFilePath: ", audioFilePath);
+
+        //日本語訳・解説以外を新規登録
+        await businessservice.newQuestionDataInsert(questionData, audioFilePath, questionHash, speakingRate as number);
+
         //レスポンス　question_hash配信
         res.status(200).json({
             questionHash: questionHash,
             currentIndex: currentIndex,
             message: 'Question generated and saved successfully'
-        });questionData
+        });
 
+        //日本語訳・解説生成
         const jpnAudioScript = await apiservice.generatePart34JpnAudioScript(sectionNumber, questionData.audioScript);
         const explanation = await apiservice.generatePart34Explanation(sectionNumber, speakerAccentList[currentIndex], questionData.audioScript, questionData.answerOption);
-        questionData.jpnAudioScript = jpnAudioScript;
-        questionData.explanation = explanation;
-        //問題データ登録
-        await businessservice.newQuestionDataInsert(questionData, audioFilePath, questionHash, speakingRate as number);
+        //questionData.jpnAudioScript = jpnAudioScript;
+        //questionData.explanation = explanation;
+
+        //日本語訳・解説を登録
+        await businessservice.newJpnAudioScriptExplanationUpdate(jpnAudioScript, explanation, questionHash);
 
     } catch (error) {
         console.error('Part', sectionNumber, 'クイズ生成エラー:', error);

@@ -26,6 +26,7 @@ import CheckBoxComponent from "../../../../shared/components/CheckBox";
 import AnswerButtonComponent from "./AnswerButton.tsx";
 import QuizInterruptPopup from "./InterruptPopUp.tsx";
 import RadioButtonComponent from "../../../../shared/components/RadioButton";
+import LoadingModalComponent from "../../../../shared/components/LoadingModal.tsx";
 
 import * as newQuestionSlice from "../newquestion.slice.ts";
 import * as uiSlice from "../ui.slice.ts";
@@ -71,7 +72,7 @@ function ListeningQuizPage() {
 */
 function StandByScreen() {
     //状態遷移　初期状態はstandby
-    const screenState = useAppSelector(state => state.uiManagement.currentScreen);
+    const {currentScreen, isLoading} = useAppSelector(state => state.uiManagement);
 
     const navigate = useNavigate();
     const dispatch = useAppDispatch();
@@ -88,7 +89,7 @@ function StandByScreen() {
     //音声リクエスト用selector
     const requestAudioParams = useAppSelector(state => state.audioManagement.requestParams);
     //const { questionHash } = requestAudioParams;
-    const audioBlob = useAppSelector(state => state.audioManagement.audioData) as File;
+    const audioObjectURL = useAppSelector(state => state.audioManagement.audioObjectURL);
     //index管理用selector
     const indexParams = useAppSelector(state => state.indexManagement);
     const { currentIndex } = indexParams;
@@ -158,14 +159,13 @@ function StandByScreen() {
 
             //Redux storeの状態を確認
             console.log("Audio fetch SUCCESS");
-            console.log("Audio data in store:", audioBlob);
 
             dispatch(audioSlice.setIsAudioReadyToPlay(true));
             
             console.log("audio fetch SUCCESS");
 
             //回答状態に移行
-            if (screenState === 'standby') {
+            if (currentScreen === 'standby') {
                 dispatch(uiSlice.setCurrentScreen('answer'));
             };
 
@@ -188,9 +188,16 @@ function StandByScreen() {
         };
         //hooksに渡す
         try {
+            //ローディング表示開始
+            dispatch(uiSlice.setIsLoading(true));
+
+            /*
+            クイズ・音声生成セッション開始
+            */
             //クイズセッション開始
             await initiateSession(randomNewQuestionReqDTO);
             console.log("session initialized successfully")
+
             //クイズ生成api呼び出し
             const fetchResult = await fetchPart34NewQuestions({currentIndex}).unwrap();
             console.log("fetchResult: ", fetchResult)
@@ -206,16 +213,20 @@ function StandByScreen() {
             dispatch(audioSlice.setRequestStatus('success'));
             dispatch(audioSlice.setIsAudioReadyToPlay(true));
 
-            //Redux storeの状態を確認
             console.log("Audio fetch SUCCESS");
-            console.log("Audio data in store:", audioBlob);
 
             dispatch(audioSlice.setIsAudioReadyToPlay(true));
             
             console.log("audio fetch SUCCESS");
+            /*
+            クイズ・音声生成セッション終了
+            */
+
+            //ローディング表示終了
+            dispatch(uiSlice.setIsLoading(false));
 
             //回答状態に移行
-            if (screenState === 'standby') {
+            if (currentScreen === 'standby') {
                 dispatch(uiSlice.setCurrentScreen('answer'));
             };
 
@@ -223,6 +234,10 @@ function StandByScreen() {
             //クイズリクエスト失敗の場合の処理
             dispatch(newQuestionSlice.setRequestStatus('failed'));
             //失敗後の処理？
+            //音声データObjectURL解放　Blob本体は解放されない
+            dispatch(audioSlice.resetAudioState());
+            //ローディング表示終了
+            uiSlice.setIsLoading(false);
 
             //else 音声リクエスト失敗処理
         }
@@ -230,18 +245,16 @@ function StandByScreen() {
 
     const handleFetchAudio = async (questionHash: string) => {
         try {
-            //Node.js BlobをブラウザBlob（File（ブラウザBlobを継承したクラス））に変換（URL生成のため必須）
-            const audioData = await fetchAudio(questionHash).unwrap();
-            console.log("Fetched audio data:", {
-                size: audioData.size,
-                type: audioData.type
-            });
+            const audioObjectURL = await fetchAudio(questionHash).unwrap();
+            console.log("audioObjectURL:", audioObjectURL);
             //音声データをredux storeに保存
-            dispatch(audioSlice.setAudioData(audioData));
-            console.log("Audio data in store:", audioData);
+            dispatch(audioSlice.setAudioObjectURL(audioObjectURL));
+            console.log("audioObjectURL saved in store");
         } catch (error) {
             //エラー処理
             dispatch(audioSlice.setAudioError('音声データの取得に失敗しました'));
+            dispatch(audioSlice.resetAudioState());
+            throw new Error('音声データの取得に失敗しました'); 
         }
     };
 
@@ -331,6 +344,12 @@ function StandByScreen() {
                             sx={{ width: '100%', py: 1 }}
                         />
                     </Box>
+
+                    {/* ローディング表示 */}
+                    <LoadingModalComponent 
+                        open={isLoading}
+                        message="テスト"
+                    />
                 </Paper>
             </Box>
         </Container>
@@ -363,8 +382,8 @@ function AnswerScreen() {
     //};
     //const { lQuestionID/*, sectionNumber, speakerAccent, duration*/ } = currentQuestion;
 
-    //音声データselector
-    const audioBlob = useAppSelector(state => state.audioManagement.audioData);
+    //音声データObjectURLselector
+    const audioObjectURL = useAppSelector(state => state.audioManagement.audioObjectURL);
     //if (!audioBlob || !questionDataList || questionDataList.length === 0) {
     //    return <div>音声データを読み込み中...</div>;
     //};
@@ -434,8 +453,6 @@ function AnswerScreen() {
     const handleAudioPlay = () => {
             console.log("handleAudioPlay called");
             console.log("isAudioReadyToPlay:", isAudioReadyToPlay);
-            
-            let audioBlobURL;
                       
             try{
                 if (error) {
@@ -446,18 +463,15 @@ function AnswerScreen() {
                 if (!isAudioReadyToPlay) {
                     throw new Error("音声データが準備されていません");
                 };
-                //BlobをオブジェクトURLに変換 windowでブラウザのURLを明示的に使用
-                if (audioBlob) {
-                    const audioBlobURL = window.URL.createObjectURL(audioBlob);
-                    console.log("audioBlobURL:", audioBlobURL);
-                    //音声読み込み
-                    load(audioBlobURL, {
+                //ObjectURLに紐づいた音声を再生
+                if (audioObjectURL) {
+                    load(audioObjectURL, {
                         html5: true,
                         format: 'mp3',
                         autoplay: true,
                         onend: () => {
-                            //再生終了時にURL解放
-                            window.URL.revokeObjectURL(audioBlobURL);
+                            //再生終了時にURL解放　→現段階ではしない　Result画面まで保持する
+                            //window.URL.revokeObjectURL(audioBlobURL);
                             //redux storeからもクリア
                             //dispatch(audioSlice.clearAudioData());
                             console.log("audio play successfully ended");
@@ -465,29 +479,11 @@ function AnswerScreen() {
                     })
                 };
             } catch (error) {
-                //audioBlobURLが作成されている場合のみ解放
-                if (audioBlobURL) {
-                    window.URL.revokeObjectURL(audioBlobURL);
-                };
-                dispatch(audioSlice.clearAudioData());
-                console.log("audio play failed");
+                //audioSliceのstateリセット
+                dispatch(audioSlice.resetAudioState());
+                console.log("audio play failed", error);
             }
         };
-    /*
-    const createTestAudioFile = async (): Promise<File> => {
-            const response = await fetch('/audio_segment.mp3');
-            const blob = await response.blob();
-            
-            return new File([blob], 'audio_segment.mp3', {
-                type: 'audio/mpeg',
-                lastModified: Date.now()
-            });
-        };
-    const dispatchTestAudio = async () => {
-        const testBlob = await createTestAudioFile();
-        dispatch(audioSlice.setAudioData(testBlob));
-    };
-    */
     const handleAnswer = async () => {
         //回答内容をAPIに送る
         //回答レスポンスが届いたことを確認
@@ -509,6 +505,7 @@ function AnswerScreen() {
             console.error("必須パラメータが不足しています");
             dispatch(uiSlice.setCurrentScreen('result'));
             return;
+            
         }
 }
         try{

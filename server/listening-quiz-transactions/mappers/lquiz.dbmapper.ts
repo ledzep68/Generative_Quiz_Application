@@ -25,10 +25,10 @@ export class QuestionDataToEntityMapper {
                 lQuestionID: audioFilePath.lQuestionID,
                 questionHash: questionHash,
                 audioScript: generatedQuestionData.audioScript,
-                jpnAudioScript: generatedQuestionData.jpnAudioScript as string,
+                jpnAudioScript: generatedQuestionData.jpnAudioScript || undefined, //null
                 answerOption: generatedQuestionData.answerOption as ("A"|"B"|"C"|"D")[],
                 sectionNumber: generatedQuestionData.sectionNumber,
-                explanation: generatedQuestionData.explanation as string,
+                explanation: generatedQuestionData.explanation || undefined, //null
                 speakerAccent: generatedQuestionData.speakerAccent,
                 speakingRate: speakingRate,
                 duration: audioFilePath.duration,

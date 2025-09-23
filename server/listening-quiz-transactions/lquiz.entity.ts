@@ -10,10 +10,10 @@ export interface LQuestionEntity {
     lQuestionID: string; //listening-partx-XXXXXXXX(hash8桁)
     questionHash?: string; //後で実装
     audioScript: string;
-    jpnAudioScript: string,
+    jpnAudioScript?: string,
     answerOption: ("A"|"B"|"C"|"D")[]; //選択肢配列　part3,4は複数回答のため
     sectionNumber: 1|2|3|4;
-    explanation: string;
+    explanation?: string;
     speakerAccent: 'American' | 'British' | 'Canadian' | 'Australian'; 
     speakingRate?: number; 
     duration?: number;

@@ -28,6 +28,7 @@ import CheckBoxComponent from "../src/shared/components/CheckBox";
 import AnswerButtonComponent from "../src/features/listening-quiz-management/transaaction/components/AnswerButton.tsx";
 import QuizInterruptPopup from "../src/features/listening-quiz-management/transaaction/components/InterruptPopUp.tsx";
 import RadioButtonComponent from "../src/shared/components/RadioButton";
+import LoadingModalComponent from "../src/shared/components/LoadingModal.tsx";
 
 import * as newQuestionSlice from "../src/features/listening-quiz-management/transaaction/newquestion.slice.ts";
 import * as uiSlice from "../src/features/listening-quiz-management/transaaction/ui.slice.ts";
@@ -250,6 +251,17 @@ function TestScreen() {
         // ここで問題内容の切り替え処理を実行
     };
 
+    //ローディング表示
+    //テスト用簡易state
+  const [isLoading, setIsLoading] = useState(false);
+    const handleLoadingModal = () => {
+        setIsLoading(true);
+    
+        // 10秒後に自動でfalseにする
+        setTimeout(() => {
+        setIsLoading(false);
+        }, 10000);
+    };
 
     return (
     <Box 
@@ -314,6 +326,33 @@ function TestScreen() {
                             size="medium"
                             color="primary"
                         />
+                        {/* ローディング表示 
+                        export interface LoadingModalProps {
+                          //モーダル表示
+                          open: boolean;
+                          //表示するメッセージ（デフォルト: '読み込み中...'）
+                          message?: string;
+                          //ローディングスピナーのサイズ（デフォルト: 60）
+                          size?: number;
+                          // スピナーの太さ（デフォルト: 4）
+                          thickness?: number;
+                          sx?: any;
+                          //ESCキーでの閉じる操作を許可するか（デフォルト: false）
+                          disableEscapeKeyDown?: boolean;
+                        }
+                        */}
+                        <ButtonComponent
+                            variant="outlined"
+                            label="ローディング表示"
+                            onClick={() => handleLoadingModal()}
+                            color="primary"
+                            size="medium"
+                            sx={{ width: '100%', py: 1 }}
+                        />
+                        <LoadingModalComponent 
+                            open={isLoading}
+                            message="テスト"
+                        />
                     <Box sx={{ width: '100%', px: 2 }}>
 
                         
@@ -324,3 +363,4 @@ function TestScreen() {
 }
 
 export default TestScreen
+

@@ -1,3 +1,4 @@
+import { FabClasses } from "@mui/material";
 import * as dto from "./dto.ts";
 
 //共通の状態管理パラメータ
@@ -12,7 +13,9 @@ interface stateManagementParameters {
 }
 
 export interface CurrentScreenState {
-    currentScreen: 'standby' | 'answer' | 'result'
+    currentScreen: 'standby' | 'answer' | 'result',
+    //ローディング表示用
+    isLoading: boolean
 };
 
 //新規クイズデータリクエストの状態管理
@@ -28,7 +31,8 @@ export interface AudioState extends stateManagementParameters {
     requestParams: {
         questionHash?: string
     },
-    audioData?: Blob
+    //音声データのObjectURL　blob本体はシリアル化不可なので保持しない
+    audioObjectURL?: string
     //音声再生準備完了
     isAudioReadyToPlay: boolean
     //音声再生開始

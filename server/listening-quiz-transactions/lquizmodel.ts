@@ -47,17 +47,16 @@ export async function dbRelease(client: PoolClient): Promise<void> {
 //新規クイズデータの挿入
 export async function newQuestionInsert(client: PoolClient, dataForInsert: entity.LQuestionEntity): Promise<QueryResult> {
     try{
-        // プレースホルダーを動的生成
         const placeholders = `($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`;
         
         const values = [
             dataForInsert.lQuestionID,
             dataForInsert.questionHash,
             dataForInsert.audioScript,
-            dataForInsert.jpnAudioScript,
+            dataForInsert.jpnAudioScript || null, //NULL
             dataForInsert.answerOption,
             dataForInsert.sectionNumber,
-            dataForInsert.explanation,
+            dataForInsert.explanation || null, //NULL
             dataForInsert.speakerAccent,
             dataForInsert.speakingRate,
             dataForInsert.duration,
@@ -74,6 +73,31 @@ export async function newQuestionInsert(client: PoolClient, dataForInsert: entit
         throw new dberror.DBQuestionDataError("問題データの挿入に失敗しました");
     }
 };
+export async function newJpnAudioScriptExplanationUpdate(
+    client: PoolClient, 
+    jpnAudioScript: string, 
+    explanation: string, 
+    questionHash: string
+): Promise<QueryResult> {
+    try {
+        //questionHashで該当の問題レコード検索→jpnAudioScriptとexplanationをUPDATE
+        const sql = `
+            UPDATE listening_questions
+            SET 
+                jpn_audio_script = $1,
+                explanation = $2,
+                updated_at = CURRENT_TIMESTAMP
+            WHERE question_hash = $3
+        `;
+        
+        const values = [jpnAudioScript, explanation, questionHash];
+        
+        return await client.query(sql, values);
+    } catch (error) {
+        console.log('DB操作エラー (UPDATE):', error);
+        throw new dberror.DBQuestionDataError("問題データの更新に失敗しました");
+    }
+}
 
 /*
 //指定された問題番号の既存問題のIDをlistening_answer_resultsから取得

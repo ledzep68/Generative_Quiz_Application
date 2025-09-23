@@ -26,7 +26,12 @@ const testAnswerData: dto.UserAnswerResDTO = {
 const initialState: type.AnswerRequestState = {
     currentSubQuestionIndex: '0',
 
-    requestParams: testRequestParams, //2025/9/7　テストのため一時的に変更
+    requestParams: {
+        questionHash: undefined,
+        userAnswerOption: undefined,
+        reviewTag: false,
+        answerDate: undefined
+    },
 
     answerData: undefined,
 
