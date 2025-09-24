@@ -15,7 +15,7 @@ import {useAudioPlayer} from "react-use-audio-player";
 import ReactAudioPlayer from 'react-audio-player';
 import {URL} from "url";
 
-import { Container, Box, Typography, Paper, SelectChangeEvent, Slider, IconButton, Radio } from "@mui/material";
+import { Container, Box, Typography, Paper, SelectChangeEvent, Slider, IconButton, Radio, Tab, Tabs} from "@mui/material";
 import { ContentCutOutlined, Settings } from "@mui/icons-material";
 import { PlayArrow, Pause } from '@mui/icons-material';
 
@@ -29,6 +29,7 @@ import AnswerButtonComponent from "../src/features/listening-quiz-management/tra
 import QuizInterruptPopup from "../src/features/listening-quiz-management/transaaction/components/InterruptPopUp.tsx";
 import RadioButtonComponent from "../src/shared/components/RadioButton";
 import LoadingModalComponent from "../src/shared/components/LoadingModal.tsx";
+import TabPanelComponent from "../src/shared/components/TabPanel.tsx";
 
 import * as newQuestionSlice from "../src/features/listening-quiz-management/transaaction/newquestion.slice.ts";
 import * as uiSlice from "../src/features/listening-quiz-management/transaaction/ui.slice.ts";
@@ -58,10 +59,14 @@ function TestScreen() {
     const [fetchAudio] = api.useLazyFetchAudioQuery();
 
     const [fetchLoginAndInitializeSession] = userapi.useFetchLoginAndInitializeSessionMutation();
+
+    const [selectedTab, setSelectedTab] = useState(0);
     
     //クイズリクエスト用selector
     const requestQuestionParams = useAppSelector(state => state.newRandomQuestionRequest.requestParams);
     const { sectionNumber, requestedNumOfLQuizs, speakingRate, speakerAccent } = requestQuestionParams;
+    const answerData = useAppSelector(state => state.answerManagement.answerData) as dto.UserAnswerResDTO;
+    const { isCorrectList, answerOption, audioScript, jpnAudioScript, explanation } = answerData;
     //音声リクエスト用selector
     const requestAudioParams = useAppSelector(state => state.audioManagement.requestParams);
     const { questionHash } = requestAudioParams;
@@ -354,6 +359,34 @@ function TestScreen() {
                             message="テスト"
                         />
                     <Box sx={{ width: '100%', px: 2 }}>
+
+                        
+
+<Box sx={{ mt: 3, mb: 2 }}>
+    <Tabs value={selectedTab} onChange={(e, newValue) => setSelectedTab(newValue)}>
+        <Tab label="問題文" />
+        <Tab label="和訳" />
+        <Tab label="解説" />
+    </Tabs>
+    
+    <TabPanelComponent value={selectedTab} index={0}>
+        <Typography variant="body2" sx={{ whiteSpace: 'pre-line', lineHeight: 1.6 }}>
+            {audioScript}
+        </Typography>
+    </TabPanelComponent>
+    
+    <TabPanelComponent value={selectedTab} index={1}>
+        <Typography variant="body2" sx={{ whiteSpace: 'pre-line', lineHeight: 1.6 }}>
+            {jpnAudioScript}
+        </Typography>
+    </TabPanelComponent>
+    
+    <TabPanelComponent value={selectedTab} index={2}>
+        <Typography variant="body2" sx={{ whiteSpace: 'pre-line', lineHeight: 1.6 }}>
+            {explanation}
+        </Typography>
+    </TabPanelComponent>
+</Box>
 
                         
                 </Box>

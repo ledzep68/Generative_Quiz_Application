@@ -54,6 +54,13 @@ export interface AnswerRequestState extends stateManagementParameters {
     answerData?: dto.UserAnswerResDTO
 };
 
+//回答画面の状態管理
+export interface ResultScreenState extends stateManagementParameters {
+    //reviewTagの変更リクエスト用パラメータ　questionHash, reviewTag
+    requestParams?: dto.ReviewTagChangeReqDTO
+    //解答データ
+    questionData?: dto.UserAnswerResDTO
+}
 
 /*
 //新規クイズリクエストスキーマ（ランダム生成、ID非指定）

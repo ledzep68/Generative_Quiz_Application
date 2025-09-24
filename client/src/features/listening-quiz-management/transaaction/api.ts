@@ -84,6 +84,15 @@ const newQuizApi = createApi({
                 }
             ),
             invalidatesTags: ['Quiz']
+        }),
+        fetchQuestionData: builder.query<dto.UserAnswerResDTO, string>({
+            query: (data) => (
+                {
+                    url: `/lquiz/question-data`,
+                    method: 'POST',
+                    body: data
+                }
+            )
         })
     })
 });

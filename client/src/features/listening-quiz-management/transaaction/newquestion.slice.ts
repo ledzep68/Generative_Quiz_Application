@@ -6,7 +6,7 @@ import * as type from "./types.ts";
 
 const initialState: type.RandomNewQuestionRequestState = {
     requestParams: {
-        sectionNumber: 2,
+        sectionNumber: 3,
         requestedNumOfLQuizs: 1,
         speakingRate: undefined,
         speakerAccent: undefined

@@ -1460,44 +1460,32 @@ export function addNarratorTagToPart34AudioScript(audioScript: string): string {
 export function addPausesToPart34AudioScript(audioScript: string): string {
     let result = audioScript;
     
-    //各Speaker発言の後に[short pause]を挿入（QUESTIONタグの直前以外）
-    //Speaker発言パターン: [Speaker1_MALE/FEMALE] または [Speaker2_MALE/FEMALE] の後
-    const speakerPattern = /(\[Speaker[12]_(?:MALE|FEMALE)\]\s+[^[]+?)(\s*)(?=\[)/g;
-    
     //"Content: "と"Questions and Choices: "を除去
     result = result.replace(/Content:\s*/g, '');
     result = result.replace(/Questions and Choices:\s*/g, '');
 
-    result = result.replace(speakerPattern, (match, speakerContent, whitespace) => {
-        //次に来るタグを確認
-        const nextTagIndex = match.length;
-        const remainingText = result.substring(audioScript.indexOf(match) + nextTagIndex);
-        
-        if (remainingText.startsWith('[QUESTION')) {
-            //質問の直前なら[pause]
-            return speakerContent + ' [pause] ';
-        } else {
-            //他のSpeakerが続くなら[short pause]
-            return speakerContent + ' [short pause] ';
-        }
-    });
+    //各Speaker発言の後に[short pause]を挿入
+    const speakerPattern = /(\[Speaker[12]_(?:MALE|FEMALE)\]\s+[^[]+?)(\s*)(?=\[)/g;
+    result = result.replace(speakerPattern, '$1 [short pause] ');
     
-    //各質問文の後に[short pause]を挿入
-    const questionPattern = /(\[QUESTION_\d+\]\s+[^[]+?)(\s+\[CHOICES_\d+\])/g;
-    result = result.replace(questionPattern, '$1 [short pause] $2');
+    //[QUESTION_n]の前に[pause]を配置
+    result = result.replace(/(\[QUESTION_)/g, '[pause] $1');
     
-    //各選択肢の前に[short pause]を挿入し、選択肢を整形
-    const choicesPattern = /\[CHOICES_(\d+)\]\s+choice A\s+choice B\s+choice C\s+choice D/g;
-    result = result.replace(choicesPattern, (match, questionNum) => {
-        return `[CHOICES_${questionNum}] A. [short pause] choice A B. [short pause] choice B C. [short pause] choice C D. [short pause] choice D`;
-    });
+    //A. B. C. D.の前に[short pause]を配置
+    result = result.replace(/(\s+)([A-D]\.\s)/g, '$1[short pause] $2');
+    
+    //連続する[short pause] [pause]を[pause]に統合
+    result = result.replace(/\[short pause\]\s+\[pause\]/g, '[pause]');
+    
+    //[short pause] [Narrator] [pause] → [Narrator] [pause] に修正
+    result = result.replace(/\[short pause\]\s+\[Narrator\]\s+\[pause\]/g, '[Narrator] [pause]');
     
     //[QUESTION_N]タグと[CHOICES_N]タグを除去（音声生成に不要）
     result = result.replace(/\[QUESTION_\d+\]\s*/g, '');
     result = result.replace(/\[CHOICES_\d+\]\s*/g, '');
 
     return result;
-}
+};
 
 //audioScriptから性別要件を抽出する関数
 export class GenderRequirementsExtracter {
@@ -1911,7 +1899,7 @@ export class TOEICSSMLGenerator {
     private static processAudioControlTags(content: string): string {
         return content
             .replace(/\[pause\]/g, '<break time="1.5s"/>')
-            .replace(/\[short pause\]/g, '<break time="0.8s"/>');
+            .replace(/\[short pause\]/g, '<break time="0.5s"/>');
     };
     
     /**

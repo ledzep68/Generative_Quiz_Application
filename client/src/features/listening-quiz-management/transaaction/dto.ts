@@ -105,10 +105,16 @@ export interface UserAnswerReqDTO {
     answerDate?: Date
 };
 
+//Result画面でのreviewTag変更POST（リクエスト）
+export interface ReviewTagChangeReqDTO {
+    questionHash?: string,
+    reviewTag?: boolean
+};
+
 //正誤・解答データレスポンス
 export interface UserAnswerResDTO {
     isCorrectList: boolean[],
-    answerOption: ("A"|"B"|"C"|"D"|null)[],
+    answerOption: ("A"|"B"|"C"|"D")[],
     audioScript: string,
     jpnAudioScript: string,
     explanation: string

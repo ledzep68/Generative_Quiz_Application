@@ -1,28 +1,37 @@
-import {createSlice} from "@reduxjs/toolkit";
+import {createSlice, PayloadAction} from "@reduxjs/toolkit";
 
-interface RandomNewQuestionReqDTO {
-    sectionNumber :1|2|3|4,
-    requestedNumOfLQuizs: number,
-    speakingRate: number
-}
+import * as type from "./types.ts";
+import * as dto from "./dto.ts";
 
-/*
-//ユーザーからの新規クイズリクエストスキーマ（ランダム生成、ID非指定）
-export class RandomNewQuestionReqDTO {
-    constructor(
-        public sectionNumber: 1|2|3|4,
-        public requestedNumOfLQuizs?: number,
-        public speakingRate?: number //発話速度
-    ){}
+const initialState: type.ResultScreenState = {
+    requestParams: {
+        questionHash: undefined,
+        reviewTag: undefined
+    },
+
+    questionData: undefined
 };
-*/
-export const transactionSlice = createSlice({
-    name: "randomNewQuestion",
+
+export const resultSlice = createSlice({
+    name: "resultManagement",
     initialState,
     reducers: {
-        : (state, action) => {
-            state. = action.payload.id;
-            state.name = action.payload.name;
+        setRequestParams: (state, action: PayloadAction<dto.ReviewTagChangeReqDTO>) => {
+            console.log('setRequestParams:', action.payload);
+            state.requestParams = action.payload;
+        
+        },
+        clearRequestParams: (state) => {
+            state.requestParams = undefined;
+            state.isValid = false;
+            state.validationErrors = [];
         }
     }
-})
+});
+
+export const {
+    setRequestParams,
+    clearRequestParams
+} = resultSlice.actions;
+
+export default resultSlice.reducer;
