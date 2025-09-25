@@ -16,6 +16,7 @@ import {URL} from "url";
 
 import { Container, Box, Typography, Paper, SelectChangeEvent, Tab, Tabs, Grid } from "@mui/material";
 import { Settings } from "@mui/icons-material";
+import { palette } from '@mui/system';
 
 //共通コンポーネント
 import ButtonComponent from "../../../../shared/components/Button";
@@ -271,91 +272,300 @@ function StandByScreen() {
     })
 
     return (
-    <Box 
-        sx={{ 
-            minHeight: '100vh',
-            width: '100%',
-            position: 'fixed',
-            top: 0,
-            left: 0,
-            overflowY: 'auto',
-            backgroundColor: 'pastel.main'
-        }}
-    >
-        <Container maxWidth="md">
-            <Box
-                sx={{
-                    marginTop: 8,
-                    display: 'flex',
-                    flexDirection: 'column',
-                    alignItems: 'center',
-                    minHeight: '100vh'
-                }}
-            >
-                <Paper 
-                    elevation={10}
+        <Box 
+            sx={{ 
+                minHeight: '100vh',
+                width: '100%',
+                background: 'linear-gradient(135deg, #afc4e9ff 0%, #81a2d7ff 100%)',
+                py: 4
+            }}
+        >
+            <Container maxWidth="md">
+                <Box
                     sx={{
-                        padding: 4,
+                        marginTop: 4,
                         display: 'flex',
                         flexDirection: 'column',
-                        width: '100%',
-                        maxWidth: 600,
-                        gap: 3
+                        alignItems: 'center'
                     }}
                 >
-                    {/* ドロップダウンメニュー */}
-                    <DropdownComponent 
-                        type="sectionNum"
-                        value={sectionNumber}
-                        onChange={handleSectionChange}
-                        helperText="選択してください"
-                    />
+                    <Box
+                        sx={{
+                            background: 'rgba(255, 255, 255, 0.98)',
+                            backdropFilter: 'blur(10px)',
+                            borderRadius: '24px',
+                            boxShadow: '0 20px 60px rgba(0, 0, 0, 0.15)',
+                            overflow: 'hidden',
+                            width: '100%',
+                            maxWidth: 700
+                        }}
+                    >
 
-                    <DropdownComponent 
-                        type="numOfLQuizs"
-                        value={requestedNumOfLQuizs}
-                        onChange={handleNumOfLQuizesChange}
-                        helperText="選択してください"
-                    />
+                        <Box sx={{ p: 4 }}>
+                            {/* 設定セクション */}
+                            <Box sx={{ mb: 4 }}>
+                                <Typography 
+                                    variant="h6" 
+                                    sx={{ 
+                                        mb: 3, 
+                                        fontWeight: 600,
+                                        color: '#333',
+                                        textAlign: 'center'
+                                    }}
+                                >
+                                    ⚙️ 問題設定を選択してください
+                                </Typography>
+                                
+                                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                                    {/* セクション選択 */}
+                                    <Box 
+                                        sx={{ 
+                                            background: 'linear-gradient(135deg, rgba(102, 126, 234, 0.08), rgba(118, 75, 162, 0.08))',
+                                            borderRadius: '16px',
+                                            p: 3,
+                                            border: '1px solid rgba(102, 126, 234, 0.15)'
+                                        }}
+                                    >
+                                        <Typography 
+                                            variant="subtitle1" 
+                                            sx={{ 
+                                                mb: 2, 
+                                                fontWeight: 600,
+                                                color: '#667eea',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                gap: 1
+                                            }}
+                                        >
+                                            📚 セクション
+                                        </Typography>
+                                        <DropdownComponent 
+                                            type="sectionNum"
+                                            value={sectionNumber}
+                                            onChange={handleSectionChange}
+                                            helperText="セクションを選択してください"
+                                            sx={{
+                                                '& .MuiOutlinedInput-root': {
+                                                    borderRadius: '12px',
+                                                    backgroundColor: 'white',
+                                                    '&:hover .MuiOutlinedInput-notchedOutline': {
+                                                        borderColor: '#667eea'
+                                                    },
+                                                    '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                                                        borderColor: '#667eea',
+                                                        borderWidth: 2
+                                                    }
+                                                }
+                                            }}
+                                        />
+                                    </Box>
 
-                    <DropdownComponent 
-                        type="speakerAccent"
-                        value={speakerAccent}
-                        onChange={handleSpeakerAccentChange}
-                    />
+                                    {/* 問題数選択 */}
+                                    <Box 
+                                        sx={{ 
+                                            background: 'linear-gradient(135deg, rgba(76, 175, 80, 0.08), rgba(139, 195, 74, 0.08))',
+                                            borderRadius: '16px',
+                                            p: 3,
+                                            border: '1px solid rgba(76, 175, 80, 0.15)'
+                                        }}
+                                    >
+                                        <Typography 
+                                            variant="subtitle1" 
+                                            sx={{ 
+                                                mb: 2, 
+                                                fontWeight: 600,
+                                                color: '#4CAF50',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                gap: 1
+                                            }}
+                                        >
+                                            🔢 問題数
+                                        </Typography>
+                                        <DropdownComponent 
+                                            type="numOfLQuizs"
+                                            value={requestedNumOfLQuizs}
+                                            onChange={handleNumOfLQuizesChange}
+                                            helperText="問題数を選択してください"
+                                            sx={{
+                                                '& .MuiOutlinedInput-root': {
+                                                    borderRadius: '12px',
+                                                    backgroundColor: 'white',
+                                                    '&:hover .MuiOutlinedInput-notchedOutline': {
+                                                        borderColor: '#4CAF50'
+                                                    },
+                                                    '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                                                        borderColor: '#4CAF50',
+                                                        borderWidth: 2
+                                                    }
+                                                }
+                                            }}
+                                        />
+                                    </Box>
 
-                    {/* ボタン群 */}
-                    <Box sx={{ mt: 2, display: 'flex', flexDirection: 'column', gap: 2 }}>
-                        <ButtonComponent 
-                            variant="contained"
-                            label="問題を開始する"
-                            onClick={fetchQuizHandler}
-                            color="primary"
-                            size="medium"
-                            disabled={!sectionNumber || !requestedNumOfLQuizs}
-                            sx={{ width: '100%', py: 1 }}
-                        />
+                                    {/* アクセント選択 */}
+                                    <Box 
+                                        sx={{ 
+                                            background: 'linear-gradient(135deg, rgba(255, 193, 7, 0.08), rgba(255, 152, 0, 0.08))',
+                                            borderRadius: '16px',
+                                            p: 3,
+                                            border: '1px solid rgba(255, 193, 7, 0.15)'
+                                        }}
+                                    >
+                                        <Typography 
+                                            variant="subtitle1" 
+                                            sx={{ 
+                                                mb: 2, 
+                                                fontWeight: 600,
+                                                color: '#FF9800',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                gap: 1
+                                            }}
+                                        >
+                                            🎤 アクセント
+                                        </Typography>
+                                        <DropdownComponent 
+                                            type="speakerAccent"
+                                            value={speakerAccent}
+                                            onChange={handleSpeakerAccentChange}
+                                            sx={{
+                                                '& .MuiOutlinedInput-root': {
+                                                    borderRadius: '12px',
+                                                    backgroundColor: 'white',
+                                                    '&:hover .MuiOutlinedInput-notchedOutline': {
+                                                        borderColor: '#FF9800'
+                                                    },
+                                                    '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                                                        borderColor: '#FF9800',
+                                                        borderWidth: 2
+                                                    }
+                                                }
+                                            }}
+                                        />
+                                    </Box>
+                                </Box>
+                            </Box>
 
-                        <ButtonComponent 
-                            variant="outlined"
-                            label="戻る"
-                            onClick={handleBack}
-                            color="primary"
-                            size="medium"
-                            sx={{ width: '100%', py: 1 }}
+                            {/* アクションボタン */}
+                            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3, mt: 4 }}>
+                                <ButtonComponent 
+                                    variant="contained"
+                                    label={(!sectionNumber || !requestedNumOfLQuizs) ? "⚠️ 設定を完了してください" : "🚀 問題を開始する"}
+                                    onClick={fetchQuizHandler}
+                                    color="primary"
+                                    size="large"
+                                    disabled={!sectionNumber || !requestedNumOfLQuizs}
+                                    sx={{ 
+                                        width: '100%',
+                                        py: 2.5,
+                                        fontSize: '1.3rem',
+                                        fontWeight: 700,
+                                        borderRadius: '16px',
+                                        background: (!sectionNumber || !requestedNumOfLQuizs) 
+                                            ? 'linear-gradient(45deg, #9e9e9e, #757575)' 
+                                            : 'linear-gradient(45deg, #4CAF50, #8BC34A)',
+                                        boxShadow: (!sectionNumber || !requestedNumOfLQuizs) 
+                                            ? '0 4px 12px rgba(0, 0, 0, 0.2)' 
+                                            : '0 8px 24px rgba(76, 175, 80, 0.3)',
+                                        '&:hover': {
+                                            boxShadow: (!sectionNumber || !requestedNumOfLQuizs) 
+                                                ? '0 4px 12px rgba(0, 0, 0, 0.2)' 
+                                                : '0 12px 32px rgba(76, 175, 80, 0.4)',
+                                            transform: (!sectionNumber || !requestedNumOfLQuizs) 
+                                                ? 'none' 
+                                                : 'translateY(-2px)'
+                                        },
+                                        '&:disabled': {
+                                            opacity: 0.7,
+                                            cursor: 'not-allowed'
+                                        }
+                                    }}
+                                />
+
+                                <ButtonComponent 
+                                    variant="outlined"
+                                    label="← 戻る"
+                                    onClick={handleBack}
+                                    color="primary"
+                                    size="large"
+                                    sx={{ 
+                                        width: '100%',
+                                        py: 2,
+                                        fontSize: '1.1rem',
+                                        fontWeight: 600,
+                                        borderRadius: '16px',
+                                        borderWidth: 2,
+                                        '&:hover': {
+                                            borderWidth: 2,
+                                            backgroundColor: 'rgba(102, 126, 234, 0.05)',
+                                            transform: 'translateY(-1px)',
+                                            boxShadow: '0 4px 12px rgba(102, 126, 234, 0.2)'
+                                        }
+                                    }}
+                                />
+                            </Box>
+
+                            {/* 設定状況の表示 */}
+                            <Box 
+                                sx={{ 
+                                    mt: 4,
+                                    p: 3,
+                                    backgroundColor: 'rgba(0, 0, 0, 0.03)',
+                                    borderRadius: '12px',
+                                    border: '1px solid rgba(0, 0, 0, 0.08)'
+                                }}
+                            >
+                                <Typography 
+                                    variant="subtitle2" 
+                                    sx={{ 
+                                        fontWeight: 600,
+                                        color: '#666',
+                                        mb: 1,
+                                        textAlign: 'center'
+                                    }}
+                                >
+                                    📋 現在の設定
+                                </Typography>
+                                <Box sx={{ display: 'flex', justifyContent: 'space-around', textAlign: 'center' }}>
+                                    <Box>
+                                        <Typography variant="body2" color="text.secondary">
+                                            セクション
+                                        </Typography>
+                                        <Typography variant="body1" fontWeight={600} color={sectionNumber ? '#4CAF50' : '#f44336'}>
+                                            {sectionNumber || '未選択'}
+                                        </Typography>
+                                    </Box>
+                                    <Box>
+                                        <Typography variant="body2" color="text.secondary">
+                                            問題数
+                                        </Typography>
+                                        <Typography variant="body1" fontWeight={600} color={requestedNumOfLQuizs ? '#4CAF50' : '#f44336'}>
+                                            {requestedNumOfLQuizs || '未選択'}
+                                        </Typography>
+                                    </Box>
+                                    <Box>
+                                        <Typography variant="body2" color="text.secondary">
+                                            アクセント
+                                        </Typography>
+                                        <Typography variant="body1" fontWeight={600} color={speakerAccent ? '#4CAF50' : '#ff9800'}>
+                                            {speakerAccent || '任意'}
+                                        </Typography>
+                                    </Box>
+                                </Box>
+                            </Box>
+                        </Box>
+
+                        {/* ローディング表示 */}
+                        <LoadingModalComponent 
+                            open={isLoading}
+                            message="問題を準備中です..."
                         />
                     </Box>
-
-                    {/* ローディング表示 */}
-                    <LoadingModalComponent 
-                        open={isLoading}
-                        message="テスト"
-                    />
-                </Paper>
-            </Box>
-        </Container>
-    </Box>
-);
+                </Box>
+            </Container>
+        </Box>
+    );
 }
 
 //回答画面（APIが返した音声データを再生 stateを回答状態に更新）
@@ -377,17 +587,10 @@ function AnswerScreen() {
     //クイズデータselector（現在の問題のhashだけ取得）
     const sectionNumber = useAppSelector(state => state.newRandomQuestionRequest.requestParams.sectionNumber);
     const questionHash = useAppSelector(state => state.newRandomQuestionRequest.questionHash) 
-    //const currentQuestion = questionDataList[currentIndex];
-    //if (!currentQuestion) {
-    //    return <div>クイズデータを読み込み中...</div>; // 早期リターン
-    //};
-    //const { lQuestionID/*, sectionNumber, speakerAccent, duration*/ } = currentQuestion;
 
     //音声データObjectURLselector
     const audioObjectURL = useAppSelector(state => state.audioManagement.audioObjectURL);
-    //if (!audioBlob || !questionDataList || questionDataList.length === 0) {
-    //    return <div>音声データを読み込み中...</div>;
-    //};
+    
     const isAudioReadyToPlay = useAppSelector(state => state.audioManagement.isAudioReadyToPlay);
 
     //回答リクエスト用selector
@@ -433,7 +636,7 @@ function AnswerScreen() {
         const selectedSubQuestionIndex = event.target.value as SubQuestionNumber;
         setSelectedSubQuestionIndex(selectedSubQuestionIndex);
     };
-    type AnswerOption = 'A' | 'B' | 'C' | 'D' | null;
+    
     const handleUserAnswerChange = (selectedAnswer: "A" | "B" | "C" | "D") => {
         if (sectionNumber === 3 || sectionNumber === 4) {
             dispatch(answerSlice.updateSubQuestionAnswer({
@@ -576,117 +779,299 @@ function AnswerScreen() {
         //コンポーネント：回答ボタン(A|B|C|D), 回答するボタン, 後で復習　チェックボックス, やめるボタン
         <Box 
             sx={{ 
-                minHeight: 'calc(100vh - 64px)',
+                minHeight: '100vh',
                 height: 'auto',
                 width: '100%',
-                overflowY: 'auto',
-                backgroundColor: 'pastel.main'
+                background: 'linear-gradient(135deg, #afc4e9ff 0%, #81a2d7ff 100%)',
+                py: 4
             }}
         >
             <Container maxWidth="md">
                 <Box
                     sx={{
-                        marginTop: 3,
                         display: 'flex',
                         flexDirection: 'column',
                         alignItems: 'center',
-                        minHeight: '100vh'
+                        minHeight: 'calc(100vh - 64px)'
                     }}
                 >
-                    <Paper 
-                        elevation={10}
+                    <Box
                         sx={{
-                            padding: 1,
-                            display: 'flex',
-                            flexDirection: 'column',
+                            background: 'rgba(255, 255, 255, 0.98)',
+                            backdropFilter: 'blur(10px)',
+                            borderRadius: '24px',
+                            boxShadow: '0 20px 60px rgba(0, 0, 0, 0.1)',
+                            overflow: 'hidden',
                             width: '100%',
-                            maxWidth: 600,
-                            gap: 1
+                            maxWidth: 700
                         }}
                     >
-                        {/* 問題情報 */}
-                        <Box sx={{ textAlign: 'center', mb: 1 }}>
-                            <Typography variant="h4" component="h1" gutterBottom>
+                        {/* ヘッダー */}
+                        <Box 
+                            sx={{ 
+                                background: 'linear-gradient(45deg, #72a6e2ff 30%, #3c8ad4ff 90%)',
+                                color: 'white',
+                                p: 4,
+                                textAlign: 'center'
+                            }}
+                        >
+                            <Typography variant="h3" component="h1" sx={{ fontWeight: 700, mb: 1 }}>
                                 第{currentIndex + 1}問
                             </Typography>
-                            {/*<Typography variant="body1" color="text.secondary">
-                                セクション {sectionNumber} | {speakerAccent} | 再生時間: {duration}秒
-                            </Typography>*/}
                         </Box>
 
-                        {/* 音声再生ボタン */}
-                        <Box sx={{ textAlign: 'center', py: 1 }}>
-                            <Typography variant="body1" gutterBottom>
-                                音声を再生して問題に答えてください
-                            </Typography>
-                            <ButtonComponent
-                                disabled={isPlaying}
-                                variant="contained"
-                                label="🔊 音声再生"
-                                onClick={handleAudioPlay}
-                                color="primary"
-                                size="medium"
-                                sx={{ minWidth: 200, py: 1, fontSize: '1rem' }}
-                            />
+                        <Box sx={{ p: 4 }}>
+                            {/* 音声再生セクション */}
+                            <Box 
+                                sx={{ 
+                                    textAlign: 'center', 
+                                    mb: 4,
+                                    background: 'linear-gradient(135deg, rgba(102, 126, 234, 0.1), rgba(118, 75, 162, 0.1))',
+                                    borderRadius: '20px',
+                                    p: 4,
+                                    border: '1px solid rgba(102, 126, 234, 0.2)'
+                                }}
+                            >
+                                <Typography 
+                                    variant="h6" 
+                                    sx={{ 
+                                        mb: 3, 
+                                        fontWeight: 600,
+                                        color: '#333',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        gap: 1
+                                    }}
+                                >
+                                    🎵 音声を再生して問題に答えてください
+                                </Typography>
+                                <ButtonComponent
+                                    disabled={isPlaying}
+                                    variant="contained"
+                                    label={isPlaying ? "🔄 再生中..." : "🔊 音声再生"}
+                                    onClick={handleAudioPlay}
+                                    color="primary"
+                                    size="large"
+                                    sx={{ 
+                                        minWidth: 220,
+                                        py: 2,
+                                        fontSize: '1.2rem',
+                                        fontWeight: 700,
+                                        borderRadius: '25px',
+                                        boxShadow: '0 8px 24px rgba(102, 126, 234, 0.3)',
+                                        '&:hover': {
+                                            boxShadow: '0 12px 32px rgba(102, 126, 234, 0.4)'
+                                        },
+                                        '&:disabled': {
+                                            opacity: 0.7,
+                                            cursor: 'not-allowed'
+                                        }
+                                    }}
+                                />
+                            </Box>
+
+                            {/* 回答選択セクション */}
+                            <Box sx={{ mb: 4 }}>
+                                <Typography 
+                                    variant="h6" 
+                                    sx={{ 
+                                        mb: 3, 
+                                        fontWeight: 600,
+                                        color: '#333',
+                                        textAlign: 'center'
+                                    }}
+                                >
+                                    答えを選択してください
+                                </Typography>
+                                
+                                <Box 
+                                    sx={{ 
+                                        background: '#f8f9fa',
+                                        borderRadius: '20px',
+                                        p: 3,
+                                        border: '1px solid rgba(0,0,0,0.08)'
+                                    }}
+                                >
+                                    <AnswerButtonComponent
+                                        onAnswerChange={handleUserAnswerChange}
+                                        selectedValue={userAnswerOption?.[selectedSubQuestionIndex] || null}
+                                        selectedSubQuestionIndex={selectedSubQuestionIndex}
+                                        sx={{
+                                            display: 'flex',
+                                            flexDirection: 'column',
+                                            gap: 2,
+                                            '& .MuiButton-root': {
+                                                borderRadius: '16px',
+                                                py: 2,
+                                                fontSize: '1.1rem',
+                                                fontWeight: 600,
+                                                textTransform: 'none',
+                                                boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
+                                                transition: 'all 0.3s ease',
+                                                '&:hover': {
+                                                    transform: 'translateY(-2px)',
+                                                    boxShadow: '0 8px 20px rgba(0, 0, 0, 0.15)'
+                                                }
+                                            }
+                                        }}
+                                    />
+                                </Box>
+                            </Box>
+
+                            {/* TOEIC小問切り替えセクション */}
+                            {sectionNumber !== 1 && sectionNumber !== 2 && (
+                                <Box 
+                                    sx={{ 
+                                        mb: 4,
+                                        background: 'rgba(255, 193, 7, 0.05)',
+                                        borderRadius: '16px',
+                                        p: 3,
+                                        border: '1px solid rgba(255, 193, 7, 0.2)'
+                                    }}
+                                >
+                                    <Typography 
+                                        variant="h6" 
+                                        sx={{ 
+                                            mb: 2, 
+                                            fontWeight: 600,
+                                            color: '#333',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            gap: 1
+                                        }}
+                                    >
+                                        🔢 小問を選択
+                                    </Typography>
+                                    
+                                    <RadioButtonComponent
+                                        groupLabel=""
+                                        name="toeic-question-selector"
+                                        value={selectedSubQuestionIndex}
+                                        options={subQuestionOptions}
+                                        onChange={handleSubQuestionNumberChange}
+                                        row={true}              
+                                        disabled={false}
+                                        required={false}
+                                        size="medium"
+                                        color="primary"
+                                        sx={{
+                                            '& .MuiFormControlLabel-root': {
+                                                backgroundColor: 'white',
+                                                borderRadius: '12px',
+                                                px: 2,
+                                                py: 1,
+                                                margin: '0 8px 8px 0',
+                                                border: '2px solid transparent',
+                                                transition: 'all 0.3s ease',
+                                                '&:hover': {
+                                                    borderColor: 'rgba(102, 126, 234, 0.3)',
+                                                    boxShadow: '0 2px 8px rgba(102, 126, 234, 0.15)'
+                                                }
+                                            },
+                                            '& .Mui-checked + .MuiFormControlLabel-label': {
+                                                fontWeight: 600
+                                            }
+                                        }}
+                                    />
+                                </Box>
+                            )}
+
+                            {/* 復習タグセクション */}
+                            <Box 
+                                sx={{ 
+                                    mb: 4,
+                                    background: 'rgba(76, 175, 80, 0.05)',
+                                    borderRadius: '16px',
+                                    p: 3,
+                                    border: '1px solid rgba(76, 175, 80, 0.2)'
+                                }}
+                            >
+                                <CheckBoxComponent
+                                    label="⭐ 後で復習する"
+                                    checked={reviewTag || false}
+                                    onChange={handleReviewTagChange}
+                                    sx={{
+                                        '& .MuiFormControlLabel-label': {
+                                            fontSize: '1.1rem',
+                                            fontWeight: 500,
+                                            color: '#333'
+                                        },
+                                        '& .MuiCheckbox-root': {
+                                            color: '#4CAF50',
+                                            '&.Mui-checked': {
+                                                color: '#4CAF50'
+                                            }
+                                        }
+                                    }}
+                                />
+                            </Box>
+
+                            {/* アクションボタン */}
+                            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                                <ButtonComponent 
+                                    variant="contained"
+                                    label={userAnswerOption ? "✅ 回答する" : "❓ 答えを選択してください"}
+                                    onClick={handleAnswer}
+                                    color="primary"
+                                    size="large"
+                                    disabled={!userAnswerOption}
+                                    sx={{ 
+                                        width: '100%',
+                                        py: 2.5,
+                                        fontSize: '1.3rem',
+                                        fontWeight: 700,
+                                        borderRadius: '16px',
+                                        background: userAnswerOption 
+                                            ? 'linear-gradient(45deg, #4CAF50, #8BC34A)' 
+                                            : 'linear-gradient(45deg, #9e9e9e, #757575)',
+                                        boxShadow: userAnswerOption 
+                                            ? '0 8px 24px rgba(76, 175, 80, 0.3)' 
+                                            : '0 4px 12px rgba(0, 0, 0, 0.2)',
+                                        '&:hover': {
+                                            boxShadow: userAnswerOption 
+                                                ? '0 12px 32px rgba(76, 175, 80, 0.4)' 
+                                                : '0 4px 12px rgba(0, 0, 0, 0.2)'
+                                        },
+                                        '&:disabled': {
+                                            opacity: 0.6,
+                                            cursor: 'not-allowed'
+                                        }
+                                    }}
+                                />
+
+                                <ButtonComponent 
+                                    variant="outlined"
+                                    label="🚪 やめる"
+                                    onClick={handleQuit}
+                                    color="primary"
+                                    size="large"
+                                    sx={{ 
+                                        width: '100%',
+                                        py: 2,
+                                        fontSize: '1.1rem',
+                                        fontWeight: 600,
+                                        borderRadius: '16px',
+                                        borderWidth: 2,
+                                        '&:hover': {
+                                            borderWidth: 2,
+                                            backgroundColor: 'rgba(102, 126, 234, 0.05)',
+                                            transform: 'translateY(-1px)',
+                                            boxShadow: '0 4px 12px rgba(102, 126, 234, 0.2)'
+                                        }
+                                    }}
+                                />
+                            </Box>
                         </Box>
 
-                        {/* 回答選択ボタン */}
-                        <AnswerButtonComponent
-                            onAnswerChange={handleUserAnswerChange}
-                            sx = {{ display: 'flex', flexDirection: 'column', gap: 1, mt: 2, fontSize: '1rem' }}
+                        {/* 中断ポップアップ */}
+                        <QuizInterruptPopup
+                            open={showInterruptPopup}
+                            onClose={handleClosePopup}
+                            onMainMenu={handleMainMenu}
+                            onLogout={handleLogout}
                         />
-
-                        {/* 復習タグチェックボックス */}
-                        <CheckBoxComponent
-                            label="後で復習する"
-                            checked={reviewTag || false}
-                            onChange={handleReviewTagChange}
-                            sx={{ fontSize: 'body1' }}
-                        />
-
-                        {/* TOEIC小問切り替えラジオボタン */}
-                        {sectionNumber !== 1 && sectionNumber !== 2 && (
-                        <RadioButtonComponent
-                            groupLabel="小問を選択"
-                            name="toeic-question-selector"
-                            value={selectedSubQuestionIndex}
-                            options={subQuestionOptions}
-                            onChange={handleSubQuestionNumberChange}
-                            row={true}              
-                            disabled={false}
-                            required={false}
-                            size="medium"
-                            color="primary"
-                        />)}
-
-                        {/* ボタン群 */}
-                        <Box sx={{ mt: 1, display: 'flex', flexDirection: 'column', gap: 1 }}>
-                            <ButtonComponent 
-                                variant="contained"
-                                label="回答する"
-                                onClick={handleAnswer}
-                                color="primary"
-                                size="medium"
-                                disabled={!userAnswerOption}
-                                sx={{ width: '100%', py: 1, fontSize: '1rem' }}
-                            />
-
-                            <ButtonComponent 
-                                variant="outlined"
-                                label="やめる"
-                                onClick={handleQuit}
-                                color="primary"
-                                size="medium"
-                                sx={{ width: '100%', py: 1, fontSize: '1rem' }}
-                            />
-                            <QuizInterruptPopup
-                                open={showInterruptPopup}
-                                onClose={handleClosePopup}
-                                onMainMenu={handleMainMenu}
-                                onLogout={handleLogout}
-                            />
-                        </Box>
-                    </Paper>
+                    </Box>
                 </Box>
             </Container>
         </Box>
@@ -836,189 +1221,385 @@ function ResultScreen() {
         <Box 
             sx={{ 
                 width: '100%',
-                backgroundColor: 'pastel.main',
-                py: 2  // paddingBottomをpyに統一
+                minHeight: '100vh',
+                background: 'linear-gradient(135deg, #afc4e9ff 0%, #81a2d7ff 100%)',
+                py: 4
             }}
         >
             <Container maxWidth="lg">
-                <Paper 
-                    elevation={10}
+                <Box 
                     sx={{
-                        p: 3,
+                        background: 'rgba(255, 255, 255, 0.98)',
+                        backdropFilter: 'blur(10px)',
+                        borderRadius: '24px',
+                        boxShadow: '0 20px 60px rgba(0, 0, 0, 0.1)',
+                        overflow: 'hidden',
                         mx: 'auto',
-                        maxWidth: 800
+                        maxWidth: 900
                     }}
                 >
-                    {/* 問題情報 */}
-                    <Box sx={{ textAlign: 'center', mb: 2 }}>
-                        <Typography variant="h4" component="h1">
-                            Part {sectionNumber} 第{currentIndex + 1}問 結果
+                    {/* ヘッダー部分 */}
+                    <Box 
+                        sx={{ 
+                            background: 'linear-gradient(45deg, #667eea 30%, #764ba2 90%)',
+                            color: 'white',
+                            p: 4,
+                            textAlign: 'center'
+                        }}
+                    >
+                        <Typography variant="h3" component="h1" sx={{ fontWeight: 700, mb: 1 }}>
+                            Part {sectionNumber}
                         </Typography>
-                        <Typography variant="body1" sx={{ color: 'text.secondary', mt: 1 }}>
-                                アクセント: {speakerAccent}
+                        <Typography variant="h5" sx={{ opacity: 0.9, mb: 2 }}>
+                            第{currentIndex + 1}問 結果
                         </Typography>
+                        <Box 
+                            sx={{ 
+                                backgroundColor: 'rgba(255, 255, 255, 0.2)',
+                                borderRadius: '16px',
+                                py: 1,
+                                px: 2,
+                                display: 'inline-block'
+                            }}
+                        >
+                            <Typography variant="body1" sx={{ fontWeight: 500 }}>
+                                🎤 アクセント: {speakerAccent}
+                            </Typography>
+                        </Box>
                     </Box>
 
-                    {/* 正誤結果 */}
-                    <Box sx={{ mb: 3 }}>
-
-                        {/* 総合結果（Part3,4のみ） */}
+                    <Box sx={{ p: 4 }}>
+                        {/* スコア表示（Part3,4のみ） */}
                         {(sectionNumber === 3 || sectionNumber === 4) && (
-                            <Box sx={{ pt: 2, borderTop: 1, borderColor: 'grey.300', textAlign: 'center' }}>
-                                <Typography variant="h6" sx={{ fontWeight: 'bold' }}>
-                                    正解数: {isCorrectList.filter(correct => correct).length} / {isCorrectList.length}
-                                </Typography>
+                            <Box 
+                                sx={{ 
+                                    mb: 4,
+                                    textAlign: 'center',
+                                    position: 'relative'
+                                }}
+                            >
+                                <Box 
+                                    sx={{ 
+                                        background: 'linear-gradient(45deg, #4CAF50, #8BC34A)',
+                                        borderRadius: '20px',
+                                        p: 3,
+                                        color: 'white',
+                                        boxShadow: '0 8px 24px rgba(76, 175, 80, 0.3)'
+                                    }}
+                                >
+                                    <Typography variant="h4" sx={{ fontWeight: 700, mb: 1 }}>
+                                        🎯 {isCorrectList.filter(correct => correct).length} / {isCorrectList.length}
+                                    </Typography>
+                                    <Typography variant="h6" sx={{ opacity: 0.9 }}>
+                                        正解数
+                                    </Typography>
+                                </Box>
                             </Box>
                         )}
                         
-                        {/* 横並びのGrid（Part1-4共通） */}
-                        <Grid container spacing={2} sx={{ mb: 2 }}>
-                            {isCorrectList.map((isCorrect, index) => (
-                                <Grid  key={index}
-                                    size={{ xs: sectionNumber === 3 || sectionNumber === 4 ? 4 : 12 }}
-                                >
-                                    <Box 
-                                        sx={{ 
-                                            backgroundColor: 'grey.100', 
-                                            p: 1.5, 
-                                            borderRadius: 1, 
-                                            border: '2px solid',
-                                            borderColor: isCorrect ? 'success.main' : 'error.main',
-                                            textAlign: 'center',
-                                            height: '100%'
-                                        }}
+                        {/* 問題別結果 */}
+                        <Box sx={{ mb: 4 }}>
+                            <Typography variant="h6" sx={{ mb: 3, fontWeight: 600, color: '#333' }}>
+                                📊 詳細結果
+                            </Typography>
+                            
+                            <Grid container spacing={3}>
+                                {isCorrectList.map((isCorrect, index) => (
+                                    <Grid 
+                                        key={index}
+                                        size={{ xs: 12, sm: sectionNumber === 3 || sectionNumber === 4 ? 6 : 12, md: sectionNumber === 3 || sectionNumber === 4 ? 4 : 12 }}
                                     >
-                                        {sectionNumber === 3 || sectionNumber === 4 ? (
-                                            <>
+                                        <Box 
+                                            sx={{ 
+                                                background: isCorrect 
+                                                    ? 'linear-gradient(135deg, #4CAF50, #8BC34A)' 
+                                                    : 'linear-gradient(135deg, #F44336, #FF7043)',
+                                                borderRadius: '16px',
+                                                p: 3,
+                                                color: 'white',
+                                                textAlign: 'center',
+                                                transform: 'translateY(0)',
+                                                transition: 'all 0.3s ease',
+                                                boxShadow: isCorrect 
+                                                    ? '0 8px 24px rgba(76, 175, 80, 0.25)' 
+                                                    : '0 8px 24px rgba(244, 67, 54, 0.25)',
+                                                '&:hover': {
+                                                    transform: 'translateY(-4px)',
+                                                    boxShadow: isCorrect 
+                                                        ? '0 12px 32px rgba(76, 175, 80, 0.35)' 
+                                                        : '0 12px 32px rgba(244, 67, 54, 0.35)'
+                                                }
+                                            }}
+                                        >
+                                            {sectionNumber === 3 || sectionNumber === 4 ? (
+                                                <>
+                                                    <Typography 
+                                                        variant="h6" 
+                                                        sx={{ 
+                                                            fontWeight: 700,
+                                                            mb: 1,
+                                                            opacity: 0.9
+                                                        }}
+                                                    >
+                                                        Question {index + 1}
+                                                    </Typography>
+                                                    
+                                                    <Typography 
+                                                        variant="h5" 
+                                                        sx={{ 
+                                                            fontWeight: 600,
+                                                            mb: 2
+                                                        }}
+                                                    >
+                                                        {isCorrect ? '✅ 正解' : '❌ 不正解'}
+                                                    </Typography>
+                                                </>
+                                            ) : (
                                                 <Typography 
-                                                    variant="subtitle1" 
+                                                    variant="h4" 
                                                     sx={{ 
-                                                        color: isCorrect ? 'success.main' : 'error.main',
-                                                        fontWeight: 'bold',
-                                                        mb: 1
-                                                    }}
-                                                >
-                                                    Question {index + 1}
-                                                </Typography>
-                                                
-                                                <Typography 
-                                                    variant="h6" 
-                                                    sx={{ 
-                                                        color: isCorrect ? 'success.main' : 'error.main',
-                                                        mb: 1
+                                                        fontWeight: 700,
+                                                        mb: 2
                                                     }}
                                                 >
                                                     {isCorrect ? '✅ 正解' : '❌ 不正解'}
                                                 </Typography>
-                                            </>
-                                        ) : (
-                                            <Typography 
-                                                variant="h5" 
-                                                sx={{ 
-                                                    color: isCorrect ? 'success.main' : 'error.main',
-                                                    fontWeight: 'bold',
-                                                    mb: 1
-                                                }}
-                                            >
-                                                {isCorrect ? '✅ 正解' : '❌ 不正解'}
-                                            </Typography>
-                                        )}
-                                        
-                                        <Typography variant="body2" sx={{ mb: 0.5 }}>
-                                            <strong>あなたの回答:</strong> {userAnswerOption?.[index] || '未回答'}
-                                        </Typography>
-                                        <Typography variant="body2">
-                                            <strong>正解:</strong> {answerOption[index]}
-                                        </Typography>
-                                    </Box>
-                                </Grid>
-                            ))}
-                        </Grid>
-                    </Box>
-
-                    {/* タブ表示 */}
-                    <Box sx={{ mb: 3 }}>
-                        <Tabs value={selectedTab} onChange={(e, newValue) => setSelectedTab(newValue)} centered>
-                            <Tab label="問題文" />
-                            <Tab label="和訳" />
-                            <Tab label="解説" />
-                        </Tabs>
-                        
-                        <Box sx={{ minHeight: 200, mt: 2 }}>
-                            <TabPanelComponent value={selectedTab} index={0}>
-                                <Typography variant="body2" sx={{ whiteSpace: 'pre-line', lineHeight: 1.6 }}>
-                                    {audioScript}
-                                </Typography>
-                            </TabPanelComponent>
-                            
-                            <TabPanelComponent value={selectedTab} index={1}>
-                                <Typography variant="body2" sx={{ whiteSpace: 'pre-line', lineHeight: 1.6 }}>
-                                    {jpnAudioScript}
-                                </Typography>
-                            </TabPanelComponent>
-                            
-                            <TabPanelComponent value={selectedTab} index={2}>
-                                <Typography variant="body2" sx={{ whiteSpace: 'pre-line', lineHeight: 1.6 }}>
-                                    {explanation}
-                                </Typography>
-                            </TabPanelComponent>
+                                            )}
+                                            
+                                            <Box sx={{ 
+                                                backgroundColor: 'rgba(255, 255, 255, 0.2)', 
+                                                borderRadius: '12px', 
+                                                p: 2,
+                                                mb: 1
+                                            }}>
+                                                <Typography variant="body2" sx={{ fontWeight: 500, mb: 1 }}>
+                                                    あなたの回答
+                                                </Typography>
+                                                <Typography variant="h6" sx={{ fontWeight: 700 }}>
+                                                    {userAnswerOption?.[index] || '未回答'}
+                                                </Typography>
+                                            </Box>
+                                            
+                                            <Box sx={{ 
+                                                backgroundColor: 'rgba(255, 255, 255, 0.15)', 
+                                                borderRadius: '12px', 
+                                                p: 2
+                                            }}>
+                                                <Typography variant="body2" sx={{ fontWeight: 500, mb: 1 }}>
+                                                    正解
+                                                </Typography>
+                                                <Typography variant="h6" sx={{ fontWeight: 700 }}>
+                                                    {answerOption[index]}
+                                                </Typography>
+                                            </Box>
+                                        </Box>
+                                    </Grid>
+                                ))}
+                            </Grid>
                         </Box>
-                    </Box>
 
-                    {/* 音声再生ボタン */}
-                    <Box sx={{ textAlign: 'center', mb: 3 }}>
-                        <Typography variant="body1" gutterBottom>
-                            もう一度音声を聞く
-                        </Typography>
-                        <ButtonComponent
-                            variant="outlined"
-                            label="🔊 音声再生"
-                            onClick={handleAudioPlay}
-                            color="primary"
-                            size="medium"
-                            sx={{ minWidth: 200 }}
-                        />
-                    </Box>
+                        {/* タブセクション */}
+                        <Box sx={{ mb: 4 }}>
+                            <Box sx={{ 
+                                borderBottom: 1, 
+                                borderColor: 'divider',
+                                mb: 3
+                            }}>
+                                <Tabs 
+                                    value={selectedTab} 
+                                    onChange={(e, newValue) => setSelectedTab(newValue)} 
+                                    centered
+                                    sx={{
+                                        '& .MuiTab-root': {
+                                            fontWeight: 600,
+                                            fontSize: '1rem',
+                                            textTransform: 'none',
+                                            minWidth: 120,
+                                            borderRadius: '12px 12px 0 0',
+                                            margin: '0 4px'
+                                        },
+                                        '& .Mui-selected': {
+                                            backgroundColor: 'rgba(102, 126, 234, 0.1)'
+                                        }
+                                    }}
+                                >
+                                    <Tab label="📝 問題文" />
+                                    <Tab label="🇯🇵 和訳" />
+                                    <Tab label="💡 解説" />
+                                </Tabs>
+                            </Box>
+                            
+                            <Box 
+                                sx={{ 
+                                    minHeight: 200,
+                                    backgroundColor: '#f8f9fa',
+                                    borderRadius: '16px',
+                                    p: 3,
+                                    border: '1px solid rgba(0,0,0,0.08)'
+                                }}
+                            >
+                                <TabPanelComponent value={selectedTab} index={0}>
+                                    <Typography 
+                                        variant="body1" 
+                                        sx={{ 
+                                            whiteSpace: 'pre-line', 
+                                            lineHeight: 1.8,
+                                            fontSize: '1.1rem',
+                                            color: '#333'
+                                        }}
+                                    >
+                                        {audioScript}
+                                    </Typography>
+                                </TabPanelComponent>
+                                
+                                <TabPanelComponent value={selectedTab} index={1}>
+                                    <Typography 
+                                        variant="body1" 
+                                        sx={{ 
+                                            whiteSpace: 'pre-line', 
+                                            lineHeight: 1.8,
+                                            fontSize: '1.1rem',
+                                            color: '#333'
+                                        }}
+                                    >
+                                        {jpnAudioScript}
+                                    </Typography>
+                                </TabPanelComponent>
+                                
+                                <TabPanelComponent value={selectedTab} index={2}>
+                                    <Typography 
+                                        variant="body1" 
+                                        sx={{ 
+                                            whiteSpace: 'pre-line', 
+                                            lineHeight: 1.8,
+                                            fontSize: '1.1rem',
+                                            color: '#333'
+                                        }}
+                                    >
+                                        {explanation}
+                                    </Typography>
+                                </TabPanelComponent>
+                            </Box>
+                        </Box>
 
-                    {/* 復習タグチェックボックス */}
-                    <Box sx={{ mb: 3 }}>
-                        <CheckBoxComponent
-                            label="後で復習する"
-                            checked={reviewTag || false}
-                            onChange={handleReviewTagChange}
-                        />
-                    </Box>
-
-                    {/* ボタン群 */}
-                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
-                        {!isLastQuestion ? (
-                            <ButtonComponent 
+                        {/* 音声再生セクション */}
+                        <Box 
+                            sx={{ 
+                                textAlign: 'center', 
+                                mb: 4,
+                                backgroundColor: 'rgba(102, 126, 234, 0.05)',
+                                borderRadius: '16px',
+                                p: 3
+                            }}
+                        >
+                            <Typography variant="h6" sx={{ mb: 2, fontWeight: 600, color: '#333' }}>
+                                🎵 もう一度音声を聞く
+                            </Typography>
+                            <ButtonComponent
                                 variant="contained"
-                                label="次の問題に進む"
-                                onClick={handleNextQuestion}
+                                label="🔊 音声再生"
+                                onClick={handleAudioPlay}
                                 color="primary"
-                                size="medium"
-                                sx={{ width: '100%' }}
+                                size="large"
+                                sx={{ 
+                                    minWidth: 200,
+                                    borderRadius: '25px',
+                                    py: 1.5,
+                                    fontSize: '1.1rem',
+                                    fontWeight: 600,
+                                    boxShadow: '0 4px 16px rgba(102, 126, 234, 0.3)',
+                                    '&:hover': {
+                                        boxShadow: '0 6px 24px rgba(102, 126, 234, 0.4)'
+                                    }
+                                }}
                             />
-                        ) : (
-                            <ButtonComponent 
-                                variant="contained"
-                                label="回答結果を見る"
-                                onClick={handleViewResults}
-                                color="primary"
-                                size="medium"
-                                sx={{ width: '100%' }}
-                            />
-                        )}
+                        </Box>
 
-                        <ButtonComponent 
-                            variant="outlined"
-                            label="やめる"
-                            onClick={handleQuit}
-                            color="primary"
-                            size="medium"
-                            sx={{ width: '100%' }}
-                        />
+                        {/* 復習タグ */}
+                        <Box 
+                            sx={{ 
+                                mb: 4,
+                                backgroundColor: 'rgba(255, 193, 7, 0.05)',
+                                borderRadius: '16px',
+                                p: 3,
+                                border: '1px solid rgba(255, 193, 7, 0.2)'
+                            }}
+                        >
+                            <CheckBoxComponent
+                                label="⭐ 後で復習する"
+                                checked={reviewTag || false}
+                                onChange={handleReviewTagChange}
+                                sx={{
+                                    '& .MuiFormControlLabel-label': {
+                                        fontSize: '1.1rem',
+                                        fontWeight: 500
+                                    }
+                                }}
+                            />
+                        </Box>
+
+                        {/* アクションボタン */}
+                        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                            {!isLastQuestion ? (
+                                <ButtonComponent 
+                                    variant="contained"
+                                    label="➡️ 次の問題に進む"
+                                    onClick={handleNextQuestion}
+                                    color="primary"
+                                    size="large"
+                                    sx={{ 
+                                        width: '100%',
+                                        borderRadius: '16px',
+                                        py: 2,
+                                        fontSize: '1.2rem',
+                                        fontWeight: 700,
+                                        boxShadow: '0 8px 24px rgba(102, 126, 234, 0.3)',
+                                        '&:hover': {
+                                            boxShadow: '0 12px 32px rgba(102, 126, 234, 0.4)'
+                                        }
+                                    }}
+                                />
+                            ) : (
+                                <ButtonComponent 
+                                    variant="contained"
+                                    label="📊 回答結果を見る"
+                                    onClick={handleViewResults}
+                                    color="primary"
+                                    size="large"
+                                    sx={{ 
+                                        width: '100%',
+                                        borderRadius: '16px',
+                                        py: 2,
+                                        fontSize: '1.2rem',
+                                        fontWeight: 700,
+                                        boxShadow: '0 8px 24px rgba(102, 126, 234, 0.3)',
+                                        '&:hover': {
+                                            boxShadow: '0 12px 32px rgba(102, 126, 234, 0.4)'
+                                        }
+                                    }}
+                                />
+                            )}
+
+                            <ButtonComponent 
+                                variant="outlined"
+                                label="🚪 やめる"
+                                onClick={handleQuit}
+                                color="primary"
+                                size="large"
+                                sx={{ 
+                                    width: '100%',
+                                    borderRadius: '16px',
+                                    py: 2,
+                                    fontSize: '1.1rem',
+                                    fontWeight: 600,
+                                    borderWidth: 2,
+                                    '&:hover': {
+                                        borderWidth: 2,
+                                        backgroundColor: 'rgba(102, 126, 234, 0.05)'
+                                    }
+                                }}
+                            />
+                        </Box>
                     </Box>
 
                     {/* 中断ポップアップ */}
@@ -1028,7 +1609,7 @@ function ResultScreen() {
                         onMainMenu={handleMainMenu}
                         onLogout={handleLogout}
                     />
-                </Paper>
+                </Box>
             </Container>
         </Box>
     );

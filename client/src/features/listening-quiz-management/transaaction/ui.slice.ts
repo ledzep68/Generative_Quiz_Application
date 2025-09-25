@@ -5,7 +5,7 @@ import * as dto from "./dto.ts";
 import * as type from "./types.ts";
 
 const initialState: type.CurrentScreenState = {
-    currentScreen: 'result',
+    currentScreen: 'answer',
     //ローディング表示用
     isLoading: false
 };
