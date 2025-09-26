@@ -6,7 +6,7 @@ interface stateManagementParameters {
     //ユーザ入力のバリデーション結果
     isValid?: boolean,
     validationErrors?: string[],
-    //クイズリクエストの状態
+    //クイズリクエストの状態　UI制御用（二度押し禁止　など）
     requestStatus?: 'idle' | 'pending' | 'success' | 'failed',
     //タイムスタンプ
     submittedAt?: number

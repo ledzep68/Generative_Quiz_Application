@@ -1,29 +1,51 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useDispatch } from "react-redux";
 import { Box, Container, Paper, Typography } from "@mui/material";
+import z from "zod";
+
+import * as loginSlice from "../login.slice";
 import * as dto from "../dto";
 import * as api from "../api";
 import * as schema from "../schema";
 
 import ButtonComponent from "../../../../shared/components/Button";
 import InputFormComponent from "../../../../shared/components/InputForm";
-import z from "zod";
 
 function LoginForm() {
+    const navigate = useNavigate();
+    const dispatch = useDispatch();
+
     const [userName, setUserName] = useState<string>("");
     const [password, setPassword] = useState<string>("");
     const [invitationCode, setInvitationCode] = useState<string>("");
-    const navigate = useNavigate();
+
+    //API
     const [fetchLoginAndInitializeSession] = api.useFetchLoginAndInitializeSessionMutation();
     const [fetchRegisterAndInitializeSession] = api.useFetchRegisterAndInitializeSessionMutation();
+
     const handleLoginClick = async () => {
+        //
+        dispatch(loginSlice.setRequestStatus('pending'));
         try{
             //ユーザー入力バリデーション
             const loginReqDTO = schema.UserLoginValidationSchema.parse({userName: userName, password: password}) as dto.LoginReqDTO;
+            setUserName(loginReqDTO.userName);
             //ログイン・セッション開始リクエスト
             await fetchLoginAndInitializeSession(loginReqDTO).unwrap(); //wnwrap 成功時のみデータ取得
+            //ログイン状態をstoreに格納
+            dispatch(loginSlice.login(
+                {
+                    userName: loginReqDTO.userName, 
+                    isLoggedIn: true
+                }
+            ));
+            
+            dispatch(loginSlice.setRequestStatus('success'));
+
             navigate('/main-menu');
         } catch (error) {
+            dispatch(loginSlice.setRequestStatus('failed'));
             if (error instanceof z.ZodError) {
                 const errorMessages = error.issues.map(issue => issue.message);
                 alert(errorMessages.join('\n'));
@@ -52,6 +74,14 @@ function LoginForm() {
     };
 
     return (
+        <Box 
+            sx={{ 
+                minHeight: '100vh',
+                width: '100%',
+                background: 'linear-gradient(135deg, #afc4e9ff 0%, #81a2d7ff 100%)',
+                py: 4
+                }}
+                >
         <Container maxWidth="sm">
             <Box
                 sx={{
@@ -105,7 +135,10 @@ function LoginForm() {
                                 onClick={handleLoginClick}
                                 color="primary"
                                 size="large"
-                                disabled={!userName.trim() || !password.trim()}
+                                disabled={
+                                    !userName.trim() || !password.trim()
+                                    //
+                                }
                                 sx={{ width: '100%', py: 1.5, display: 'flex' }}
                             />
                         </Box>
@@ -136,6 +169,7 @@ function LoginForm() {
                 </Paper>
             </Box>
         </Container>
+    </Box>
     );
 }
 

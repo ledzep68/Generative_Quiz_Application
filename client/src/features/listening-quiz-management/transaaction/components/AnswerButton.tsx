@@ -29,7 +29,7 @@ const AnswerButtonComponent: React.FC<AnswerButtonsProps> = ({
             <Typography variant="body1" gutterBottom>
                 {selectedSubQuestionIndex !== undefined && (
                     <Typography component="span" variant="body2" sx={{ ml: 1, color: 'text.secondary' }}>
-                        (小問 {parseInt(selectedSubQuestionIndex, 10) + 1})
+                        (Q{parseInt(selectedSubQuestionIndex, 10) + 1})
                     </Typography>
                 )}
             </Typography>

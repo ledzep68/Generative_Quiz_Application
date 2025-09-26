@@ -172,6 +172,9 @@ export const answerSlice = createSlice({
         },
         clearAnswerData: (state) => {
             state.answerData = undefined;
+        },
+        resetAnswerState: (state) => {
+            return initialState;
         }
     }
 });
@@ -184,7 +187,8 @@ export const {
     updateRequestParam,
     setRequestStatus,
     clearRequestParams,
-    clearAnswerData
+    clearAnswerData,
+    resetAnswerState
 } = answerSlice.actions;
 
 export default answerSlice.reducer;

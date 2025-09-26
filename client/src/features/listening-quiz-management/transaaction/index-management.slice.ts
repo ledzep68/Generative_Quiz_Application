@@ -35,10 +35,10 @@ export const quiestionIndexManagementSlice = createSlice({
         setIsLastQuestion: (state, action: PayloadAction<boolean>) => {
             state.isLastQuestion = action.payload;
         },
-        resetIndex: (state) => {
+        resetIndexState: (state) => {
             return initialState;
-        } //適切な粒度
+        } 
     }
 });
 
-export const { setCurrentIndex, setIsLastQuestion, resetIndex } = quiestionIndexManagementSlice.actions;
+export const { setCurrentIndex, setIsLastQuestion, resetIndexState } = quiestionIndexManagementSlice.actions;

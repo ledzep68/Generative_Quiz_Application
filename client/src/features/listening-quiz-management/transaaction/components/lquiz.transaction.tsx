@@ -35,6 +35,9 @@ import * as uiSlice from "../ui.slice.ts";
 import * as audioSlice from "../audio.slice.ts";
 import * as indexSlice from "../index-management.slice.ts"
 import * as answerSlice from "../answer.slice.ts";
+import * as resultSlice from "../result.slice.ts"
+
+import * as loginSlice from "../../../user-management/login/login.slice.ts";
 
 import * as dto from "../dto.ts";
 import * as api from "../api.ts";
@@ -78,6 +81,8 @@ function StandByScreen() {
 
     const navigate = useNavigate();
     const dispatch = useAppDispatch();
+
+    //API
     const [initiateSession] = api.useInitiateSessionMutation();
     const [resetUserAndQuizSession] = api.useResetUserAndQuizSessionMutation();
 
@@ -261,7 +266,7 @@ function StandByScreen() {
     };
 
     const handleBack = async () => {
-        dispatch(newQuestionSlice.resetRequest());
+        dispatch(newQuestionSlice.resetRequestState());
         navigate('/main-menu')
     };
 
@@ -577,6 +582,9 @@ function StandByScreen() {
 //  回答レスポンスが届いたことを確認したらstateを結果状態に更新
 
 function AnswerScreen() {
+    const navigate = useNavigate();
+    const dispatch = useAppDispatch();
+
     //状態'answer'
     const screenState = useAppSelector(state => state.uiManagement.currentScreen);
 
@@ -594,35 +602,18 @@ function AnswerScreen() {
     const isAudioReadyToPlay = useAppSelector(state => state.audioManagement.isAudioReadyToPlay);
 
     //回答リクエスト用selector
-    const requestAnswerParams = useAppSelector(state => {
-        return state.answerManagement.requestParams
-    }) as dto.UserAnswerReqDTO;
+    const requestAnswerParams = useAppSelector(state => {return state.answerManagement.requestParams}) as dto.UserAnswerReqDTO;
     const { reviewTag, userAnswerOption } = requestAnswerParams;
 
-    const navigate = useNavigate();
-    const dispatch = useAppDispatch();
+    //API
     const [resetQuizSession] = api.useResetQuizSessionMutation();
     const [resetUserAndQuizSession] = api.useResetUserAndQuizSessionMutation();
     const [fetchAnswer] = api.useFetchAnswerMutation();
-
-    /*const handleUserAnswerChange = (answer: ('A'|'B'|'C'|'D'|null)[]) => {
-        dispatch(answerSlice.updateRequestParam(
-            { userAnswerOption: answer as ('A'|'B'|'C'|'D'|null)[] }
-        ));
-    };*/
 
     const handleReviewTagChange = (checked: boolean) => {
         dispatch(answerSlice.updateRequestParam({ reviewTag: checked }
         ));
     };
-
-    //デバッグ用
-    useEffect(() => {
-        console.log('=== 実際の更新後確認 ===');
-        console.log('userAnswerOption:', userAnswerOption);
-        console.log('disabled状態:', !userAnswerOption);
-        console.log('reviewTag:', reviewTag);
-    }, [userAnswerOption]);
 
     //小問選択
     type SubQuestionNumber = '0' | '1' | '2';
@@ -739,13 +730,24 @@ function AnswerScreen() {
         dispatch(uiSlice.setCurrentScreen('result'));
     };
 
-    //中断ポップアップ
+    const handleQuizEnd = async () => {
+        //各stateをリセット
+        dispatch(newQuestionSlice.resetRequestState());
+        dispatch(answerSlice.resetAnswerState());
+        dispatch(audioSlice.resetAudioState());
+        dispatch(resultSlice.resetResultState());
+        dispatch(indexSlice.resetIndexState());
+        //クイズセッションリセット
+        await resetQuizSession();
+        //メインメニューに遷移
+        navigate('/main-menu');
+    };
+
+    //中断ポップアップ
     const [showInterruptPopup, setShowInterruptPopup] = useState(false);
 
-    const handleQuit = async () => {
+    const handleQuit = () => {
         setShowInterruptPopup(true);
-        //全セッション破棄
-        await resetUserAndQuizSession();
     };
 
     const handleClosePopup = () => {
@@ -754,19 +756,19 @@ function AnswerScreen() {
 
     const handleMainMenu = async () => {
         setShowInterruptPopup(false);
-        //クイズセッション破棄
-        await resetQuizSession();
+        await handleQuizEnd();
         navigate('/main-menu');
     };
 
-    const handleLogout = async () => {
+    const handleLogout = async() => {
         setShowInterruptPopup(false);
-        //全セッション破棄
         await resetUserAndQuizSession();
-        //ログイン画面に遷移
+        //ログアウト
+        dispatch(loginSlice.logout());
         navigate('/login');
     };
 
+    //デバッグ用
     useEffect(() => {
         console.log("sectionNumber", sectionNumber);
         console.log("questionHash: ", questionHash);
@@ -1087,12 +1089,15 @@ function AnswerScreen() {
 //  stateを結果状態に更新し、結果画面（Result.tsx）に遷移(Navigate)
 
 function ResultScreen() {
+    const navigate = useNavigate();
+    const dispatch = useAppDispatch();
+
     //状態'result'
     const screenState = useAppSelector(state => state.uiManagement.currentScreen);
 
     //問題番号管理用selector
     const indexParams = useAppSelector(state => state.indexManagement);
-    const { currentIndex } = indexParams;
+    const { currentIndex, isLastQuestion } = indexParams;
 
     //クイズデータselector（現在のindexの問題だけ取得）
     const questionHash = useAppSelector(state => state.newRandomQuestionRequest.questionHash) 
@@ -1103,21 +1108,18 @@ function ResultScreen() {
     const isAudioReadyToPlay = useAppSelector(state => state.audioManagement.isAudioReadyToPlay);
     const audioObjectURL = useAppSelector(state => state.audioManagement.audioObjectURL);
 
-    //回答データ取得用selector
+    //解答データ取得用selector
     const answerParam = useAppSelector(state => state.answerManagement.requestParams) as dto.UserAnswerReqDTO;
     const { userAnswerOption, reviewTag } = answerParam;
-    const answerData = useAppSelector(state => {
-        return state.answerManagement.answerData
-    }) as dto.UserAnswerResDTO;
+    //解答データ
+    const answerData = useAppSelector(state => {return state.answerManagement.answerData}) as dto.UserAnswerResDTO;
     const { audioScript, jpnAudioScript, explanation, answerOption, isCorrectList } = answerData;
-
-    const navigate = useNavigate();
-    const dispatch = useAppDispatch();
     //問題文/和訳/解説　タブ切り替え
     const [selectedTab, setSelectedTab] = useState(0);
 
-    //最終問題かどうかの判定
-    const isLastQuestion = currentIndex + 1 >= requestedNumOfLQuizs;
+    //API
+    const [resetQuizSession] = api.useResetUserAndQuizSessionMutation();
+    const [resetUserAndQuizSession] = api.useResetUserAndQuizSessionMutation();
 
     //音声再生
     const {load, error, isPlaying} = useAudioPlayer();
@@ -1163,33 +1165,43 @@ function ResultScreen() {
         dispatch(answerSlice.updateRequestParam({ reviewTag: checked }))
     };
 
-    //次の問題に進む
+    //終点検知・次の問題に進む
     const handleNextQuestion = async () => {
-        const nextIndex = currentIndex + 1;
+        const isLastQuestion = currentIndex + 1 >= requestedNumOfLQuizs;
         
-        if (nextIndex < requestedNumOfLQuizs) {
-            
+        if (!isLastQuestion) {
             try {
-                //現在の音声データURLを解放
+                //音声データURL解放
                 dispatch(audioSlice.resetAudioState());
                 
-                // インデックス更新・isLastQuestionにfalseを格納
-                dispatch(indexSlice.setCurrentIndex(
-                    {
-                        currentIndex: nextIndex as 0|1|2|3|4|5|6|7|8|9, 
-                        isLastQuestion: false
-                    }));
-                
-                //次の問題・音声生成
-                
+                //currentIndex・isLastQuestionをstoreに格納し更新
+                dispatch(indexSlice.setCurrentIndex({
+                    currentIndex: currentIndex + 1 as 0|1|2|3|4|5|6|7|8|9,
+                    isLastQuestion: false
+                }));
 
-                //answer画面に遷移
-                dispatch(uiSlice.setCurrentScreen('answer'));
-                
+                //standby画面に遷移
+                dispatch(uiSlice.setCurrentScreen('standby'));
+                return;
             } catch (error) {
                 console.error('次の問題の音声取得に失敗:', error);
             }
         }
+        //クイズ終了処理（最終問題/エラー時）
+        await handleQuizEnd();
+    };
+
+    const handleQuizEnd = async () => {
+        //各stateをリセット
+        dispatch(newQuestionSlice.resetRequestState());
+        dispatch(answerSlice.resetAnswerState());
+        dispatch(audioSlice.resetAudioState());
+        dispatch(resultSlice.resetResultState());
+        dispatch(indexSlice.resetIndexState());
+        //クイズセッションリセット
+        await resetQuizSession();
+        //メインメニューに遷移
+        navigate('/main-menu');
     };
 
     //中断ポップアップ
@@ -1203,13 +1215,17 @@ function ResultScreen() {
         setShowInterruptPopup(false);
     };
 
-    const handleMainMenu = () => {
+    const handleMainMenu = async () => {
         setShowInterruptPopup(false);
+        await handleQuizEnd();
         navigate('/main-menu');
     };
 
-    const handleLogout = () => {
+    const handleLogout = async() => {
         setShowInterruptPopup(false);
+        await resetUserAndQuizSession();
+        //ログアウト
+        dispatch(loginSlice.logout());
         navigate('/login');
     };
 

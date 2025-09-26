@@ -25,13 +25,17 @@ export const resultSlice = createSlice({
             state.requestParams = undefined;
             state.isValid = false;
             state.validationErrors = [];
+        },
+        resetResultState: () => {
+            return initialState;
         }
     }
 });
 
 export const {
     setRequestParams,
-    clearRequestParams
+    clearRequestParams,
+    resetResultState
 } = resultSlice.actions;
 
 export default resultSlice.reducer;

@@ -7,10 +7,10 @@ import { Dialog, DialogTitle, DialogContent, DialogActions, Button, IconButton, 
 import CloseIcon from '@mui/icons-material/Close';
 
 interface QuizInterruptPopupProps {
-  open: boolean;
-  onClose: () => void;
-  onMainMenu: () => void;
-  onLogout: () => void;
+    open: boolean;
+    onClose: () => void;
+    onMainMenu: () => void;
+    onLogout: () => void;
 }
 
 const QuizInterruptPopup: React.FC<QuizInterruptPopupProps> = ({
@@ -44,7 +44,6 @@ const QuizInterruptPopup: React.FC<QuizInterruptPopupProps> = ({
         </IconButton>
       </DialogTitle>
 
-      {/* 以下は変更なし */}
       <DialogContent>
         <Typography variant="body1" color="text.secondary">
           進行中のクイズが保存されずに終了されます。<br />

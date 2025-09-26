@@ -87,7 +87,7 @@ export const newRandomQuestionRequestSlice = createSlice({
         setQuestionHash: (state, action) => {
             state.questionHash = action.payload;
         },
-        resetRequest: (state) => {
+        resetRequestState: (state) => {
             //完全リセット
             //initialStateに戻す
             //新しいリクエスト開始時に使用
@@ -96,4 +96,4 @@ export const newRandomQuestionRequestSlice = createSlice({
     }
 });
 
-export const { setRequestParams, setRequestStatus, setQuestionHash, resetRequest } = newRandomQuestionRequestSlice.actions;
+export const { setRequestParams, setRequestStatus, setQuestionHash, resetRequestState } = newRandomQuestionRequestSlice.actions;
