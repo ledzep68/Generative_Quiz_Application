@@ -70,13 +70,14 @@ export async function generatePart2LQuizController(req: Request, res: Response):
         throw new Error("Question set not initialized. Please start a new quiz session.");
     }
     const questionSet = sessionData.questionSet;
-    console.log("questionSet: ", questionSet);
+
     //問題番号更新
-    const requestedIndex = req.body.currentIndex; //フロントエンドから送信
-    questionSet.currentIndex = requestedIndex;
+    questionSet.currentIndex = req.body.currentIndex;
     console.log("currentIndex: ", questionSet.currentIndex);
 
-    const {sectionNumber, currentIndex, totalQuestionNum, speakerAccentList, settingList, speakingRate} = questionSet;
+    console.log("questionSet: ", questionSet);
+
+    const {sectionNumber, currentIndex, totalQuestionNum, speakingRate} = questionSet;
     
     //currentIndexをtotalQuestionNumと比較
     if(currentIndex >= totalQuestionNum){
@@ -133,12 +134,11 @@ export async function generatePart34LQuizController(req: Request, res: Response)
         throw new Error("Question set not initialized. Please start a new quiz session.");
     }
     const questionSet = sessionData.questionSet;
-    console.log("questionSet: ", questionSet);
+    
     //問題番号更新
-    const requestedIndex = req.body.currentIndex; //フロントエンドから送信
-    questionSet.currentIndex = requestedIndex;
-    console.log("currentIndex: ", questionSet.currentIndex);
-    //currentIndexをtotalQuestionNumと比較
+    questionSet.currentIndex = req.body.currentIndex;
+
+    console.log("questionSet: ", questionSet);
     
     //currentIndex<totalQuestionNum
         //問題生成

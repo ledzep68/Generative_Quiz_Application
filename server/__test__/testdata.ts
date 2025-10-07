@@ -1,6 +1,6 @@
 import {Request, Response} from "express";
-import fs from 'fs';
-//import fs from 'fs/promises';
+//import fs from 'fs';
+import fs from 'fs/promises';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import os from 'os';
@@ -470,11 +470,11 @@ async function explanation() {
 };
 
 
-//part2AudioScript().catch(console.error);
+part2AudioScript().catch(console.error);
 //audioScriptContent().catch(console.error);
 //audioScriptQuestions().catch(console.error);
 //jpnAudioScript().catch(console.error);
-explanation().catch(console.error);
+//explanation().catch(console.error);
 
 /*
 async function callGoogleCloudTTSRealAPITest() {
@@ -641,6 +641,7 @@ async function generateAudioContentTest() {
 };
 */
 
+/*
 export function createDummyRequest(): Partial<Request> {
     return {
         session: {
@@ -774,3 +775,4 @@ async function testPart2Integration() {
 
 // テスト実行
 testPart2Integration();
+*/

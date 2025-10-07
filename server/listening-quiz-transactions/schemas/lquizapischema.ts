@@ -25,22 +25,6 @@ export const openAIResponseSchema = z.object({
     }).optional()
 });
 
-/*
-//questionHashだけ返すので不要
-//レスポンスの中のクイズデータのバリデーション
-export const generatedQuestionDataResDTOSchema: z.ZodSchema<dto.GeneratedQuestionDataResDTO[]> = z.array(z.object({
-    audioScript: z.string(),
-    jpnAudioScript: z.string(),
-    answerOption: z.union([z.literal("A"), z.literal("B"), z.literal("C"), z.literal("D")]),
-    sectionNumber: z.union([z.literal(1), z.literal(2), z.literal(3), z.literal(4)]),
-    explanation: z.string(),
-    speakerAccent: z.union([z.literal("American"), z.literal("Canadian"), z.literal("British"), z.literal("Australian")])
-    //Duration: z.number(),
-    //lQuestionID: z.string().uuid().optional()
-})
-);
-*/
-
 //音声データのバリデーション
 
 //GoogleTTSのレスポンスのバリデーション

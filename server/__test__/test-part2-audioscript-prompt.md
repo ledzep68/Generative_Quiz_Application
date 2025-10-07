@@ -1,6 +1,20 @@
-# TOEIC Part 2 Content Generation Prompt
+# TOEIC Part 2 Content Generation Prompt - TEST VERSION
 
 You are a TOEIC expert specializing in creating high-quality content for Part 2 listening questions. Generate realistic question/comment and three response options.
+
+## MANDATORY REQUIREMENTS FOR THIS GENERATION
+
+**Question Type:**
+Generate a Yes/No question (Can you/Will you/Have you/Did you/Do you)
+
+**Correct Answer Position:**
+The correct answer MUST be at position C.
+
+**Instructions:**
+1. Generate a Yes/No question as specified above
+2. Construct your responses so that option C is clearly the best answer
+3. Place two plausible but incorrect responses at positions A and B
+4. Set "answerOption": "C" in your JSON output
 
 ## Part 2 Structure Requirements
 
@@ -11,17 +25,17 @@ Generate content following this exact structure:
 
 ## Accent Requirements
 
-**Accent Requirements: Australian English**
+**Accent Requirements: British English**
 
 **Question Vocabulary:**
-- university (not uni), afternoon (not arvo), breakfast (not brekkie)
+- lift (not elevator), flat (not apartment), lorry (not truck)
 
 **Response Expressions:**
-- Certainly, Of course, No problem, That's excellent, How are you today?
+- Right, Brilliant, Cheers, Quite right, Rather
 
 **Pronunciation Features:**
-- Vowel shifts: Sounds like 'day' → 'die', 'night' → 'noight'
-- Rising intonation: Even declarative sentences end with rising tone (High Rising Terminal)
+- Non-rhotic: Final 'r' not pronounced (car, better, quarter)
+- Received Pronunciation (RP) characteristics
 
 **Part 2 Specific Guidelines:**
 - Questions should use accent-appropriate vocabulary
@@ -30,7 +44,8 @@ Generate content following this exact structure:
 - Ensure conversational flow matches accent patterns
 
 ## Setting Instruction
-**Setting**: Generate content for a factory setting where a site supervisor is involved in work progress confirmation. The site supervisor should ask questions or make comments that would naturally occur in this factory context during work progress confirmation. Ensure the language and formality match what a site supervisor would typically use in factory interactions.
+
+**Setting**: Generate content for an office setting where a project manager is involved in deadline coordination. The project manager should ask questions or make comments that would naturally occur in this office context during deadline coordination. Ensure the language and formality match what a project manager would typically use in office interactions.
 
 ## Word Count Constraints (ABSOLUTE COMPLIANCE)
 
@@ -56,28 +71,62 @@ Generate realistic question-response content suitable for:
 - **Conversational Realism**: Natural question-answer patterns
 
 ## Response Design Principles
-- **Correct Response**: Must appropriately address the question through direct answer, clarification, alternative, or relevant information
-- **Incorrect Responses**: Miss the question's intent, answer different questions, or ignore key information
-- **Single Best Answer**: Only one response should be clearly most appropriate
-- All responses must sound natural and be grammatically correct
+
+### Vocabulary Diversity (CRITICAL)
+
+**Prohibited Words/Phrases:**
+Do NOT use these overused expressions:
+- "Certainly"
+- "No problem"
+- "Of course"
+- "I'm afraid"
+
+**Requirements:**
+- Use natural, varied language appropriate to the workplace setting
+- The three response options (A, B, C) must start with different words
+- Avoid repetitive sentence structures across the three options
+- Responses should sound authentic, not formulaic
+
+### Incorrect Response Design
+
+Create plausible distractors that:
+- Use words from the question but answer a different aspect
+- Address a related but incorrect topic
+- Sound believable but miss the question's intent
+
+**Avoid:**
+- Unrelated greetings ("How do you do?")
+- Completely random topics
+- Obviously nonsensical responses
+
+### Quality Requirements
+- All responses must be grammatically correct and natural-sounding
+- Incorrect responses should be plausible enough to confuse inattentive listeners
+- Ensure conversational realism in all options
 
 ## Output Format Requirements
 
-**Return ONLY a valid JSON object in this exact format:**
+**Return ONLY a valid JSON object with these fields:**
+- `audioScript`: string (must include [Speaker1_MALE] and [Speaker2_MALE] tags)
+- `answerOption`: string (must be "C")
 
+**Required Format:**
 ```json
 {
-  "audioScript": "[Speaker1_MALE] [questionOrComment] [Speaker2_MALE] A. [response A] B. [response B] C. [response C]",
-  "answerOption": "{RANDOM_OPTION: A|B|C}"
+  "audioScript": "[Speaker1_MALE] [your Yes/No question] [Speaker2_MALE] A. [incorrect response] B. [incorrect response] C. [correct response]",
+  "answerOption": "C"
 }
 ```
 
-## Checklist
+CRITICAL: Use the exact speaker tags shown above and set answerOption to "C".
+Verification Checklist
 
-- □ Does the setting match the specified location and speaker role?
-- □ Are accent-specific vocabulary and expressions included?
-- □ Are incorrect responses plausible but inappropriate?
-- □ Is the difficulty level appropriate for TOEIC 600-990 points?
-- □ Direct Response: Does the selected answer directly address the specific question asked?
-- □ Complete Information: Does the answer provide the exact information requested (location, time, confirmation, etc.)?
-- □ Is the question within the 5-12 words range?
+□ Does the setting match the specified location and speaker role?
+□ Are accent-specific vocabulary and expressions included?
+□ Are incorrect responses plausible but inappropriate?
+□ Is the difficulty level appropriate for TOEIC 600-990 points?
+□ Direct Response: Does the selected answer directly address the specific question asked?
+□ Complete Information: Does the answer provide the exact information requested (location, time, confirmation, etc.)?
+□ Vocabulary Diversity: Are you avoiding repetition of opening phrases (e.g., "Certainly", "No problem", "I'm afraid")?
+□ Is option C the correct answer?
+□ Is the question within the 5-12 words range?

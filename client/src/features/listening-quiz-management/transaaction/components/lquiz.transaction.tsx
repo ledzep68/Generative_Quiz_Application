@@ -7,7 +7,7 @@
 //音声は音声再生ボタンを押したタイミングで再生
 
 //===========================================================================
-import {use, useState, useEffect} from "react";
+import {useState, useEffect, useRef} from "react";
 import { useNavigate } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 
@@ -29,6 +29,7 @@ import QuizInterruptPopup from "./InterruptPopUp.tsx";
 import RadioButtonComponent from "../../../../shared/components/RadioButton";
 import LoadingModalComponent from "../../../../shared/components/LoadingModal.tsx";
 import TabPanelComponent from "../../../../shared/components/TabPanel.tsx";
+import ErrorPopupComponent from "../../../../shared/components/ErrorPopUp.tsx";
 
 import * as newQuestionSlice from "../newquestion.slice.ts";
 import * as uiSlice from "../ui.slice.ts";
@@ -36,6 +37,7 @@ import * as audioSlice from "../audio.slice.ts";
 import * as indexSlice from "../index-management.slice.ts"
 import * as answerSlice from "../answer.slice.ts";
 import * as resultSlice from "../result.slice.ts"
+import * as finalResultSlice from "../final-result.slice.ts"
 
 import * as loginSlice from "../../../user-management/login/login.slice.ts";
 
@@ -53,6 +55,7 @@ function ListeningQuizPage() {
             {currentScreen === 'standby' && <StandByScreen />}
             {currentScreen === 'answer' && <AnswerScreen />}
             {currentScreen === 'result' && <ResultScreen />}
+            {currentScreen === 'finalResult' && <FinalResultScreen />}
             
         </div>
     );
@@ -76,6 +79,7 @@ function ListeningQuizPage() {
 //         音声データレスポンスが届いたことを確認したらstateを回答状態に更新し、回答画面に遷移
 */
 function StandByScreen() {
+
     //状態遷移　初期状態はstandby
     const {currentScreen, isLoading} = useAppSelector(state => state.uiManagement);
 
@@ -84,10 +88,11 @@ function StandByScreen() {
 
     //API
     const [initiateSession] = api.useInitiateSessionMutation();
+    const [resetQuizSession] = api.useResetQuizSessionMutation();
     const [resetUserAndQuizSession] = api.useResetUserAndQuizSessionMutation();
 
-    const [fetchPart2NewQuestions] = api.useFetchPart2NewQuestionsMutation();
-    const [fetchPart34NewQuestions] = api.useFetchPart34NewQuestionsMutation();
+    const [fetchPart2NewQuestion] = api.useFetchPart2NewQuestionMutation();
+    const [fetchPart34NewQuestion] = api.useFetchPart34NewQuestionMutation();
     const [fetchAudio] = api.useLazyFetchAudioQuery();
     
     //クイズリクエスト用selector
@@ -137,61 +142,10 @@ function StandByScreen() {
         dispatch(newQuestionSlice.setRequestStatus('pending'));
         //Redux stateからDTOを構築
         const randomNewQuestionReqDTO: dto.RandomNewQuestionReqDTO = {
-            sectionNumber,
-            requestedNumOfLQuizs,
-            speakingRate
-        };
-        //hooksに渡す
-        try {
-            //クイズセッション開始
-            await initiateSession(randomNewQuestionReqDTO);
-            console.log("session initialized successfully")
-            //クイズ生成api呼び出し
-            const fetchResult = await fetchPart2NewQuestions({currentIndex}).unwrap();
-            console.log("fetchResult: ", fetchResult)
-            const questionHash = fetchResult.questionHash
-            dispatch(newQuestionSlice.setRequestStatus('success'));
-
-            //クイズhash値をredux storeに保存
-            dispatch(newQuestionSlice.setQuestionHash(questionHash));
-
-            //音声合成api呼び出し&音声データをredux storeに保存
-            dispatch(audioSlice.setAudioRequest(questionHash))
-            await handleFetchAudio(questionHash as string);
-            dispatch(audioSlice.setRequestStatus('success'));
-            dispatch(audioSlice.setIsAudioReadyToPlay(true));
-
-            //Index管理StateにlQuestionIdListと問題indexを保存
-            //dispatch(indexSlice.setCurrentIndex(0));
-
-            //Redux storeの状態を確認
-            console.log("Audio fetch SUCCESS");
-
-            dispatch(audioSlice.setIsAudioReadyToPlay(true));
-            
-            console.log("audio fetch SUCCESS");
-
-            //回答状態に移行
-            if (currentScreen === 'standby') {
-                dispatch(uiSlice.setCurrentScreen('answer'));
-            };
-
-        } catch (error) {
-            //クイズリクエスト失敗の場合の処理
-            dispatch(newQuestionSlice.setRequestStatus('failed'));
-            //失敗後の処理？
-
-            //else 音声リクエスト失敗処理
-        }
-    };
-
-    const handlePart34QuizInit = async (): Promise<void> => {
-        dispatch(newQuestionSlice.setRequestStatus('pending'));
-        //Redux stateからDTOを構築
-        const randomNewQuestionReqDTO: dto.RandomNewQuestionReqDTO = {
-            sectionNumber,
-            requestedNumOfLQuizs,
-            speakingRate
+            sectionNumber: sectionNumber,
+            requestedNumOfLQuizs: requestedNumOfLQuizs,
+            speakingRate: speakingRate,
+            speakerAccent: speakerAccent
         };
         //hooksに渡す
         try {
@@ -206,7 +160,7 @@ function StandByScreen() {
             console.log("session initialized successfully")
 
             //クイズ生成api呼び出し
-            const fetchResult = await fetchPart34NewQuestions({currentIndex}).unwrap();
+            const fetchResult = await fetchPart2NewQuestion({currentIndex}).unwrap();
             console.log("fetchResult: ", fetchResult)
             const questionHash = fetchResult.questionHash
             dispatch(newQuestionSlice.setRequestStatus('success'));
@@ -217,14 +171,67 @@ function StandByScreen() {
             //音声合成api呼び出し&音声データをredux storeに保存
             dispatch(audioSlice.setAudioRequest(questionHash))
             await handleFetchAudio(questionHash as string);
-            dispatch(audioSlice.setRequestStatus('success'));
             dispatch(audioSlice.setIsAudioReadyToPlay(true));
+            console.log("Audio fetch SUCCESS");
+            /*
+            クイズ・音声生成セッション終了
+            */
 
+            //回答状態に移行
+            if (currentScreen === 'standby') {
+                dispatch(uiSlice.setCurrentScreen('answer'));
+            };
+
+        } catch (error) {
+            dispatch(newQuestionSlice.setRequestStatus('failed'));
+            //各stateをリセット　audioSliceはhandleFetchAudio内でreset
+            dispatch(newQuestionSlice.resetRequestState());
+            dispatch(audioSlice.resetAudioState());
+            dispatch(indexSlice.resetIndexState());
+            //クイズセッション初期化
+            await resetQuizSession();
+            //ローディング表示終了
+            dispatch(uiSlice.setIsLoading(false));
+        }
+    };
+
+    const handlePart34QuizInit = async (): Promise<void> => {
+        dispatch(newQuestionSlice.setRequestStatus('pending'));
+        //Redux stateからDTOを構築
+        const randomNewQuestionReqDTO: dto.RandomNewQuestionReqDTO = {
+            sectionNumber: sectionNumber,
+            requestedNumOfLQuizs: requestedNumOfLQuizs,
+            speakingRate: speakingRate,
+            speakerAccent: speakerAccent
+        };
+        //hooksに渡す
+        try {
+            //ローディング表示開始
+            dispatch(uiSlice.setIsLoading(true));
+
+            /*
+            クイズ・音声生成セッション開始
+            */
+            //クイズセッション開始
+            await initiateSession(randomNewQuestionReqDTO);
+            console.log("session initialized successfully")
+
+            //クイズ生成api呼び出し
+            const fetchResult = await fetchPart34NewQuestion({currentIndex}).unwrap();
+            console.log("fetchResult: ", fetchResult)
+            const questionHash = fetchResult.questionHash
+            //クイズリクエスト成功
+            dispatch(newQuestionSlice.setRequestStatus('success'));
+
+            //クイズhash値をredux storeに保存
+            dispatch(newQuestionSlice.setQuestionHash(questionHash));
+
+            //音声合成api呼び出し&音声データをredux storeに保存
+            dispatch(audioSlice.setAudioRequest(questionHash))
+            await handleFetchAudio(questionHash as string);
+            dispatch(audioSlice.setIsAudioReadyToPlay(true));
             console.log("Audio fetch SUCCESS");
 
-            dispatch(audioSlice.setIsAudioReadyToPlay(true));
-            
-            console.log("audio fetch SUCCESS");
             /*
             クイズ・音声生成セッション終了
             */
@@ -238,31 +245,93 @@ function StandByScreen() {
             };
 
         } catch (error) {
-            //クイズリクエスト失敗の場合の処理
             dispatch(newQuestionSlice.setRequestStatus('failed'));
-            //失敗後の処理？
-            //音声データObjectURL解放　Blob本体は解放されない
+            //各stateをリセット　audioSliceはhandleFetchAudio内でreset
+            dispatch(newQuestionSlice.resetRequestState());
             dispatch(audioSlice.resetAudioState());
+            dispatch(indexSlice.resetIndexState());
+            //クイズセッション初期化
+            await resetQuizSession();
             //ローディング表示終了
-            uiSlice.setIsLoading(false);
+            dispatch(uiSlice.setIsLoading(false));
+        }
+    };
+    //2問目以降のクイズ生成
+    const handleNextQuestionFetch = async (): Promise<void> => {
+        dispatch(newQuestionSlice.setRequestStatus('pending'));
+        
+        if(currentIndex < 1 || currentIndex > 9) {
+            throw new Error('currentIndex is out of range');
+        }
+        
+        try {
 
-            //else 音声リクエスト失敗処理
+            //sectionNumberでAPI呼び出し先分岐
+            let fetchResult;
+            switch(sectionNumber) {
+                case 2:
+                    fetchResult = await fetchPart2NewQuestion({currentIndex}).unwrap();
+                    break;
+                case 3:
+                case 4:
+                    fetchResult = await fetchPart34NewQuestion({currentIndex}).unwrap();
+                    break;
+                default:
+                    throw new Error('Invalid section number');
+            }
+
+            const questionHash = fetchResult.questionHash;
+            
+            dispatch(newQuestionSlice.setRequestStatus('success'));
+            dispatch(newQuestionSlice.setQuestionHash(questionHash));
+            dispatch(audioSlice.setAudioRequest(questionHash));
+            
+            await handleFetchAudio(questionHash);
+            dispatch(audioSlice.setIsAudioReadyToPlay(true));
+
+            //自動的にanswer画面に遷移
+            dispatch(uiSlice.setCurrentScreen('answer'));
+            
+        } catch (error) {
+            dispatch(newQuestionSlice.setRequestStatus('failed'));
+            dispatch(newQuestionSlice.resetRequestState());
+            dispatch(audioSlice.resetAudioState());
+            dispatch(indexSlice.resetIndexState());
+            await resetQuizSession();
+            
+            // ErrorPopup表示（将来実装）
+            //handleQuizInitError(error);
         }
     };
 
     const handleFetchAudio = async (questionHash: string) => {
+        dispatch(audioSlice.setRequestStatus('pending'));
         try {
             const audioObjectURL = await fetchAudio(questionHash).unwrap();
             console.log("audioObjectURL:", audioObjectURL);
+            dispatch(audioSlice.setRequestStatus('success'));
             //音声データをredux storeに保存
             dispatch(audioSlice.setAudioObjectURL(audioObjectURL));
             console.log("audioObjectURL saved in store");
         } catch (error) {
-            //エラー処理
-            dispatch(audioSlice.setAudioError('音声データの取得に失敗しました'));
+            dispatch(audioSlice.setRequestStatus('failed'));
             dispatch(audioSlice.resetAudioState());
+            //クイズセッション初期化
+            await resetQuizSession();
             throw new Error('音声データの取得に失敗しました'); 
         }
+    };
+
+    const handleQuizEnd = async () => {
+        //各stateをリセット
+        dispatch(newQuestionSlice.resetRequestState());
+        dispatch(audioSlice.resetAudioState());
+        dispatch(resultSlice.resetResultState());
+        dispatch(indexSlice.resetIndexState());
+        //クイズセッションリセット
+        await resetQuizSession();
+        //メインメニューに遷移
+        navigate('/main-menu');
     };
 
     const handleBack = async () => {
@@ -274,8 +343,34 @@ function StandByScreen() {
         console.log("sectionNumber: ", sectionNumber);
         console.log("requestedNumOfLQuizs: ", requestedNumOfLQuizs);
         console.log("speakingRate: ", speakingRate);
-    })
+        console.log("speakerAccent: ", speakerAccent);
+        console.log("currentIndex: ", currentIndex);
+    }, [sectionNumber, requestedNumOfLQuizs, speakingRate, speakerAccent, currentIndex]);
 
+    //2問目以降のfetch・ローディング画面表示
+    const hasExecuted = useRef(false);
+    //currentIndex > 0の場合の処理
+    if (currentIndex > 0) {
+        //一回だけfetch実行
+        if (hasExecuted.current === false) {
+            hasExecuted.current = true;
+            
+            Promise.resolve(handleNextQuestionFetch())
+                .catch(error => {
+                    console.error('Fetch failed:', error);
+                    hasExecuted.current = false;
+                });
+        }
+        //2問目以降は常にローディング画面
+        return (
+            <LoadingModalComponent 
+                open={true}
+                message="問題を準備中です..."
+            />
+        );
+    };
+
+    //1問目実行前の画面表示
     return (
         <Box 
             sx={{ 
@@ -434,6 +529,7 @@ function StandByScreen() {
                                             type="speakerAccent"
                                             value={speakerAccent}
                                             onChange={handleSpeakerAccentChange}
+                                            disabled={true} //一時的に無効化
                                             sx={{
                                                 '& .MuiOutlinedInput-root': {
                                                     borderRadius: '12px',
@@ -590,10 +686,10 @@ function AnswerScreen() {
 
     //問題番号管理用selector
     const indexParams = useAppSelector(state => state.indexManagement);
-    const { currentIndex = 0 } = indexParams;
+    const { currentIndex, isLastQuestion } = indexParams;
 
     //クイズデータselector（現在の問題のhashだけ取得）
-    const sectionNumber = useAppSelector(state => state.newRandomQuestionRequest.requestParams.sectionNumber);
+    const {sectionNumber, requestedNumOfLQuizs} = useAppSelector(state => state.newRandomQuestionRequest.requestParams);
     const questionHash = useAppSelector(state => state.newRandomQuestionRequest.questionHash) 
 
     //音声データObjectURLselector
@@ -604,6 +700,9 @@ function AnswerScreen() {
     //回答リクエスト用selector
     const requestAnswerParams = useAppSelector(state => {return state.answerManagement.requestParams}) as dto.UserAnswerReqDTO;
     const { reviewTag, userAnswerOption } = requestAnswerParams;
+    const answerData = useAppSelector(state => {return state.answerManagement.answerData}) as dto.UserAnswerResDTO;
+    //リクエスト状態
+    const requestStatus = useAppSelector(state => state.answerManagement.requestStatus);
 
     //API
     const [resetQuizSession] = api.useResetQuizSessionMutation();
@@ -613,6 +712,17 @@ function AnswerScreen() {
     const handleReviewTagChange = (checked: boolean) => {
         dispatch(answerSlice.updateRequestParam({ reviewTag: checked }
         ));
+    };
+
+    //Part別の回答配列初期化用ヘルパー関数
+    const initializeUserAnswerOption = (sectionNumber: 1 | 2 | 3 | 4): (string | null)[] => {
+        if (sectionNumber === 1 || sectionNumber === 2) {
+            //Part1,2: 単一要素配列
+            return [null];
+        } else {
+            //Part3,4: 3要素配列
+            return [null, null, null];
+        }
     };
 
     //小問選択
@@ -627,18 +737,21 @@ function AnswerScreen() {
         const selectedSubQuestionIndex = event.target.value as SubQuestionNumber;
         setSelectedSubQuestionIndex(selectedSubQuestionIndex);
     };
-    
+
+    //対応するhandleUserAnswerChangeの修正版
     const handleUserAnswerChange = (selectedAnswer: "A" | "B" | "C" | "D") => {
         if (sectionNumber === 3 || sectionNumber === 4) {
             dispatch(answerSlice.updateSubQuestionAnswer({
-                currentSubQuestionIndex: selectedSubQuestionIndex,  //現在の小問index
-                answer: selectedAnswer
+                currentSubQuestionIndex: selectedSubQuestionIndex,
+                answer: selectedAnswer,
+                sectionNumber: sectionNumber
             }));
         } else {
             //Part1,2の場合
             dispatch(answerSlice.updateSubQuestionAnswer({
-                currentSubQuestionIndex: '0',  //単一要素の配列
-                answer: selectedAnswer
+                currentSubQuestionIndex: '0',
+                answer: selectedAnswer,
+                sectionNumber: sectionNumber
             }));
         }
     };
@@ -696,7 +809,7 @@ function AnswerScreen() {
         };
 
         //必須パラメータチェック
-        if (!questionHash || !userAnswerOption || reviewTag === undefined) {
+        if (!questionHash || reviewTag === undefined) {
             console.error("必須パラメータが不足しています");
             dispatch(uiSlice.setCurrentScreen('result'));
             return;
@@ -704,7 +817,6 @@ function AnswerScreen() {
         }
 }
         try{
-            //await dispatchTestAudio();
             console.log(userAnswerOption, reviewTag);
 
             const answerReqDTO: dto.UserAnswerReqDTO = {
@@ -720,7 +832,11 @@ function AnswerScreen() {
             console.log(answerResult);
             //回答レスポンスをredux storeに保存
             dispatch(answerSlice.setAnswerData(answerResult.data as dto.UserAnswerResDTO));
-        
+            
+            console.log("=== 回答リクエスト完了 ===: ");
+
+            //currentIndex・isLastQuestion更新　Result画面に移動
+            await handleIsLastQuestion();
             //stateを'result'に更新し、結果状態に遷移
             dispatch(uiSlice.setCurrentScreen('result'));
         
@@ -728,6 +844,18 @@ function AnswerScreen() {
             console.log("回答処理失敗:", error);
         }
         dispatch(uiSlice.setCurrentScreen('result'));
+    };
+
+    //終点判定だけ行う
+    const handleIsLastQuestion = async () => {
+        const lastIndex = requestedNumOfLQuizs - 1;
+        
+        //「現在のindexが既に最後の問題か」を判定
+        const currentIsLastQuestion = currentIndex >= lastIndex;
+        
+        console.log("currentIsLastQuestion", currentIsLastQuestion, " requestedNumOfLQuizs: ", requestedNumOfLQuizs);
+        //Result画面では引き続きcurrentIndexを使用するが、isLastQuestionは更新する
+        dispatch(indexSlice.updateIsLastQuestion(currentIsLastQuestion));
     };
 
     const handleQuizEnd = async () => {
@@ -774,7 +902,9 @@ function AnswerScreen() {
         console.log("questionHash: ", questionHash);
         console.log("currentSubQuestion", selectedSubQuestionIndex);
         console.log("userAnswerOption: ", userAnswerOption);
-    })
+        console.log("isLastQuestion: ", isLastQuestion);
+        console.log("answerData: ", answerData);
+    }, [sectionNumber, questionHash, selectedSubQuestionIndex, userAnswerOption, isLastQuestion, answerData]);
 
     return (
         //回答画面
@@ -896,6 +1026,7 @@ function AnswerScreen() {
                                     }}
                                 >
                                     <AnswerButtonComponent
+                                        sectionNumber={sectionNumber}
                                         onAnswerChange={handleUserAnswerChange}
                                         selectedValue={userAnswerOption?.[selectedSubQuestionIndex] || null}
                                         selectedSubQuestionIndex={selectedSubQuestionIndex}
@@ -1009,7 +1140,7 @@ function AnswerScreen() {
                                 />
                             </Box>
 
-                            {/* アクションボタン */}
+                            {/* 回答するボタン */}
                             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
                                 <ButtonComponent 
                                     variant="contained"
@@ -1017,7 +1148,10 @@ function AnswerScreen() {
                                     onClick={handleAnswer}
                                     color="primary"
                                     size="large"
-                                    disabled={!userAnswerOption}
+                                    disabled={
+                                        !userAnswerOption ||
+                                        requestStatus === 'pending'
+                                    }
                                     sx={{ 
                                         width: '100%',
                                         py: 2.5,
@@ -1117,6 +1251,9 @@ function ResultScreen() {
     //問題文/和訳/解説　タブ切り替え
     const [selectedTab, setSelectedTab] = useState(0);
 
+    //
+    const answerResultList = useAppSelector(state => state.finalResultManagement.answerResultList);
+
     //API
     const [resetQuizSession] = api.useResetUserAndQuizSessionMutation();
     const [resetUserAndQuizSession] = api.useResetUserAndQuizSessionMutation();
@@ -1154,41 +1291,45 @@ function ResultScreen() {
             }
         };
 
-    //結果一覧を見る
-    const handleViewResults = () => {
-        // 結果一覧画面に遷移（別途実装が必要）
-        navigate('/quiz-results');
-    };
-
     //復習タグの変更
     const handleReviewTagChange = (checked: boolean) => {
         dispatch(answerSlice.updateRequestParam({ reviewTag: checked }))
     };
 
-    //終点検知・次の問題に進む
+    //isLastQuestion=false　次の問題に進む
     const handleNextQuestion = async () => {
-        const isLastQuestion = currentIndex + 1 >= requestedNumOfLQuizs;
-        
-        if (!isLastQuestion) {
-            try {
-                //音声データURL解放
-                dispatch(audioSlice.resetAudioState());
-                
-                //currentIndex・isLastQuestionをstoreに格納し更新
-                dispatch(indexSlice.setCurrentIndex({
-                    currentIndex: currentIndex + 1 as 0|1|2|3|4|5|6|7|8|9,
-                    isLastQuestion: false
-                }));
+        console.log("Params for answerResultList", sectionNumber, currentIndex, isCorrectList);
+        //回答結果を保存
+        dispatch(finalResultSlice.setAnswerResultList({sectionNumber: sectionNumber, currentIndex: currentIndex, isCorrectList: isCorrectList}));
+        //currentIndexを更新
+        await handleCurrentIndex();
+        //standby画面に遷移
+        dispatch(uiSlice.setCurrentScreen('standby'));
+        return;
+        //await handleQuizEnd();
+    };
 
-                //standby画面に遷移
-                dispatch(uiSlice.setCurrentScreen('standby'));
-                return;
-            } catch (error) {
-                console.error('次の問題の音声取得に失敗:', error);
-            }
-        }
-        //クイズ終了処理（最終問題/エラー時）
-        await handleQuizEnd();
+    //currentIndexのみ更新
+    const handleCurrentIndex = async () => {
+        const nextIndex = currentIndex + 1;
+        const lastIndex = requestedNumOfLQuizs - 1;
+        
+        console.log("nextIndex", nextIndex);
+        //currentIndexのみ更新する
+        dispatch(indexSlice.setCurrentIndex({
+            currentIndex: Math.min(nextIndex, lastIndex) as 0|1|2|3|4|5|6|7|8|9,
+            isLastQuestion: isLastQuestion
+        }));
+    };
+
+    //isLastQuestion=true　最終結果画面に遷移
+    const handleViewResults = () => {
+        console.log("Params for answerResultList", sectionNumber, currentIndex, isCorrectList);
+        //回答結果を保存
+        dispatch(finalResultSlice.setAnswerResultList({sectionNumber: sectionNumber, currentIndex: currentIndex, isCorrectList: isCorrectList}));
+        
+        //結果一覧画面に遷移（別途実装が必要）
+        dispatch(uiSlice.setCurrentScreen('finalResult'));
     };
 
     const handleQuizEnd = async () => {
@@ -1201,7 +1342,7 @@ function ResultScreen() {
         //クイズセッションリセット
         await resetQuizSession();
         //メインメニューに遷移
-        navigate('/main-menu');
+        dispatch(uiSlice.setCurrentScreen('finalResult'));
     };
 
     //中断ポップアップ
@@ -1231,7 +1372,8 @@ function ResultScreen() {
 
     useEffect(() => {
         console.log("isLastQuestion:", isLastQuestion);
-    });
+        console.log("answerResultList:", answerResultList);
+    }, [isLastQuestion, answerResultList]);
 
     return (
         <Box 
@@ -1625,6 +1767,355 @@ function ResultScreen() {
                         onMainMenu={handleMainMenu}
                         onLogout={handleLogout}
                     />
+                </Box>
+            </Container>
+        </Box>
+    );
+};
+
+//最終結果画面
+function FinalResultScreen() {
+    const navigate = useNavigate();
+    const dispatch = useAppDispatch();
+
+    //状態'finalResult'
+    const screenState = useAppSelector(state => state.uiManagement.currentScreen);
+
+    //最終結果画面Selector
+    const answerResultList = useAppSelector(state => state.finalResultManagement.answerResultList);
+    
+    //クイズ設定情報
+    const requestQuestionParams = useAppSelector(state => state.newRandomQuestionRequest.requestParams);
+    const { sectionNumber, requestedNumOfLQuizs } = requestQuestionParams;
+
+    //API
+    const [resetQuizSession] = api.useResetQuizSessionMutation();
+    const [resetUserAndQuizSession] = api.useResetUserAndQuizSessionMutation();
+
+    //正解数計算
+    const correctCount = answerResultList.filter(result => result === true).length;
+    const totalQuestions = answerResultList.length;
+
+    //Part別の結果表示データ生成
+    const generateResultItems = () => {
+        if (sectionNumber === 1 || sectionNumber === 2) {
+            //Part1,2: 1問1行
+            return answerResultList.map((isCorrect, index) => ({
+                questionNumber: index + 1,
+                subQuestionNumber: null,
+                isCorrect,
+                displayText: `問題${index + 1}`
+            }));
+        } else {
+            //Part3,4: 1問3行
+            const items = [];
+            for (let i = 0; i < requestedNumOfLQuizs; i++) {
+                for (let j = 0; j < 3; j++) {
+                    const resultIndex = i * 3 + j;
+                    if (resultIndex < answerResultList.length) {
+                        items.push({
+                            questionNumber: i + 1,
+                            subQuestionNumber: j + 1,
+                            isCorrect: answerResultList[resultIndex],
+                            displayText: `問題${i + 1}-${j + 1}`
+                        });
+                    }
+                }
+            }
+            return items;
+        }
+    };
+
+    const resultItems = generateResultItems();
+
+    const handleBackToMenu = async () => {
+        //各stateをリセット
+        dispatch(newQuestionSlice.resetRequestState());
+        dispatch(answerSlice.resetAnswerState());
+        dispatch(audioSlice.resetAudioState());
+        dispatch(resultSlice.resetResultState());
+        dispatch(indexSlice.resetIndexState());
+        dispatch(finalResultSlice.resetFinalResultState());
+        dispatch(uiSlice.resetUIState());
+        
+        //クイズセッションリセット
+        await resetQuizSession();
+        
+        //メインメニューに遷移
+        navigate('/main-menu');
+    };
+
+    const handleLogout = async () => {
+        //各stateをリセット
+        dispatch(newQuestionSlice.resetRequestState());
+        dispatch(answerSlice.resetAnswerState());
+        dispatch(audioSlice.resetAudioState());
+        dispatch(resultSlice.resetResultState());
+        dispatch(indexSlice.resetIndexState());
+        dispatch(finalResultSlice.resetFinalResultState());
+        dispatch(uiSlice.resetUIState());
+
+        //クイズセッションリセット
+        await resetUserAndQuizSession();
+        dispatch(loginSlice.logout());
+        navigate('/login');
+    };
+    useEffect(() => {
+        console.log("answerResultList in finalResult", answerResultList);
+    })
+
+    return (
+        <Box 
+            sx={{ 
+                minHeight: '100vh',
+                width: '100%',
+                background: 'linear-gradient(135deg, #afc4e9ff 0%, #81a2d7ff 100%)',
+                py: 4
+            }}
+        >
+            <Container maxWidth="md">
+                <Box
+                    sx={{
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center'
+                    }}
+                >
+                    <Box
+                        sx={{
+                            background: 'rgba(255, 255, 255, 0.98)',
+                            backdropFilter: 'blur(10px)',
+                            borderRadius: '24px',
+                            boxShadow: '0 20px 60px rgba(0, 0, 0, 0.15)',
+                            overflow: 'hidden',
+                            width: '100%',
+                            maxWidth: 700
+                        }}
+                    >
+                        {/*ヘッダー*/}
+                        <Box 
+                            sx={{ 
+                                background: 'linear-gradient(45deg, #667eea 30%, #764ba2 90%)',
+                                color: 'white',
+                                p: 4,
+                                textAlign: 'center'
+                            }}
+                        >
+                            <Typography variant="h3" component="h1" sx={{ fontWeight: 700, mb: 1 }}>
+                                Part {sectionNumber}
+                            </Typography>
+                            <Typography variant="h5" sx={{ opacity: 0.9, mb: 2 }}>
+                                最終結果
+                            </Typography>
+                        </Box>
+
+                        <Box sx={{ p: 4 }}>
+                            {/*スコア表示*/}
+                            <Box 
+                                sx={{ 
+                                    textAlign: 'center',
+                                    mb: 4
+                                }}
+                            >
+                                <Box 
+                                    sx={{ 
+                                        background: correctCount === totalQuestions 
+                                            ? 'linear-gradient(45deg, #4CAF50, #8BC34A)'
+                                            : correctCount >= totalQuestions * 0.7
+                                            ? 'linear-gradient(45deg, #FF9800, #FFC107)'
+                                            : 'linear-gradient(45deg, #F44336, #FF7043)',
+                                        borderRadius: '20px',
+                                        p: 4,
+                                        color: 'white',
+                                        boxShadow: '0 8px 24px rgba(0, 0, 0, 0.2)',
+                                        mb: 3
+                                    }}
+                                >
+                                    <Typography variant="h2" sx={{ fontWeight: 700, mb: 1 }}>
+                                        {correctCount} / {totalQuestions}
+                                    </Typography>
+                                    <Typography variant="h5" sx={{ opacity: 0.9, mb: 2 }}>
+                                        {totalQuestions}問中{correctCount}問正解
+                                    </Typography>
+                                    <Typography variant="h6" sx={{ opacity: 0.8 }}>
+                                        正答率: {Math.round((correctCount / totalQuestions) * 100)}%
+                                    </Typography>
+                                </Box>
+                            </Box>
+
+                            {/*詳細結果一覧*/}
+                            <Box sx={{ mb: 4 }}>
+                                <Typography 
+                                    variant="h6" 
+                                    sx={{ 
+                                        mb: 3, 
+                                        fontWeight: 600,
+                                        color: '#333',
+                                        textAlign: 'center'
+                                    }}
+                                >
+                                    詳細結果
+                                </Typography>
+                                
+                                <Box 
+                                    sx={{ 
+                                        background: '#f8f9fa',
+                                        borderRadius: '16px',
+                                        p: 3,
+                                        border: '1px solid rgba(0,0,0,0.08)',
+                                        maxHeight: '400px',
+                                        overflowY: 'auto'
+                                    }}
+                                >
+                                    <Box component="ul" sx={{ listStyle: 'none', p: 0, m: 0 }}>
+                                        {resultItems.map((item, index) => (
+                                            <Box 
+                                                component="li"
+                                                key={index}
+                                                sx={{ 
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    gap: 2,
+                                                    py: 1.5,
+                                                    px: 2,
+                                                    mb: 1,
+                                                    borderRadius: '8px',
+                                                    backgroundColor: item.isCorrect 
+                                                        ? 'rgba(76, 175, 80, 0.05)' 
+                                                        : 'rgba(244, 67, 54, 0.05)',
+                                                    border: `1px solid ${item.isCorrect 
+                                                        ? 'rgba(76, 175, 80, 0.2)' 
+                                                        : 'rgba(244, 67, 54, 0.2)'}`,
+                                                    transition: 'all 0.2s ease',
+                                                    '&:hover': {
+                                                        backgroundColor: item.isCorrect 
+                                                            ? 'rgba(76, 175, 80, 0.1)' 
+                                                            : 'rgba(244, 67, 54, 0.1)'
+                                                    }
+                                                }}
+                                            >
+                                                <Typography 
+                                                    variant="body1" 
+                                                    sx={{ 
+                                                        fontWeight: 700,
+                                                        color: '#333',
+                                                        minWidth: 'fit-content'
+                                                    }}
+                                                >
+                                                    {item.displayText}
+                                                </Typography>
+                                                <Typography 
+                                                    variant="h6" 
+                                                    sx={{ 
+                                                        fontWeight: 700,
+                                                        color: item.isCorrect ? '#2E7D32' : '#C62828',
+                                                        fontSize: '1.5rem'
+                                                    }}
+                                                >
+                                                    {item.isCorrect ? '○' : '×'}
+                                                </Typography>
+                                            </Box>
+                                        ))}
+                                    </Box>
+                                </Box>
+                            </Box>
+
+                            {/*アクションボタン*/}
+                            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                                <ButtonComponent 
+                                    variant="contained"
+                                    label="メインメニューに戻る"
+                                    onClick={handleBackToMenu}
+                                    color="primary"
+                                    size="large"
+                                    sx={{ 
+                                        width: '100%',
+                                        py: 2.5,
+                                        fontSize: '1.3rem',
+                                        fontWeight: 700,
+                                        borderRadius: '16px',
+                                        background: 'linear-gradient(45deg, #667eea, #764ba2)',
+                                        boxShadow: '0 8px 24px rgba(102, 126, 234, 0.3)',
+                                        '&:hover': {
+                                            boxShadow: '0 12px 32px rgba(102, 126, 234, 0.4)',
+                                            transform: 'translateY(-2px)'
+                                        }
+                                    }}
+                                />
+
+                                <ButtonComponent 
+                                    variant="outlined"
+                                    label="ログアウト"
+                                    onClick={handleLogout}
+                                    color="primary"
+                                    size="large"
+                                    sx={{ 
+                                        width: '100%',
+                                        py: 2,
+                                        fontSize: '1.1rem',
+                                        fontWeight: 600,
+                                        borderRadius: '16px',
+                                        borderWidth: 2,
+                                        '&:hover': {
+                                            borderWidth: 2,
+                                            backgroundColor: 'rgba(102, 126, 234, 0.05)',
+                                            transform: 'translateY(-1px)',
+                                            boxShadow: '0 4px 12px rgba(102, 126, 234, 0.2)'
+                                        }
+                                    }}
+                                />
+                            </Box>
+
+                            {/*結果サマリー*/}
+                            <Box 
+                                sx={{ 
+                                    mt: 4,
+                                    p: 3,
+                                    backgroundColor: 'rgba(0, 0, 0, 0.03)',
+                                    borderRadius: '12px',
+                                    border: '1px solid rgba(0, 0, 0, 0.08)'
+                                }}
+                            >
+                                <Typography 
+                                    variant="subtitle2" 
+                                    sx={{ 
+                                        fontWeight: 600,
+                                        color: '#666',
+                                        mb: 2,
+                                        textAlign: 'center'
+                                    }}
+                                >
+                                    お疲れ様でした！
+                                </Typography>
+                                <Box sx={{ display: 'flex', justifyContent: 'space-around', textAlign: 'center' }}>
+                                    <Box>
+                                        <Typography variant="body2" color="text.secondary">
+                                            セクション
+                                        </Typography>
+                                        <Typography variant="body1" fontWeight={600} color="primary">
+                                            Part {sectionNumber}
+                                        </Typography>
+                                    </Box>
+                                    <Box>
+                                        <Typography variant="body2" color="text.secondary">
+                                            問題数
+                                        </Typography>
+                                        <Typography variant="body1" fontWeight={600} color="primary">
+                                            {requestedNumOfLQuizs}問
+                                        </Typography>
+                                    </Box>
+                                    <Box>
+                                        <Typography variant="body2" color="text.secondary">
+                                            正答率
+                                        </Typography>
+                                        <Typography variant="body1" fontWeight={600} color="primary">
+                                            {Math.round((correctCount / totalQuestions) * 100)}%
+                                        </Typography>
+                                    </Box>
+                                </Box>
+                            </Box>
+                        </Box>
+                    </Box>
                 </Box>
             </Container>
         </Box>

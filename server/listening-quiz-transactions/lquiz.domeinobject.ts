@@ -52,7 +52,7 @@ export interface NewLQuestionData {
 //正誤判定用ドメインオブジェクト
 export interface IsCorrectData {
     questionHash: string,
-    userAnswerOption: ("A"|"B"|"C"|"D")[]
+    userAnswerOption: ("A"|"B"|"C"|"D"|null)[]
 };
 
 //正誤判定結果ドメインオブジェクト
@@ -67,7 +67,7 @@ export interface NewLAnswerData {
     userID?: UUID,
     lQuestionID: string,
     questionHash: string,
-    userAnswerOption: ("A"|"B"|"C"|"D")[],
+    userAnswerOption: ("A"|"B"|"C"|"D"|null)[],
     isCorrectList: boolean[],
     reviewTag: boolean,
     answerDate: Date

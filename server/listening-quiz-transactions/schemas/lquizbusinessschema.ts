@@ -65,7 +65,7 @@ export function userAnswerReqValidate(reqDTO: unknown){
             questionHash: z
                 .string(),
             userAnswerOption: z
-                .array(z.enum(["A", "B", "C", "D"])),
+                .array(z.enum(["A", "B", "C", "D"])).nullable(),
             reviewTag: z
                 .boolean(),
             answerDate: z

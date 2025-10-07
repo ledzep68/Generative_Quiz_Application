@@ -71,7 +71,7 @@ const initialState: type.AnswerRequestState = {
         answerDate: undefined
     },
 
-    answerData: testAnswerData, //9/24　一時的に変更
+    answerData: undefined, //9/24　一時的に変更
 
     isValid: false,
     validationErrors: [],
@@ -91,16 +91,59 @@ const validateParams = (state: type.AnswerRequestState): z.ZodSafeParseResult<dt
     return RequestValidationSchema.safeParse(state.requestParams);
 };
 
+//Part別の回答配列初期化用ヘルパー関数
+const initializeUserAnswerOption = (sectionNumber: 1 | 2 | 3 | 4): ('A' | 'B' | 'C' | 'D' | null)[] => {
+    if (sectionNumber === 1 || sectionNumber === 2) {
+        //Part1,2: 単一要素配列
+        return [null] as ('A' | 'B' | 'C' | 'D' | null)[];
+    } else {
+        //Part3,4: 3要素配列
+        return [null, null, null] as ('A' | 'B' | 'C' | 'D' | null)[];
+    }
+};
+
 export const answerSlice = createSlice({
     name: "answerManagement",
     initialState,
     reducers: {
+        
         //Part3,4 ラジオボタン押下時、小問のindexを更新
         updateSubQuestionIndex: (state, action: PayloadAction<{currentSubQuestionIndex: '0' | '1' | '2'}>) => {
             state.currentSubQuestionIndex = action.payload.currentSubQuestionIndex;
         },
         //Part3,4 小問ごとの回答を更新 Part1 2では不要
         updateSubQuestionAnswer: (state, action: PayloadAction<{
+            currentSubQuestionIndex: '0' | '1' | '2';
+            answer: 'A' | 'B' | 'C' | 'D' | null;
+            sectionNumber: 1 | 2 | 3 | 4;
+        }>) => {
+            const { currentSubQuestionIndex, answer, sectionNumber } = action.payload;
+            
+            //初期化または不適切な配列長の場合は再初期化
+            const expectedLength = (sectionNumber === 1 || sectionNumber === 2) ? 1 : 3;
+            
+            if (!state.requestParams?.userAnswerOption || 
+                state.requestParams.userAnswerOption.length !== expectedLength) {
+                state.requestParams.userAnswerOption = initializeUserAnswerOption(sectionNumber);
+            }
+            
+            //Part1,2の場合は常にindex 0に設定
+            if (sectionNumber === 1 || sectionNumber === 2) {
+                state.requestParams.userAnswerOption[0] = answer;
+            } else {
+                //Part3,4の場合は指定されたindexに設定
+                const index = parseInt(currentSubQuestionIndex);
+                state.requestParams.userAnswerOption[index] = answer;
+            }
+            
+            //バリデーション実行
+            const validationResult = validateParams(state);
+            state.isValid = validationResult.success;
+            state.validationErrors = validationResult.success 
+                ? [] 
+                : validationResult.error.issues.map((issue) => issue.message);
+        },
+        /*updateSubQuestionAnswer: (state, action: PayloadAction<{
             currentSubQuestionIndex: '0' | '1' | '2';  // 小問のindex (0, 1, 2)
             answer: 'A' | 'B' | 'C' | 'D' | null;  // 回答内容
         }>) => {
@@ -121,7 +164,7 @@ export const answerSlice = createSlice({
             state.validationErrors = validationResult.success 
                 ? [] 
                 : validationResult.error.issues.map((issue) => issue.message);
-        },
+        },*/
         setRequestParams: (state, action: PayloadAction<dto.UserAnswerReqDTO>) => {
             console.log('setRequestParams:', action.payload);
             state.requestParams = action.payload;
@@ -165,8 +208,15 @@ export const answerSlice = createSlice({
                     break;
             }
         },
-        clearRequestParams: (state) => {
-            state.requestParams = undefined;
+        clearRequestParams: (state, action?: PayloadAction<{sectionNumber?: 1 | 2 | 3 | 4}>) => {
+            const sectionNumber = action?.payload?.sectionNumber;
+            
+            state.requestParams = {
+                questionHash: undefined,
+                userAnswerOption: sectionNumber ? initializeUserAnswerOption(sectionNumber) : undefined, // undefinedに変更
+                reviewTag: false,
+                answerDate: undefined
+            };
             state.isValid = false;
             state.validationErrors = [];
         },

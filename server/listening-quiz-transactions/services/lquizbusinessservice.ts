@@ -152,7 +152,7 @@ export function lAnswerIdGenerate(): UUID {
     return randomUUID();
 };
 
-//正誤判定（問題テーブル参照も行う） 配列対応済
+//正誤判定（問題テーブル参照も行う） null対応済
 export async function trueOrFalseJudge(domObj: domein.IsCorrectData): Promise<domein.IsCorrectResult> {
     const client = await model.dbGetConnect();
     try{
@@ -181,9 +181,14 @@ export async function trueOrFalseJudge(domObj: domein.IsCorrectData): Promise<do
             throw new Error("正誤判定に失敗しました");
         }
         //正誤判定
-        const isCorrectList: boolean[] = answer_option.map((correct, i) => 
-            correct === userAnswerOption[i]
-        );
+        const isCorrectList: boolean[] = answer_option.map((correct, i) => {
+            //userAnswerOptionの要素がnullの場合は無条件で不正解
+            if (userAnswerOption[i] === null) {
+                return false;
+            }
+            //nullでない場合は通常の正誤判定
+            return correct === userAnswerOption[i];
+        });
         
         return {lQuestionID, isCorrectList};
     } catch (error) {

@@ -21,6 +21,7 @@ export const resultSlice = createSlice({
             state.requestParams = action.payload;
         
         },
+
         clearRequestParams: (state) => {
             state.requestParams = undefined;
             state.isValid = false;

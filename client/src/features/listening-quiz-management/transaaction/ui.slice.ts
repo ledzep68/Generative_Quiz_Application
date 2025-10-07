@@ -5,7 +5,7 @@ import * as dto from "./dto.ts";
 import * as type from "./types.ts";
 
 const initialState: type.CurrentScreenState = {
-    currentScreen: 'answer',
+    currentScreen: 'standby',
     //ローディング表示用
     isLoading: false
 };
@@ -14,13 +14,17 @@ export const uiSlice = createSlice({
     name: "uiManagement",
     initialState,
     reducers: {
-        setCurrentScreen: (state, action: PayloadAction<'standby' | 'answer' | 'result'>) => {
+        setCurrentScreen: (state, action: PayloadAction<'standby' | 'answer' | 'result' | 'finalResult' | 'error'>) => {
             state.currentScreen = action.payload;
         },
         setIsLoading: (state, action: PayloadAction<boolean>) => {
             state.isLoading = action.payload;
+        },
+        resetUIState: (state) => {
+            state.currentScreen = 'standby';
+            state.isLoading = false;
         }
     }
 });
 
-export const {setCurrentScreen, setIsLoading} = uiSlice.actions;
+export const {setCurrentScreen, setIsLoading, resetUIState} = uiSlice.actions;

@@ -604,7 +604,9 @@ function generatePart2QuestionsAndChoicesChecklist(constraints: any): string {
 - □ Are incorrect responses plausible but inappropriate?
 - □ Is the difficulty level appropriate for TOEIC 600-990 points?
 - □ Direct Response: Does the selected answer directly address the specific question asked?
-- □ Complete Information: Does the answer provide the exact information requested (location, time, confirmation, etc.)?`;
+- □ Complete Information: Does the answer provide the exact information requested (location, time, confirmation, etc.)?
+- □ Vocabulary Diversity: Are you avoiding repetition of opening phrases (e.g., "Certainly", "No problem", "I'm afraid")?
+- □ Answer Randomization: Is the correct answer randomly placed at A, B, or C (not defaulting to A)?`;
     
     // 動的な単語数チェック項目
     Object.entries(constraints).forEach(([key, value]) => {
@@ -1355,7 +1357,7 @@ export async function generateAudioContent(dto: dto.NewAudioReqDTO, lQuestionID:
     //ランダム音声選択
     const selectedVoice = TOEICVoiceSelector.selectVoicesForPart(dto.sectionNumber, voiceSettings.voices, genderSettings);
     //audioScript分割）（sectionNumber必要）
-    const audioSegmentList = AudioScriptSegmenter.segmentAudioScriptWithGender(dto.audioScript, selectedVoice);
+    const audioSegmentList = AudioScriptSegmenter.segmentAudioScriptWithGender(dto.audioScript, dto.sectionNumber, selectedVoice);
     //SSML生成
     const ssml = await TOEICSSMLGenerator.generateSSML(dto.sectionNumber, audioSegmentList, dto.speakingRate);
     // SSML検証
@@ -1415,6 +1417,12 @@ export function addPausesToPart2AudioScript(audioScript: string): string {
     //選択肢A, B, Cの前に[short pause]を挿入するパターン
     const choicePattern = /(\s+)([ABC]\.\s+)/g;
     
+    //選択肢の記号と内容の間に[short pause]を挿入するパターン
+    const choiceContentPattern = /([ABC]\.)\s+/g;
+    
+    //既存の[pause]タグの直後に[Speaker2]がある場合の重複を防ぐパターン
+    const duplicatePausePattern = /(\[pause\])\s+(\[Speaker2_(?:MALE|FEMALE)\])\s+\[short pause\]/g;
+    
     let result = audioScript;
     
     //Speaker1の質問後に[pause]を挿入
@@ -1422,6 +1430,16 @@ export function addPausesToPart2AudioScript(audioScript: string): string {
     
     //各選択肢A, B, Cの前に[short pause]を挿入
     result = result.replace(choicePattern, '$1[short pause] $2');
+    
+    //選択肢の記号（A./B./C.）と内容の間に[short pause]を挿入
+    result = result.replace(choiceContentPattern, '$1 [short pause] ');
+    
+    //[pause]タグの直後に[Speaker2]がある場合、重複する[short pause]を削除
+    result = result.replace(duplicatePausePattern, '$1 $2');
+
+    //[QUESTION_N]タグと[CHOICES_N]タグを除去（音声生成に不要）
+    result = result.replace(/\[QUESTION_\d+\]\s*/g, '');
+    result = result.replace(/\[CHOICES_\d+\]\s*/g, '');
     
     return result;
 };
@@ -1474,11 +1492,17 @@ export function addPausesToPart34AudioScript(audioScript: string): string {
     //A. B. C. D.の前に[short pause]を配置
     result = result.replace(/(\s+)([A-D]\.\s)/g, '$1[short pause] $2');
     
+    //選択肢の記号（A./B./C./D.）と内容の間に[short pause]を挿入
+    result = result.replace(/([A-D]\.)\s+/g, '$1 [short pause] ');
+    
     //連続する[short pause] [pause]を[pause]に統合
     result = result.replace(/\[short pause\]\s+\[pause\]/g, '[pause]');
     
     //[short pause] [Narrator] [pause] → [Narrator] [pause] に修正
     result = result.replace(/\[short pause\]\s+\[Narrator\]\s+\[pause\]/g, '[Narrator] [pause]');
+    
+    //[pause] [Narrator] [short pause] → [pause] [Narrator] に修正（重複防止）
+    result = result.replace(/(\[pause\])\s+(\[Narrator\])\s+\[short pause\]/g, '$1 $2');
     
     //[QUESTION_N]タグと[CHOICES_N]タグを除去（音声生成に不要）
     result = result.replace(/\[QUESTION_\d+\]\s*/g, '');
@@ -1682,7 +1706,7 @@ export class TOEICVoiceSelector {
 };
 
 /**
- * audioScriptを[Speaker]タグで分割し、音声設定と統合する関数
+ * audioScriptを[Speaker], [Narrator]タグで分割し、音声設定と統合する関数
  */
 export interface AudioSegment {
     speaker: number;
@@ -1694,11 +1718,17 @@ export class AudioScriptSegmenter {
     /**
      * 性別タグ付きSpeakerタグとNarratorタグに対応した分割（結合処理付き）
      * @param audioScript - [Speaker1_MALE]等の性別タグを含むaudioScript
+     * @param sectionNumber - Part番号
+     *  - Part1: 1人のナレーター
+     *  - Part2: 2人の会話者
+     *  - Part3: 2人の会話者 + 1人のナレーター
+     *  - Part4: 1人の発表者 + 1人のナレーター
      * @param selectedVoice - 各話者に対応する音声設定配列
      * @returns 分割されたセグメント配列
      */
     static segmentAudioScriptWithGender(
         audioScript: string,
+        sectionNumber: 1 | 2 | 3 | 4,
         selectedVoice: {name: string, gender: string}[]
     ): AudioSegment[] {
         const segments: AudioSegment[] = [];
@@ -1722,19 +1752,48 @@ export class AudioScriptSegmenter {
                 const speakerMatch = part.match(/\[Speaker([123])(?:_(?:MALE|FEMALE))?\]/);
                 //[Narrator]タグを検出
                 const narratorMatch = part.match(/\[Narrator\]/);
+                const pauseMatch = part.match(/^\[(?:short )?pause\]$/);
+    
+                //ポーズタグの場合はスキップ
+                if (pauseMatch) {
+                    continue;
+                }
+
+                //ポーズタグで始まるがテキストも含む場合
+                const startsWithPause = part.match(/^\[(?:short )?pause\]/);
+                if (startsWithPause) {
+                    //ポーズタグを含むテキストとして扱う（タグチェックをスキップ）
+                    if (currentSpeaker !== null) {
+                        currentContent += (currentContent ? ' ' : '') + part;
+                    }
+                    continue;
+                }
                 
                 //無効なタグの場合はエラー
                 if (!speakerMatch && !narratorMatch) {
                     throw new Error(`Invalid tag detected: ${part}`);
                 }
                 
-                //Narratorの場合はselectedVoice.length、Speakerの場合は番号を取得
-                const newSpeaker = narratorMatch ? selectedVoice.length : parseInt(speakerMatch![1]);
+                let newSpeaker: number;
+                
+                if (narratorMatch) {
+                    //Narratorの場合
+                    //Part2では[Narrator]タグが存在しないため、ここに到達すべきでない
+                    if (sectionNumber === 2) {
+                        throw new Error(`[Narrator] tag found in Part2, which should not contain narrator`);
+                    }
+                    //Part3,4の場合：selectedVoiceの最後の要素をNarratorとして扱う
+                    newSpeaker = selectedVoice.length;
+                } else {
+                    //Speakerの場合
+                    newSpeaker = parseInt(speakerMatch![1]);
+                }
+                
                 console.log('newSpeaker: ', newSpeaker);
                 
                 //前の話者のセグメントを保存（話者が変わった場合）
                 if (currentSpeaker !== null && currentContent && currentSpeaker !== newSpeaker) {
-                    const voiceIndex = currentSpeaker - 1;
+                    const voiceIndex = this.getVoiceIndex(currentSpeaker, sectionNumber, selectedVoice.length);
                     
                     //配列範囲外チェック
                     if (!selectedVoice[voiceIndex]) {
@@ -1764,7 +1823,8 @@ export class AudioScriptSegmenter {
         
         //最後のSpeakerのセグメントを保存
         if (currentSpeaker !== null && currentContent) {
-            const voiceIndex = currentSpeaker - 1;
+            const voiceIndex = this.getVoiceIndex(currentSpeaker, sectionNumber, selectedVoice.length);
+            
             if (!selectedVoice[voiceIndex]) {
                 throw new Error(`Voice not found for speaker ${currentSpeaker} at index ${voiceIndex}`);
             }
@@ -1779,7 +1839,53 @@ export class AudioScriptSegmenter {
         console.log('segments: ', segments);
         return segments;
     }
-}
+    
+    /**
+     * 話者番号からselectedVoice配列のインデックスを取得
+     * @param speakerNumber - 話者番号（1,2,3またはNarratorの場合はselectedVoice.length）
+     * @param sectionNumber - Part番号
+     * @param voiceArrayLength - selectedVoice配列の長さ
+     * @returns selectedVoice配列のインデックス（0ベース）
+     */
+    private static getVoiceIndex(
+        speakerNumber: number, 
+        sectionNumber: 1 | 2 | 3 | 4, 
+        voiceArrayLength: number
+    ): number {
+        //Part2の場合：Speaker1→index0, Speaker2→index1
+        if (sectionNumber === 2) {
+            if (speakerNumber < 1 || speakerNumber > 2) {
+                throw new Error(`Invalid speaker number ${speakerNumber} for Part2. Expected 1 or 2.`);
+            }
+            return speakerNumber - 1;
+        }
+        
+        //Part3,4の場合：Speaker1→index0, Speaker2→index1, Narrator→index2
+        if (sectionNumber === 3 || sectionNumber === 4) {
+            if (speakerNumber === voiceArrayLength) {
+                //Narratorの場合：配列の最後のインデックス
+                return voiceArrayLength - 1;
+            } else if (speakerNumber >= 1 && speakerNumber <= voiceArrayLength - 1) {
+                //Speakerの場合
+                return speakerNumber - 1;
+            } else {
+                throw new Error(`Invalid speaker number ${speakerNumber} for Part${sectionNumber}`);
+            }
+        }
+        
+        //Part1の場合（参考実装）
+        if (sectionNumber === 1) {
+            if (speakerNumber === voiceArrayLength) {
+                //Narratorのみ
+                return 0;
+            } else {
+                throw new Error(`Invalid speaker number ${speakerNumber} for Part1. Expected narrator only.`);
+            }
+        }
+        
+        throw new Error(`Unsupported section number: ${sectionNumber}`);
+    }
+};
 
 //SSML生成モジュール
 export class TOEICSSMLGenerator {
@@ -1818,7 +1924,7 @@ export class TOEICSSMLGenerator {
     }
     
     /**
-     * sectionNumberに基づいて必要な話者数を返す
+     * sectionNumberに基づいて必要な話者数（ナレーター除く）を返す
      * @param sectionNumber - Part番号
      * @returns 必要な話者数
      */

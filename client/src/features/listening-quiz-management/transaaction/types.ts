@@ -13,7 +13,7 @@ interface stateManagementParameters {
 }
 
 export interface CurrentScreenState {
-    currentScreen: 'standby' | 'answer' | 'result',
+    currentScreen: 'standby' | 'answer' | 'result' | 'finalResult' | 'error',
     //ローディング表示用
     isLoading: boolean
 };
@@ -41,20 +41,20 @@ export interface AudioState extends stateManagementParameters {
 
 //indexの状態管理
 export interface QuestionIndexState extends stateManagementParameters {
-    currentIndex: 0|1|2|3|4|5|6|7|8|9;
+    currentIndex?: 0|1|2|3|4|5|6|7|8|9;
     //問題数の終点検知
-    isLastQuestion?: boolean 
+    isLastQuestion?: boolean
     //answers: Record<string, string>;
 };
 
 //正誤判定および解答データリクエストの状態管理
 export interface AnswerRequestState extends stateManagementParameters {
     currentSubQuestionIndex: '0'|'1'|'2',
-    requestParams?: dto.UserAnswerReqDTO,
+    requestParams: dto.UserAnswerReqDTO,
     answerData?: dto.UserAnswerResDTO
 };
 
-//回答画面の状態管理
+//結果画面の状態管理
 export interface ResultScreenState extends stateManagementParameters {
     //reviewTagの変更リクエスト用パラメータ　questionHash, reviewTag
     requestParams?: dto.ReviewTagChangeReqDTO
@@ -62,6 +62,11 @@ export interface ResultScreenState extends stateManagementParameters {
     questionData?: dto.UserAnswerResDTO
 }
 
+//最終結果画面の状態管理
+export interface FinalResultScreenState extends stateManagementParameters {
+    //正誤を格納
+    answerResultList: boolean[]
+}
 /*
 //新規クイズリクエストスキーマ（ランダム生成、ID非指定）
 export interface RandomNewQuestionReqDTO {

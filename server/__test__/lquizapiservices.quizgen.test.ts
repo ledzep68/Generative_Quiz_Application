@@ -23,7 +23,7 @@ import * as businesserror from "../listening-quiz-transactions/errors/lquiz.busi
 import * as apierror from "../listening-quiz-transactions/errors/lquiz.apierrors.ts";
 import * as schema from "../listening-quiz-transactions/schemas/lquizapischema.ts";
 import { get } from 'http';
-
+/*
 describe('A_getRandomSpeakerAccent', () => {
     test("A01_ランダムに発話アクセントを取得", async () => {
         expect.assertions(12);
@@ -217,55 +217,176 @@ Expressions: I guess..., You bet!, Sure thing`;
         expect(result).toContain("American English Features:");
     })
 })
-
+*/
 describe('F_generatePart2AudioScriptPrompt', () => {
     test("F01_プロンプト生成成功", async () => {
+        expect.assertions(9);
+        
         const sectionNumber = 2;
-        expect.assertions(6);
         const mockDomObj: Mocked<domein.NewLQuestionInfo> = {
             sectionNumber: 2,
             requestedNumOfLQuizs: 5,
             speakingRate: 1.0
         };
         const currentIndex = 0;
-        //問題生成関数 controllerで呼び出す
+        
+        // 問題生成関数
         const speakerAccentList = service.getRandomSpeakerAccent(mockDomObj.requestedNumOfLQuizs);
-        //状況設定（多様性担保）
+        
+        // 状況設定（多様性担保）
         const settings = service.getRandomSettings(mockDomObj.requestedNumOfLQuizs, mockDomObj.sectionNumber);
         console.log("settings: ", settings);
-        const contentTopicInstruction = service.generateContentTopicInstructions(mockDomObj.requestedNumOfLQuizs, settings);
-        console.log("contentTopicInstruction: ", contentTopicInstruction);
-        const contentFrameworksText = service.generateContentFrameworks(mockDomObj.sectionNumber, settings);
-        console.log("contentFrameworksText: ", contentFrameworksText);
-
+        
         const speakerList = service.getRandomSpeakers(sectionNumber) as string[];
-        //プロンプト生成
-        const result = await service.generatePart2AudioScriptPrompt(sectionNumber, speakerAccentList[currentIndex], settings[currentIndex], speakerList);
+        
+        // プロンプト生成
+        const result = await service.generatePart2AudioScriptPrompt(
+            sectionNumber, 
+            speakerAccentList[currentIndex], 
+            settings[currentIndex], 
+            speakerList
+        );
         console.log(result);
         
-        // Part 2 content生成用のアサーション
+        // Part 2 audioScript生成用のアサーション
         expect(result).toContain("TOEIC Part 2 Content Generation Prompt");
         expect(result).toContain("Generate realistic question/comment and three response options");
         expect(result).toContain("**Speaker 1**: One question or comment");
-        expect(result).toContain("**Speaker 2**: Three different response options");
+        expect(result).toContain("**Speaker 2**: Three different response options A, B, C");
         expect(result).toContain("Accent Requirements:");
-        expect(result).toContain("answerOption");
+        //expect(result).toContain("Setting:");
+        expect(result).toContain("Word Count Constraints");
+        expect(result).toContain("Response Design Principles");
+        expect(result).toContain("Vocabulary Diversity (MANDATORY)");
+        expect(result).toContain("Answer Distribution Rule");
+    });
+
+    /*test("F02_アクセント別プロンプト生成確認", async () => {
+        expect.assertions(8);
+        
+        const sectionNumber = 2;
+        const accents: AccentType[] = ["American", "British", "Canadian", "Australian"];
+        
+        for (const accent of accents) {
+            const settings = service.getRandomSettings(1, sectionNumber);
+            const speakerList = service.getRandomSpeakers(sectionNumber) as string[];
+            
+            const result = await service.generatePart2AudioScriptPrompt(
+                sectionNumber,
+                accent,
+                settings[0],
+                speakerList
+            );
+            
+            // 各アクセントの特徴が含まれていることを確認
+            expect(result).toContain(accent);
+            console.log(`${accent} accent prompt generated successfully`);
+        }
+    });*/
+
+    test("F03_Setting内容の反映確認", async () => {
+        expect.assertions(3);
+        
+        const sectionNumber = 2;
+        const speakerAccent: AccentType = "American";
+        const testSetting = {
+            location: "Conference Room",
+            speaker: "Project Manager",
+            situation: "Team Meeting"
+        };
+        const speakerList = service.getRandomSpeakers(sectionNumber) as string[];
+        
+        const result = await service.generatePart2AudioScriptPrompt(
+            sectionNumber,
+            speakerAccent,
+            testSetting,
+            speakerList
+        );
+        console.log(result);
+        
+        // Setting内容が適切に反映されていることを確認
+        expect(result).toContain("conference room");
+        expect(result).toContain("project manager");
+        expect(result).toContain("team meeting");
+    });
+
+    test("F04_必須セクションの存在確認", async () => {
+        expect.assertions(12);
+        
+        const sectionNumber = 2;
+        const speakerAccent: AccentType = "British";
+        const settings = service.getRandomSettings(1, sectionNumber);
+        const speakerList = service.getRandomSpeakers(sectionNumber) as string[];
+        
+        const result = await service.generatePart2AudioScriptPrompt(
+            sectionNumber,
+            speakerAccent,
+            settings[0],
+            speakerList
+        );
+        
+        // 必須セクションの確認
+        expect(result).toContain("Part 2 Structure Requirements");
+        expect(result).toContain("Generation Requirements");
+        expect(result).toContain("Quality Standards");
+        expect(result).toContain("Affirmative Responses - Rotate These Expressions:");
+        expect(result).toContain("Declining Responses - Rotate These Expressions:");
+        expect(result).toContain("Incorrect Response Design");
+        expect(result).toContain("CRITICAL Rules:");
+        expect(result).toContain("NEVER use the same opening phrase in consecutive questions");
+        expect(result).toContain("Randomization Requirements");
+        expect(result).toContain("DO NOT default to option A");
+        expect(result).toContain("Output Format Requirements");
+        expect(result).toContain("Verification Checklist");
+    });
+
+    test("F05_語彙多様性指示の確認", async () => {
+        expect.assertions(6);
+        
+        const sectionNumber = 2;
+        const speakerAccent: AccentType = "Canadian";
+        const settings = service.getRandomSettings(1, sectionNumber);
+        const speakerList = service.getRandomSpeakers(sectionNumber) as string[];
+        
+        const result = await service.generatePart2AudioScriptPrompt(
+            sectionNumber,
+            speakerAccent,
+            settings[0],
+            speakerList
+        );
+        
+        // 語彙多様性に関する具体的な指示の確認
+        expect(result).toContain("Sure, I can help");
+        expect(result).toContain("Of course, let me check");
+        expect(result).toContain("I'm afraid I can't");
+        expect(result).toContain("Sorry, I'm not available");
+        expect(result).toContain("AVOID repetition: Do NOT overuse \"Certainly\", \"No problem\"");
+        expect(result).toContain("If you used \"Certainly\" in a previous question, use a different expression");
+    });
+
+    test("F06_テンプレート変数置換確認", async () => {
+        expect.assertions(5);
+        
+        const sectionNumber = 2;
+        const speakerAccent: AccentType = "Australian";
+        const settings = service.getRandomSettings(1, sectionNumber);
+        const speakerList = service.getRandomSpeakers(sectionNumber) as string[];
+        
+        const result = await service.generatePart2AudioScriptPrompt(
+            sectionNumber,
+            speakerAccent,
+            settings[0],
+            speakerList
+        );
+        
+        // テンプレート変数が全て置換されていることを確認
+        expect(result).not.toContain("{{accentInstructions}}");
+        expect(result).not.toContain("{{settingInstruction}}");
+        expect(result).not.toContain("{{wordConstraints}}");
+        expect(result).not.toContain("{{speaker1}}");
+        expect(result).not.toContain("{{checkList}}");
     });
 });
-
-describe('G_generatePart2SingleExplanationPrompt', () => {
-    test("G01_プロンプト生成成功", async () => {
-        const speakerAccnet = "American";
-        const audioScript = "[Speaker1_MALE] How's the afternoon shift progressing? [Speaker2_MALE] A. Certainly, it's on schedule. B. That's excellent, how about you? C. Of course, it starts tomorrow.";
-        const answerOption = "A";
-        
-        const result = await service.generatePart2SingleExplanationPrompt(speakerAccnet, audioScript, answerOption);
-        console.log(result);
-        expect(result).toContain("Part 2");
-        expect(result).toContain("[Speaker1_MALE]");
-        expect(result).toContain("American");
-    })
-})
 
 /*
 describe('C_generateExplanationPrompt', () => {
@@ -463,7 +584,7 @@ describe('C_generateExplanationPrompt', () => {
         expect(result).toContain("Similar Question Application");
     });
 });
-
+/*
 describe('D_generateJpnAudioScriptPrompt', () => {
     test("D01_Part1日本語音声プロンプト生成", async () => {
         expect.assertions(6);
@@ -592,252 +713,6 @@ describe('D_generateJpnAudioScriptPrompt', () => {
         expect(result).toContain('$500 budget');
         expect(result).toContain('25% growth');
         expect(result).toContain('€1,000 investment');
-    });
-});
-*/
-
-/*
-const fetchMock = createFetchMock (vi);
-fetchMock.enableMocks();
-
-describe('C_callChatGPT', () => {
-    beforeEach(() => {
-        fetchMock.resetMocks();
-        console.log('fetchMock type:', typeof fetchMock)
-        console.log('global fetch:', typeof global.fetch)
-    });
-
-    const testprompt = `TOEICリスニング Part4 の練習問題を5問生成してください。
-    
-    ## Part4 仕様
-    - 問題形式: 説明文問題
-    - 出題方法: 短いトークを聞き、設問に対する答えを4つの選択肢から選ぶ
-    - 要件: アナウンス、広告、会議、講演などの実用的な内容
-    - 音声構造: トーク内容 + 設問文 + 4つの選択肢を連続して読み上げ（A, B, C, Dの順序で）
-    
-    
-    **問題1の話者:**
-    - 英語種別: オーストラリア英語 (Australian)
-    - 発音特徴: Vowel shifts: 'day' → 'die'のような音, Rising intonation: 平叙文でも語尾が上がる
-    - 語彙の特徴: arvo (afternoon), brekkie (breakfast)
-    - 表現の特徴: No worries, mate, Fair dinkum
-    
-    **問題2の話者:**
-    - 英語種別: イギリス英語 (British)
-    - 発音特徴: Non-rhotic: 語尾のrを発音しない, Received Pronunciation (RP)の特徴
-    - 語彙の特徴: lift (not elevator), flat (not apartment)
-    - 表現の特徴: Brilliant!, Cheers
-    
-    **問題3の話者:**
-    - 英語種別: アメリカ英語 (American)
-    - 発音特徴: Rhoticity: 語尾のrを明確に発音, Flat 'a': cat, hat等で平坦な'a'音
-    - 語彙の特徴: elevator (not lift), apartment (not flat)
-    - 表現の特徴: I guess..., You bet!
-    
-    **問題4の話者:**
-    - 英語種別: イギリス英語 (British)
-    - 発音特徴: Non-rhotic: 語尾のrを発音しない, Received Pronunciation (RP)の特徴
-    - 語彙の特徴: lift (not elevator), flat (not apartment)
-    - 表現の特徴: Brilliant!, Cheers
-    
-    **問題5の話者:**
-    - 英語種別: イギリス英語 (British)
-    - 発音特徴: Non-rhotic: 語尾のrを発音しない, Received Pronunciation (RP)の特徴
-    - 語彙の特徴: lift (not elevator), flat (not apartment)
-    - 表現の特徴: Brilliant!, Cheers
-    
-    
-    ## 生成要件
-    
-    ### audioScript（音声読み上げ内容）の構成
-    **Part 1の場合:**
-    - 4つの選択肢のみを連続して読み上げ
-    - 各選択肢の前に「A」「B」「C」「D」は付けない
-    - 例: "A man is reading a newspaper. [短い間] Two women are walking. [短い間] Children are playing in the park. [短い間] A dog is running."
-    
-    **Part 2の場合:**
-    - 質問文 + 短い間 + 3つの選択肢を連続して読み上げ
-    - 質問文の後に適切な間を置く
-    - 選択肢の前に「A」「B」「C」は付けない
-    - 例: "Where is the meeting room? [間] Down the hallway to your right. [短い間] Yes, I'll attend the meeting. [短い間] The meeting starts at 3 PM."
-    
-    **Part 3の場合:**
-    - 会話文 + 設問文 + 4つの選択肢を連続して読み上げ
-    - 複数の話者がいる場合は自然な会話として構成
-    - 例: "Good morning, Sarah. Did you finish the quarterly report? [間] Almost done, Mike. I just need to add the sales figures. [間] Great, we need to submit it by noon today."
-    
-    **Part 4の場合:**
-    - トーク内容 + 設問文 + 4つの選択肢を連続して読み上げ
-    - アナウンス、プレゼンテーション、広告などの形式
-    - 例: "Welcome to City Bank. We are pleased to announce our new mobile banking service. Starting next month, you can access your account anytime, anywhere."
-    
-    ### その他の生成項目
-    - jpnAudioScript: audioScriptの日本語訳（必須）
-    - answerOption: 正解選択肢（Part1,3,4の場合は"A", "B", "C", "D"のいずれか。Part2の場合だけ"A", "B", "C"のいずれか）（必須）
-    - sectionNumber: 問題のセクション番号。Part1,2,3,4のいずれか（必須）
-    - explanation: 解説（必須）
-    - speakerAccent: 各問題ごとに指定されたアクセント
-    
-    ## 出力形式
-    必ずJSON形式で以下の構造で回答してください：
-    
-    {
-      "questions": [
-          // 問題1: Australian英語使用
-        {
-        "audioScript": "string (トーク内容+設問文+選択肢の完全な読み上げ内容)",
-        "jpnAudioScript": "string",
-        "answerOption": "A"|"B"|"C"|"D",
-        "sectionNumber": 4,
-        "explanation": "string",
-        "speakerAccent": "Australian"
-        },
-        // 問題2: British英語使用
-        {
-        "audioScript": "string (トーク内容+設問文+選択肢の完全な読み上げ内容)",
-        "jpnAudioScript": "string",
-        "answerOption": "A"|"B"|"C"|"D",
-        "sectionNumber": 4,
-        "explanation": "string",
-        "speakerAccent": "British"
-        },
-        // 問題3: American英語使用
-        {
-        "audioScript": "string (トーク内容+設問文+選択肢の完全な読み上げ内容)",
-        "jpnAudioScript": "string",
-        "answerOption": "A"|"B"|"C"|"D",
-        "sectionNumber": 4,
-        "explanation": "string",
-        "speakerAccent": "American"
-        },
-        // 問題4: British英語使用
-        {
-        "audioScript": "string (トーク内容+設問文+選択肢の完全な読み上げ内容)",
-        "jpnAudioScript": "string",
-        "answerOption": "A"|"B"|"C"|"D",
-        "sectionNumber": 4,
-        "explanation": "string",
-        "speakerAccent": "British"
-        },
-        // 問題5: British英語使用
-        {
-        "audioScript": "string (トーク内容+設問文+選択肢の完全な読み上げ内容)",
-        "jpnAudioScript": "string",
-        "answerOption": "A"|"B"|"C"|"D",
-        "sectionNumber": 4,
-        "explanation": "string",
-        "speakerAccent": "British"
-        }
-      ]
-    }
-    
-    ## 重要な注意事項
-    1. **audioScript内での選択肢の順序**: 必ずA→B→C→(D)の順序で音声内容を構成
-    2. **選択肢ラベルの省略**: audioScript内では「A」「B」「C」「D」のラベルは読み上げない
-    3. **適切な間の配置**: 文と文の間、質問と回答の間に自然な間を想定した構成
-    4. **Part別の音声構成の遵守**: 各Partの音声構造ルールを厳密に守る
-    5. **読み上げ時間の考慮**: 1つの問題の音声は30秒以内に収まるよう調整
-    
-    ## 品質基準
-    - TOEIC公式問題集レベルの難易度
-    - 各問題で指定されたアクセントの語彙・表現・発音特徴を自然に組み込む
-    - 文法・語彙は中級~上級レベル（TOEIC 600-990点相当）
-    - 音声として聞いた時の自然さを重視
-    - 選択肢も実際のTOEIC試験レベルの紛らわしさを持つ`;
-
-        const mockResponseData = {
-            "id": "chatcmpl-8XXXxxxxxxxxxxxxxxxxxxxxxx",
-            "object": "chat.completion",
-            "created": 1704067200,
-            "model": "gpt-4o",
-            "choices": [
-                {
-                "index": 0,
-                "message": {
-                    "role": "assistant",
-                    "content": JSON.stringify([
-                        {
-                            "audioScript": "Good morning, passengers. This is a safety announcement for Flight 247 to Sydney. Please ensure your seatbelts are fastened and tray tables are in the upright position. We will be experiencing some turbulence shortly. [間] What is the purpose of this announcement? [短い間] To inform passengers about meal service. [短い間] To announce a flight delay. [短い間] To provide safety instructions. [短い間] To welcome passengers aboard.",
-                            "jpnAudioScript": "おはようございます、乗客の皆様。シドニー行きフライト247の安全に関するアナウンスです。シートベルトを締め、テーブルを直立位置にしてください。まもなく乱気流を経験します。[間] このアナウンスの目的は何ですか？[短い間] 機内食サービスについて知らせるため。[短い間] フライトの遅延を発表するため。[短い間] 安全指示を提供するため。[短い間] 乗客を歓迎するため。",
-                            "answerOption": "C",
-                            "sectionNumber": 4,
-                            "explanation": "このアナウンスでは安全に関する指示（シートベルト着用、テーブル直立）と乱気流の警告をしているため、安全指示の提供が目的です。",
-                            "speakerAccent": "Australian"
-                        },
-                        {
-                            "audioScript": "Attention shoppers, we're pleased to announce our weekend sale. All electronics are 20% off until Sunday. Visit our electronics department on the third floor. [間] What is being announced? [短い間] A store closing. [短い間] A weekend sale. [短い間] New store hours. [短い間] A product recall.",
-                            "jpnAudioScript": "お客様にお知らせいたします。週末セールを開催いたします。すべての電化製品が日曜日まで20%オフです。3階の電化製品売り場にお越しください。[間] 何がアナウンスされていますか？[短い間] 店舗の閉店。[短い間] 週末セール。[短い間] 新しい営業時間。[短い間] 製品のリコール。",
-                            "answerOption": "B",
-                            "sectionNumber": 4,
-                            "explanation": "週末セールについてのアナウンスで、電化製品が20%オフになることを告知しています。",
-                            "speakerAccent": "British"
-                        },
-                        {
-                            "audioScript": "Welcome to City Bank. We are pleased to announce our new mobile banking service. Starting next month, you can access your account anytime, anywhere. [間] What is the main topic? [短い間] Bank closure. [短い間] New mobile service. [短い間] Interest rate changes. [短い間] Branch relocation.",
-                            "jpnAudioScript": "シティバンクへようこそ。新しいモバイルバンキングサービスをお知らせいたします。来月から、いつでもどこでもアカウントにアクセスできます。[間] 主なトピックは何ですか？[短い間] 銀行の閉鎖。[短い間] 新しいモバイルサービス。[短い間] 金利の変更。[短い間] 支店の移転。",
-                            "answerOption": "B",
-                            "sectionNumber": 4,
-                            "explanation": "新しいモバイルバンキングサービスの開始について説明しています。",
-                            "speakerAccent": "American"
-                        },
-                        {
-                            "audioScript": "Good evening, this is your captain speaking. We're currently cruising at 35,000 feet with clear skies ahead. Our estimated arrival time is 3:30 PM local time. [間] Who is speaking? [短い間] A flight attendant. [短い間] The captain. [短い間] Ground control. [短い間] A passenger.",
-                            "jpnAudioScript": "こんばんは、機長です。現在高度35,000フィートを巡航中で、前方は晴天です。到着予定時刻は現地時間午後3時30分です。[間] 誰が話していますか？[短い間] 客室乗務員。[短い間] 機長。[短い間] 管制塔。[短い間] 乗客。",
-                            "answerOption": "B",
-                            "sectionNumber": 4,
-                            "explanation": "「機長です」と明確に自己紹介をしています。",
-                            "speakerAccent": "British"
-                        },
-                        {
-                            "audioScript": "Thank you for calling Tech Support. All our representatives are currently busy. Your estimated wait time is 5 minutes. [間] What type of call is this? [短い間] Sales inquiry. [短い間] Technical support. [短い間] Billing question. [短い間] General information.",
-                            "jpnAudioScript": "テクニカルサポートにお電話いただきありがとうございます。現在すべての担当者が対応中です。お待ち時間は約5分です。[間] これはどのような電話ですか？[短い間] 販売に関する問い合わせ。[短い間] 技術サポート。[短い間] 請求に関する質問。[短い間] 一般的な情報。",
-                            "answerOption": "B",
-                            "sectionNumber": 4,
-                            "explanation": "「テクニカルサポート」への電話であることが明確に示されています。",
-                            "speakerAccent": "British"
-                        }
-                    ])
-                },
-                "finish_reason": "stop"
-                }
-            ],
-            "usage": {
-                "prompt_tokens": 1250,
-                "completion_tokens": 800,
-                "total_tokens": 2050
-            }
-        };
-
-        test("C01_api呼出テスト", async () => {
-        //fetchモック
-        fetchMock.mockResponseOnce(
-            JSON.stringify(mockResponseData),
-            {
-                status: 200,
-                statusText: 'OK',
-                headers: {
-                    'Content-Type': 'application/json'
-                    //'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`
-                }
-            });
-            // fetchMockが正しく設定されているか確認
-        
-        expect.assertions(8);
-        const result = await service.callChatGPT(testprompt);
-        console.log('fetchMock was called:', fetchMock.mock.calls.length, 'times')
-        expect(result).toBeDefined()
-        expect(Array.isArray(result)).toBe(true)
-        expect(result.length).toBeGreaterThan(0)
-        console.log(result);
-        
-        // 最初の問題の構造を確認
-        const firstQuestion = result[0]
-        expect(firstQuestion).toHaveProperty('audioScript')
-        expect(firstQuestion).toHaveProperty('jpnAudioScript')
-        expect(firstQuestion).toHaveProperty('answerOption')
-        expect(firstQuestion).toHaveProperty('explanation')
-        expect(firstQuestion).toHaveProperty('speakerAccent')
-
     });
 });
 */

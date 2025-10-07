@@ -9,6 +9,8 @@ import { audioRequestSlice } from '../features/listening-quiz-management/transaa
 import { newQuizApi } from '../features/listening-quiz-management/transaaction/api';
 import { quiestionIndexManagementSlice } from '../features/listening-quiz-management/transaaction/index-management.slice';
 import { answerSlice } from '../features/listening-quiz-management/transaaction/answer.slice';
+import { resultSlice } from '../features/listening-quiz-management/transaaction/result.slice';
+import { finalResultSlice } from '../features/listening-quiz-management/transaaction/final-result.slice';
 
 export const store = configureStore({
     reducer: {
@@ -19,6 +21,8 @@ export const store = configureStore({
         audioManagement: audioRequestSlice.reducer,
         indexManagement: quiestionIndexManagementSlice.reducer,
         answerManagement: answerSlice.reducer,
+        resultManagement: resultSlice.reducer,
+        finalResultManagement: finalResultSlice.reducer,
     
         //後で他slice追加
         [userApi.reducerPath]: userApi.reducer,

@@ -9,16 +9,21 @@ interface AnswerButtonsProps {
     onAnswerChange: (answer: "A" | "B" | "C" | "D") => void;
     sx: {}
     selectedValue?: "A" | "B" | "C" | "D" | null; //外部から渡される現在の選択値
-    selectedSubQuestionIndex?: string
+    selectedSubQuestionIndex?: string,
+    sectionNumber: 1 | 2 | 3 | 4
 }
 
 const AnswerButtonComponent: React.FC<AnswerButtonsProps> = ({
     onAnswerChange,
     sx,
     selectedValue = null, 
-    selectedSubQuestionIndex = "0"
+    selectedSubQuestionIndex = "0",
+    sectionNumber
 }) => {
-    const fixedOptions: ("A" | "B" | "C" | "D")[] = ["A", "B", "C", "D"];
+    const fixedOptions: ("A" | "B" | "C" | "D")[] = 
+        sectionNumber === 2 
+            ? ["A", "B", "C"] 
+            : ["A", "B", "C", "D"];
 
     const handleClick = (option: "A" | "B" | "C" | "D") => {
         onAnswerChange(option);

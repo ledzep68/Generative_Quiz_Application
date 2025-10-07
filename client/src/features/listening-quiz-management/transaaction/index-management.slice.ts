@@ -14,9 +14,11 @@ const initialState: type.QuestionIndexState = {
 //バリデーション
 const validateParams = (state: type.QuestionIndexState) => {
     return z.object({
-        currentIndex: z.number().min(0).max(9)
+        currentIndex: z.number().min(0).max(9),
+        isLastQuestion: z.boolean()
     }).safeParse({
-        currentIndex: state.currentIndex
+        currentIndex: state.currentIndex,
+        isLastQuestion: state.isLastQuestion
     });
 };
 
@@ -25,14 +27,15 @@ export const quiestionIndexManagementSlice = createSlice({
     initialState,
     reducers: {
         setCurrentIndex: (state, action: PayloadAction<type.QuestionIndexState>) => {
-            const validationResult = validateParams(action.payload);
+            const validationResult = validateParams(state);
             if(validationResult.success) {
-                state.currentIndex = action.payload.currentIndex
+                state.currentIndex = action.payload.currentIndex,
+                state.isLastQuestion = action.payload.isLastQuestion
             } else {
                 console.error('Invalid currentIndex:', validationResult.error);
             }
         },
-        setIsLastQuestion: (state, action: PayloadAction<boolean>) => {
+        updateIsLastQuestion: (state, action: PayloadAction<boolean>) => {
             state.isLastQuestion = action.payload;
         },
         resetIndexState: (state) => {
@@ -41,4 +44,4 @@ export const quiestionIndexManagementSlice = createSlice({
     }
 });
 
-export const { setCurrentIndex, setIsLastQuestion, resetIndexState } = quiestionIndexManagementSlice.actions;
+export const { setCurrentIndex, updateIsLastQuestion, resetIndexState } = quiestionIndexManagementSlice.actions;

@@ -7,7 +7,7 @@ import * as type from "./types.ts";
 const initialState: type.RandomNewQuestionRequestState = {
     requestParams: {
         sectionNumber: 3,
-        requestedNumOfLQuizs: 1,
+        requestedNumOfLQuizs: 3,
         speakingRate: undefined,
         speakerAccent: undefined
     },
@@ -48,13 +48,16 @@ export const newRandomQuestionRequestSlice = createSlice({
             //存在するフィールドのみ部分的に更新
             if (action.payload.sectionNumber !== undefined) {
                 state.requestParams.sectionNumber = action.payload.sectionNumber;
-            }
+            };
             if (action.payload.requestedNumOfLQuizs !== undefined) {
                 state.requestParams.requestedNumOfLQuizs = action.payload.requestedNumOfLQuizs;
-            }
+            };
             if (action.payload.speakingRate !== undefined) {
                 state.requestParams.speakingRate = action.payload.speakingRate;
-            }
+            };
+            if (action.payload.speakerAccent !== undefined) {
+                state.requestParams.speakerAccent = action.payload.speakerAccent;
+            };
             
             //更新後にバリデーション実行
             const validationResult = validateParams(state);

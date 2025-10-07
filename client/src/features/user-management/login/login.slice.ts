@@ -11,7 +11,7 @@ const initialState: type.UserInformation = {
     submittedAt: undefined
 }
 
-const loginSlice = createSlice({
+export const loginSlice = createSlice({
     name: "loginManagement",
     initialState,
     reducers: {
@@ -48,4 +48,3 @@ const loginSlice = createSlice({
 })
 
 export const {login, logout, setRequestStatus} = loginSlice.actions;
-export default loginSlice.reducer;

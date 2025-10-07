@@ -107,7 +107,7 @@ export class ExistingLQuizReqDTO {
 //ユーザーからの回答データPOST（リクエスト）
 export interface UserAnswerReqDTO {
     questionHash: string,
-    userAnswerOption: ("A"|"B"|"C"|"D")[],
+    userAnswerOption: ("A"|"B"|"C"|"D"|null)[],
     reviewTag: boolean,
     answerDate?: Date
 };

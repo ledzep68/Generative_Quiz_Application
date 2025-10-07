@@ -41,7 +41,7 @@ const newQuizApi = createApi({
             invalidatesTags: ['Session']
         }),
         //part2新規クイズリクエスト
-        fetchPart2NewQuestions: builder.mutation<{questionHash: string}, {currentIndex: number}>({
+        fetchPart2NewQuestion: builder.mutation<{questionHash: string}, {currentIndex: number}>({
             query: (data) => (
                 {
                     url: `/lquiz/new-quiz-generate-2`, 
@@ -51,7 +51,7 @@ const newQuizApi = createApi({
             ),
             invalidatesTags: ['Quiz']
         }),
-        fetchPart34NewQuestions: builder.mutation<{questionHash: string}, {currentIndex: number}>({
+        fetchPart34NewQuestion: builder.mutation<{questionHash: string}, {currentIndex: number}>({
             query: (data) => (
                 {
                     url: `/lquiz/new-quiz-generate-3or4`, 
@@ -100,8 +100,8 @@ export const {
     useInitiateSessionMutation,
     useResetQuizSessionMutation,
     useResetUserAndQuizSessionMutation,
-    useFetchPart2NewQuestionsMutation,
-    useFetchPart34NewQuestionsMutation,
+    useFetchPart2NewQuestionMutation,
+    useFetchPart34NewQuestionMutation,
     useLazyFetchAudioQuery, //手動実行　関数名にLazyと入れるだけで実現
     useFetchAnswerMutation
 } = newQuizApi;

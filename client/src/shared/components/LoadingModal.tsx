@@ -11,26 +11,26 @@ import {
 } from '@mui/material';
 
 export interface LoadingModalProps {
-  //モーダル表示
-  open: boolean;
-  //表示するメッセージ（デフォルト: '読み込み中...'）
-  message?: string;
-  //ローディングスピナーのサイズ（デフォルト: 60）
-  size?: number;
-  // スピナーの太さ（デフォルト: 4）
-  thickness?: number;
-  sx?: any;
-  //ESCキーでの閉じる操作を許可するか（デフォルト: false）
-  disableEscapeKeyDown?: boolean;
+    //モーダル表示
+    open: boolean;
+    //表示するメッセージ（デフォルト: '読み込み中...'）
+    message?: string;
+    //ローディングスピナーのサイズ（デフォルト: 60）
+    size?: number;
+    // スピナーの太さ（デフォルト: 4）
+    thickness?: number;
+    sx?: any;
+    //ESCキーでの閉じる操作を許可するか（デフォルト: false）
+    disableEscapeKeyDown?: boolean;
 }
 
 const LoadingModalComponent: React.FC<LoadingModalProps> = ({ 
-  open, 
-  message = '読み込み中...',
-  size = 60,
-  thickness = 4,
-  sx,
-  disableEscapeKeyDown = true
+    open, 
+    message = '読み込み中...',
+    size = 60,
+    thickness = 4,
+    sx,
+    disableEscapeKeyDown = true
 }) => {
     return (
         <Dialog
