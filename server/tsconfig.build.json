@@ -15,6 +15,7 @@
     "types": ["node", "pg", "cors"]
   },
   "exclude": [
+    "vitest.config.ts",
     "node_modules",
     "dist",
     "**/*.test.ts",
