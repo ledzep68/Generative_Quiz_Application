@@ -60,14 +60,12 @@ app.use(cors({
 
 app.use(express.json());
 //静的ファイルを配信
-if (!isProduction) {
-    const clientPath = path.join(__dirname.replace('/server', ''), 'client/dist');
-    app.use(express.static(clientPath));
+const clientPath = path.join(__dirname.replace('/server', ''), 'client/dist');
+app.use(express.static(clientPath));
 
-    app.get('*', (req, res) => {
-        res.sendFile(path.join(clientPath, 'index.html'));
-    });
-}
+app.get('*', (req, res) => {
+    res.sendFile(path.join(clientPath, 'index.html'));
+});
 
 app.use('/api/auth', usersRouter);
 app.use('/api/lquiz', lQuizRouter);
