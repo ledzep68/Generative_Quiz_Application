@@ -3,10 +3,10 @@ export default {
     preset: 'ts-jest/presets/default-esm',  // ESMプリセットを使用
     testEnvironment: "node",
     
-    // ESModules サポート
+    //ESModules サポート
     extensionsToTreatAsEsm: ['.ts'],
     
-    // Transform設定（ESM有効化）
+    //Transform設定（ESM有効化）
     transform: {
         '^.+\\.tsx?$': ['ts-jest', {
             useESM: true,  // ESMを有効化
@@ -18,29 +18,29 @@ export default {
         }],
     },
     
-    // モジュール解決
+    //モジュール解決
     moduleNameMapper: {
         '^(\\.{1,2}/.*)\\.js$': '$1',
     },
     
-    // ファイル拡張子
+    //ファイル拡張子
     moduleFileExtensions: ['ts', 'tsx', 'js', 'jsx', 'json'],
     
-    // テストファイルのパターン
+    //テストファイルのパターン
     testMatch: [
         '**/__test__/**/*.test.ts',
         '**/*.test.ts'
     ],
     
-    // ESMモジュールの変換を許可
+    //ESMモジュールの変換を許可
     transformIgnorePatterns: [
         'node_modules/(?!(@fetch-mock|node-fetch|data-uri-to-buffer|fetch-blob|formdata-polyfill)/)'
     ],
     
-    // セットアップファイル
+    //セットアップファイル
     setupFilesAfterEnv: ['<rootDir>/jest.setup.js'],
     
-    // その他の設定
+    //その他の設定
     collectCoverage: true,
     collectCoverageFrom: [
         "./users/userroutes.ts", 
