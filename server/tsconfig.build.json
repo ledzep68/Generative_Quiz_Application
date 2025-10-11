@@ -12,7 +12,7 @@
     "resolveJsonModule": true,
     "outDir": "./dist",
     "noEmit": false,
-    "types": []
+    "types": ["node", "pg", "cors"]
   },
   "exclude": [
     "node_modules",
