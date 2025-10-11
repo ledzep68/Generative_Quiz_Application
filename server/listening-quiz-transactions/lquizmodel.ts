@@ -1,10 +1,10 @@
 import { Pool, PoolClient, QueryResult } from "pg";
 import { parse } from "postgres-array";
 
-import * as domein from "./lquiz.domeinobject.ts";
-import * as mapper from "./mappers/lquiz.dbmapper.ts";
-import * as entity from "./lquiz.entity.ts"
-import * as dberror from "./errors/lquiz.dberrors.ts";
+import * as domein from "./lquiz.domeinobject.js";
+import * as mapper from "./mappers/lquiz.dbmapper.js";
+import * as entity from "./lquiz.entity.js"
+import * as dberror from "./errors/lquiz.dberrors.js";
 import {config} from "dotenv";
 import { omit } from "zod/v4-mini";
 import {UUID} from "crypto";
@@ -16,13 +16,21 @@ const __dirname = path.dirname(__filename);
 config({ path: path.join(__dirname, '../.env') });
 
 //データベース接続用インスタンス
-const pool = new Pool({
-    database: process.env.POSTGRES_DB_NAME,
-    host: process.env.POSTGRES_HOST,
-    port: Number(process.env.POSTGRES_PORT),
-    user: process.env.POSTGRES_USER,
-    password: process.env.POSTGRES_PASSWORD
-});
+const isProduction = process.env.NODE_ENV === 'production';
+let pool: Pool;
+if(isProduction){
+    pool = new Pool({
+        host: process.env.POSTGRES_HOST
+    });
+} else {
+    pool = new Pool({
+        database: process.env.POSTGRES_DB_NAME,
+        host: process.env.POSTGRES_HOST,
+        port: Number(process.env.POSTGRES_PORT),
+        user: process.env.POSTGRES_USER,
+        password: process.env.POSTGRES_PASSWORD
+    });
+};
 
 //DB接続
 export async function dbGetConnect(): Promise<PoolClient> {

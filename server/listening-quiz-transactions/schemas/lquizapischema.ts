@@ -1,7 +1,7 @@
 import {z} from "zod";
-import * as dto from "../lquiz.dto.ts";
-import * as domein from "../lquiz.domeinobject.ts";
-import * as apierror from "../errors/lquiz.apierrors.ts";
+import * as dto from "../lquiz.dto.js";
+import * as domein from "../lquiz.domeinobject.js";
+import * as apierror from "../errors/lquiz.apierrors.js";
 import { ZodError } from "zod/v4";
 
 //OpenAI APIからのレスポンスが期待される形式か検証するバリデーション

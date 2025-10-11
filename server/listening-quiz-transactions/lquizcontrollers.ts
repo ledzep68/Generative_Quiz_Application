@@ -2,18 +2,18 @@ import {Request, Response} from "express";
 import {randomUUID, UUID} from "crypto";
 import session from "express-session";
 
-import * as dto from "./lquiz.dto.ts"; 
+import * as dto from "./lquiz.dto.js"; 
 
-import * as mapper from "./mappers/lquiz.businessmapper.ts";
+import * as mapper from "./mappers/lquiz.businessmapper.js";
 
-import * as businessservice from "./services/lquizbusinessservice.ts";
-import * as apiservice from "./services/lquizapiservice.ts";
+import * as businessservice from "./services/lquizbusinessservice.js";
+import * as apiservice from "./services/lquizapiservice.js";
 
-import * as domein from "./lquiz.domeinobject.ts";
-import * as errorhandler from "./errors/errorhandlers.ts";
+import * as domein from "./lquiz.domeinobject.js";
+import * as errorhandler from "./errors/errorhandlers.js";
 
 import { z } from "zod";
-import * as businessschema from "./schemas/lquizbusinessschema.ts";
+import * as businessschema from "./schemas/lquizbusinessschema.js";
 
 import "../users/user.types.ts";
 

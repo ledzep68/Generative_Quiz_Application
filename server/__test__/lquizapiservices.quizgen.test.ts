@@ -11,17 +11,17 @@ import os from "os";
 import createFetchMock from 'vitest-fetch-mock';
 import { assert } from "console";
 
-import { AccentType } from "../listening-quiz-transactions/services/lquizapiservice.ts";
+import { AccentType } from "../listening-quiz-transactions/services/lquizapiservice.js";
 import { start } from 'repl';
 import { stderr } from 'process';
 
 
-import * as service from "../listening-quiz-transactions/services/lquizapiservice.ts"
-import * as domein from "../listening-quiz-transactions/lquiz.domeinobject.ts";
-import * as dto from "../listening-quiz-transactions/lquiz.dto.ts";
+import * as service from "../listening-quiz-transactions/services/lquizapiservice.js"
+import * as domein from "../listening-quiz-transactions/lquiz.domeinobject.js";
+import * as dto from "../listening-quiz-transactions/lquiz.dto.js";
 import * as businesserror from "../listening-quiz-transactions/errors/lquiz.businesserrors.js";
-import * as apierror from "../listening-quiz-transactions/errors/lquiz.apierrors.ts";
-import * as schema from "../listening-quiz-transactions/schemas/lquizapischema.ts";
+import * as apierror from "../listening-quiz-transactions/errors/lquiz.apierrors.js";
+import * as schema from "../listening-quiz-transactions/schemas/lquizapischema.js";
 import { get } from 'http';
 /*
 describe('A_getRandomSpeakerAccent', () => {

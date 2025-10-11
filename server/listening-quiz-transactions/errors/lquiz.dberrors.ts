@@ -1,4 +1,4 @@
-import * as response from "../lquiz.json.ts";
+import * as response from "../lquiz.json.js";
 
 export interface DBError extends Error {
 };

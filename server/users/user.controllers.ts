@@ -8,12 +8,12 @@ usercontrollers.tsの機能:
 
 import { Request, Response } from "express";
 import { UUID } from "crypto";
-import { userPasswordEncrypt, userIdGenerate, userDataRegister, userDBConnect, userLogin, initializeUserSession } from "./user.service.ts";
-import * as dto from "./user.dto.ts";
-import { UserData } from "./user.domeinobject.ts";
-import { UserResponses } from "./user.response.ts";
-import { userRegisterBusinessErrorHandler, userLoginBusinessErrorHandler } from "./errors/errorhandlers.ts";
-import * as userschema from "./user.schema.ts";
+import { userPasswordEncrypt, userIdGenerate, userDataRegister, userDBConnect, userLogin, initializeUserSession } from "./user.service.js";
+import * as dto from "./user.dto.js";
+import { UserData } from "./user.domeinobject.js";
+import { UserResponses } from "./user.response.js";
+import { userRegisterBusinessErrorHandler, userLoginBusinessErrorHandler } from "./errors/errorhandlers.js";
+import * as userschema from "./user.schema.js";
 import { z } from "zod";
 
 //ユーザー新規登録処理

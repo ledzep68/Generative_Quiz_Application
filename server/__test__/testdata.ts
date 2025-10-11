@@ -6,14 +6,14 @@ import { fileURLToPath } from 'url';
 import os from 'os';
 import {config} from 'dotenv';
 
-import * as controller from '../listening-quiz-transactions/lquizcontrollers.ts';
-import * as apierror from '../listening-quiz-transactions/errors/lquiz.apierrors.ts';
-import * as schema from '../listening-quiz-transactions/schemas/lquizapischema.ts';
-import {JPN_AUDIO_SCRIPT_FORMAT} from '../listening-quiz-transactions/services/services.types.ts';
-import * as apiservice from '../listening-quiz-transactions/services/lquizapiservice.ts';
+import * as controller from '../listening-quiz-transactions/lquizcontrollers.js';
+import * as apierror from '../listening-quiz-transactions/errors/lquiz.apierrors.js';
+import * as schema from '../listening-quiz-transactions/schemas/lquizapischema.js';
+import {JPN_AUDIO_SCRIPT_FORMAT} from '../listening-quiz-transactions/services/services.types.js';
+import * as apiservice from '../listening-quiz-transactions/services/lquizapiservice.js';
 
 
-import * as dto from '../listening-quiz-transactions/lquiz.dto.ts';
+import * as dto from '../listening-quiz-transactions/lquiz.dto.js';
 import z from 'zod';
 import session from 'express-session';
 const __filename = fileURLToPath(import.meta.url);

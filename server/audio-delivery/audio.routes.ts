@@ -1,5 +1,5 @@
 import express from "express";
-import audioDeliveryController from "./audio.controllers.ts";
+import audioDeliveryController from "./audio.controllers.js";
 
 const audioRouter = express.Router();
 

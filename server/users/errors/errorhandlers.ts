@@ -1,4 +1,4 @@
-import { UserResponses } from "../user.response.ts";
+import { UserResponses } from "../user.response.js";
 
 
 //Errorのnameでレスポンスを分岐

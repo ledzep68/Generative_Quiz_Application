@@ -1,4 +1,4 @@
-import * as response from "../lquiz.json.ts";
+import * as response from "../lquiz.json.js";
 
 //新規問題生成Controller用エラーハンドラ
 export function generateLQuestionErrorHandler(error: Error): {response: any} {

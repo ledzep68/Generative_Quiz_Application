@@ -7,7 +7,7 @@ lquiz.apierrors.tsの機能:
 
 ******************************************/
 
-import * as response from "../lquiz.json.ts";
+import * as response from "../lquiz.json.js";
 
 export interface BusinessLogicError extends Error {
     status: number;

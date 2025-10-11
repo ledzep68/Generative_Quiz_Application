@@ -4,9 +4,9 @@ lquiz.businessmapper.ts : ListeningQuiz用 controllers~models層におけるビ�
 
 *********************************************/
 import { UUID } from "crypto";
-import * as dto from "../lquiz.dto.ts";
-import * as domein from "../lquiz.domeinobject.ts";
-import * as entity from "../lquiz.entity.ts";
+import * as dto from "../lquiz.dto.js";
+import * as domein from "../lquiz.domeinobject.js";
+import * as entity from "../lquiz.entity.js";
 
 //新規クイズデータ　dto.RandomNewQuestionReqDTO→domein.NewQuestionInfo
 export class NewLQuestionInfoMapper {

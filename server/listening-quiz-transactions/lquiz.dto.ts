@@ -6,7 +6,7 @@ lquiz.dto.ts : requestとresponse用のデータ構造定義
 *********************************************/
 
 import { UUID } from "crypto";
-import { SpeakerAccent } from "./services/lquizapiservice.ts";
+import { SpeakerAccent } from "./services/lquizapiservice.js";
 
 //ユーザーからの新規クイズリクエストスキーマ（ランダム生成、ID非指定）
 export interface RandomNewQuestionReqDTO {

@@ -4,9 +4,9 @@ lquiz.dbmapper.ts : ListeningQuiz用　models層におけるDB操作用のマッ
 
 *********************************************/
 
-import * as dto from "../lquiz.dto.ts";
-import * as entity from "../lquiz.entity.ts";
-import * as domein from "../lquiz.domeinobject.ts";
+import * as dto from "../lquiz.dto.js";
+import * as entity from "../lquiz.entity.js";
+import * as domein from "../lquiz.domeinobject.js";
 import { QueryResult } from "pg";
 
 import { parse } from "postgres-array";

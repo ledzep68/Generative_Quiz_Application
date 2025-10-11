@@ -2,7 +2,7 @@ node_modules/
 
 dist/
 
-.env
+**/.env
 
 credentials/
 
@@ -17,3 +17,5 @@ prompts/
 testdata.ts
 
 **/*resources*/
+
+**/__test__/

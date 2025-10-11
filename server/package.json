@@ -4,7 +4,9 @@
   "main": "server.ts",
   "type": "module",
   "scripts": {
+    "build": "tsc",
     "dev": "nodemon --exec tsx server.ts",
+    "start": "node dist/server.js",
     "test-vitest": "vitest --coverage",
     "test-jest": "node --loader ts-node/esm ./node_modules/.bin/jest --coverage --verbose",
     "test-jest:experimental": "node --experimental-vm-modules --loader ts-node/esm ./node_modules/.bin/jest --coverage --verbose"

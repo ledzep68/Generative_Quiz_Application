@@ -7,12 +7,12 @@ lquizapiservice.tsの機能:
 
 ******************************************/
 
-import * as domein from "../lquiz.domeinobject.ts";
-import * as dto from "../lquiz.dto.ts";
-import * as apierror from "../errors/lquiz.apierrors.ts";
-import * as schema from "../schemas/lquizapischema.ts";
+import * as domein from "../lquiz.domeinobject.js";
+import * as dto from "../lquiz.dto.js";
+import * as apierror from "../errors/lquiz.apierrors.js";
+import * as schema from "../schemas/lquizapischema.js";
 
-import {SPEAKER_PATTERNS, JPN_AUDIO_SCRIPT_FORMAT, ACCENT_PATTERNS, TTS_VOICE_CONFIG, PART_SPECIFIC_SCENARIOS, WORD_CONSTRAINTS, TOPIC_MAPPING, SITUATION_ELEMENTS, SPEAKER_ELEMENTS, LOCATION_ELEMENTS} from "./services.types.ts";
+import {SPEAKER_PATTERNS, JPN_AUDIO_SCRIPT_FORMAT, ACCENT_PATTERNS, TTS_VOICE_CONFIG, PART_SPECIFIC_SCENARIOS, WORD_CONSTRAINTS, TOPIC_MAPPING, SITUATION_ELEMENTS, SPEAKER_ELEMENTS, LOCATION_ELEMENTS} from "./services.types.js";
 
 import { z } from "zod";
 import {GoogleAuth} from "google-auth-library";
@@ -2114,11 +2114,25 @@ export async function callGoogleCloudTTS(ssml: string, lQuestionID: string): Pro
 };
 
 //Google Cloud認証トークン取得
+const isProduction = process.env.NODE_ENV === 'production';
 export async function getGoogleAccessToken(): Promise<string> {
     try {
-        const auth = new GoogleAuth({
-            scopes: ['https://www.googleapis.com/auth/cloud-platform']
-        });
+        let auth;
+        if (isProduction) {
+            if (!process.env.GOOGLE_CREDENTIALS) {
+                throw new apierror.EnvironmentConfigError('GOOGLE_CREDENTIALS環境変数が設定されていません');
+            };
+            const credentials = JSON.parse(process.env.GOOGLE_CREDENTIALS)
+            auth = new GoogleAuth({
+                credentials: credentials,
+                scopes: ['https://www.googleapis.com/auth/cloud-platform']
+            });
+        } else {
+            auth = new GoogleAuth({
+                keyFilename: process.env.GOOGLE_APPLICATION_CREDENTIALS,
+                scopes: ['https://www.googleapis.com/auth/cloud-platform']
+            });
+        }
         
         const client = await auth.getClient();
         const accessToken = await client.getAccessToken();

@@ -1,4 +1,4 @@
-import * as userschema from "../user.schema.ts";
+import * as userschema from "../user.schema.js";
 
 export interface BusinessLogicError extends Error {
     status: number;

@@ -1,5 +1,5 @@
 import {z} from "zod";
-import * as dto from "../lquiz.dto.ts";
+import * as dto from "../lquiz.dto.js";
 //新規クイズリクエスト用データ　バリデーション関数　非配列
 export function randomNewQuestionReqValidate(reqDTO: dto.RandomNewQuestionReqDTO){
     const randomNewQuestionReqValidationSchema: z.ZodSchema<dto.RandomNewQuestionReqDTO> = z.object(

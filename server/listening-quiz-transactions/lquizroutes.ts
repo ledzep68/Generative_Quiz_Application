@@ -1,6 +1,6 @@
 //APIのエンドポイントのみ定義。ロジックはcontrollersに委任
 import Express from "express";
-import * as controller from "./lquizcontrollers.ts";
+import * as controller from "./lquizcontrollers.js";
 
 const lQuizRouter = Express.Router();
 
