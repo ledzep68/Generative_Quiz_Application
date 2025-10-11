@@ -15,7 +15,7 @@ import * as errorhandler from "./errors/errorhandlers.js";
 import { z } from "zod";
 import * as businessschema from "./schemas/lquizbusinessschema.js";
 
-import "../users/user.types.ts";
+import type {} from "../users/user.types.js";
 
 //セッションのうちクイズ関連データの初期化
 export async function initializeQuizSessionController(req: Request, res: Response): Promise<void> {
