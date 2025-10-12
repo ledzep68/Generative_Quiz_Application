@@ -7,7 +7,7 @@ const userApi = createApi({
     tagTypes: [],
     //エンドポイントの共通部分
     baseQuery: fetchBaseQuery({ 
-            baseUrl: `http://localhost:3000/api`, /*本番環境で切り替え必要　環境変数で設定*/ 
+            baseUrl: import.meta.env.VITE_API_BASE_URL, /*本番環境で切り替え必要　環境変数で設定*/ 
             credentials: 'include'
         }),
     //個別API定義
