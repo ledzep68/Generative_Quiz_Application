@@ -55,7 +55,9 @@ app.use(session({
 //ミドルウェア設定　CORS設定 Viteの開発サーバーとのコミュニケーション
 app.use(cors({
     origin: isProduction ? process.env.FRONTEND_URL : 'http://localhost:5173',
-    credentials: true
+    credentials: true,
+    methods: ['GET', 'POST'],
+    allowedHeaders: ['Content-Type', 'Authorization']  
 }));
 
 app.use(express.json());
