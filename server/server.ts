@@ -36,6 +36,8 @@ app.use((req, res, next) => {
     next();
 });
 
+app.use(express.json());
+
 //セッション管理
 app.use(session({
     secret: process.env.SESSION_SECRET as string, //sessionIDに電子署名を付与(HMAC_SHA256) sessionIDと電子署名をセットで授受し、改ざん検知
@@ -60,7 +62,10 @@ app.use(cors({
     allowedHeaders: ['Content-Type', 'Authorization']  
 }));
 
-app.use(express.json());
+app.use('/api/auth', usersRouter);
+app.use('/api/lquiz', lQuizRouter);
+app.use('/api/audio', audioRouter);
+
 //静的ファイルを配信
 const clientPath = path.join(__dirname.replace('/server', ''), 'client/dist');
 app.use(express.static(clientPath));
@@ -69,9 +74,6 @@ app.get('*', (req, res) => {
     res.sendFile(path.join(clientPath, 'index.html'));
 });
 
-app.use('/api/auth', usersRouter);
-app.use('/api/lquiz', lQuizRouter);
-app.use('/api/audio', audioRouter);
 
 app.listen(port, () => {
     console.log(`Example app listening on port ${port}`)
