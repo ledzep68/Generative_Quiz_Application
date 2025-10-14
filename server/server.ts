@@ -48,7 +48,7 @@ app.use(session({
         maxAge: 1000 * 60 * 30,  //30分でタイムアウト→セッションデータ解放
         httpOnly: true,
         secure: isProduction, //HTTPS時のみ有効化（後で実装）
-        sameSite: 'lax' //クロスオリジンなサイトからのリクエスト制限　CSRF対策
+        sameSite: 'none' //クロスオリジンなサイトからのリクエスト制限　CSRF対策
     },
     proxy: true,
     name: 'sessionID'
