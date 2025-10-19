@@ -29,6 +29,8 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 config({path: path.join(__dirname, '../../.env')});
 
+const isProduction = process.env.NODE_ENV === 'production';
+
 //==========================================================================
 //問題生成処理モジュール群
 //==========================================================================
@@ -689,7 +691,8 @@ export async function generatePart2AudioScriptPrompt(
     try {
         const __filename = fileURLToPath(import.meta.url);
         const __dirname = path.dirname(__filename);
-        const promptPath = path.join(__dirname, 'prompts', 'part2-audioscript-prompt.md');
+
+        const promptPath = isProduction ? '/etc/secrets/part2-audioscript-prompt.md' : path.join(__dirname, 'prompts', 'part2-audioscript-prompt.md');
         const promptTemplate = await fs.readFile(promptPath, 'utf8');
 
         return promptTemplate
@@ -831,10 +834,14 @@ export async function generatePart34AudioScriptContentPrompt(
     try {
         const __filename = fileURLToPath(import.meta.url);
         const __dirname = path.dirname(__filename);
-        const promptPath = path.join(__dirname, 'prompts', 'part3_4-audioscript-content-prompt.md');
+        
+        const promptPath = isProduction
+            ? '/etc/secrets/part3_4-audioscript-content-prompt.md'
+            : path.join(__dirname, 'prompts', 'part3_4-audioscript-content-prompt.md');
+        //const promptPath = path.join(__dirname, 'prompts', 'part3_4-audioscript-content-prompt.md');
         const promptTemplate = await fs.readFile(promptPath, 'utf8');
 
-        // 5. テンプレート置換
+        //5. テンプレート置換
         return promptTemplate
             .replace(/\{\{sectionNumber\}\}/g, sectionNumber.toString())
             .replace(/\{\{conversationOrSpeech\}\}/g, sectionNumber === 3 ? 'conversation' : 'speech')
@@ -892,7 +899,7 @@ export async function generatePart34AudioScriptQuestionsPrompt(sectionNumber: 1|
     try {
         const __filename = fileURLToPath(import.meta.url);
         const __dirname = path.dirname(__filename);
-        const promptPath = path.join(__dirname, 'prompts', 'part3_4-audioscript-question-prompt.md');
+        const promptPath = isProduction ? '/etc/secrets/part3_4-audioscript-question-prompt.md' : path.join(__dirname, 'prompts', 'part3_4-audioscript-question-prompt.md');
         const promptTemplate = await fs.readFile(promptPath, 'utf8');
 
         return promptTemplate
@@ -1097,7 +1104,7 @@ export async function generateSingleJpnAudioScriptPrompt(sectionNumber: number, 
     try {
         const __filename = fileURLToPath(import.meta.url);
         const __dirname = path.dirname(__filename);
-        const promptPath = path.join(__dirname, 'prompts', 'jpn-audioscript-prompt.md');
+        const promptPath = isProduction ? '/etc/secrets/jpn-audioscript-prompt.md' : path.join(__dirname, 'prompts', 'jpn-audioscript-prompt.md');
         const promptTemplate = await fs.readFile(promptPath, 'utf8');
         return promptTemplate
             .replace(/\{\{sectionNumber\}\}/g, sectionNumber.toString())
@@ -1235,7 +1242,7 @@ export async function generatePart2SingleExplanationPrompt(
     try {
         const __filename = fileURLToPath(import.meta.url);
         const __dirname = path.dirname(__filename);
-        const promptPath = path.join(__dirname, 'prompts', 'part2-explanation-prompt.md');
+        const promptPath = isProduction ? '/etc/secrets/part2-explanation-prompt.md' : path.join(__dirname, 'prompts', 'part2-explanation-prompt.md');
         const promptTemplate = await fs.readFile(promptPath, 'utf8');
         return promptTemplate
             .replace(/\{\{speakerAccent\}\}/g, speakerAccent)
@@ -1258,7 +1265,7 @@ export async function generatePart34SingleExplanationPrompt(
     try {
         const __filename = fileURLToPath(import.meta.url);
         const __dirname = path.dirname(__filename);
-        const promptPath = path.join(__dirname, 'prompts', 'part3_4-explanation-prompt.md');
+        const promptPath = isProduction ? '/etc/secrets/part3_4-explanation-prompt.md' : path.join(__dirname, 'prompts', 'part3_4-explanation-prompt.md');
         const promptTemplate = await fs.readFile(promptPath, 'utf8');
         return promptTemplate
             .replace(/\{\{sectionNumber\}\}/g, sectionNumber.toString())
@@ -2114,7 +2121,6 @@ export async function callGoogleCloudTTS(ssml: string, lQuestionID: string): Pro
 };
 
 //Google Cloud認証トークン取得
-const isProduction = process.env.NODE_ENV === 'production';
 export async function getGoogleAccessToken(): Promise<string> {
     try {
         let auth;
