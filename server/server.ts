@@ -10,6 +10,10 @@ import usersRouter from "./users/user.routes.js"
 import lQuizRouter from "./listening-quiz-transactions/lquizroutes.js"
 import audioRouter from "./audio-delivery/audio.routes.js"
 
+import { pool } from './db.js';
+import connectPg from 'connect-pg-simple';
+const PgSession = connectPg(session);
+
 const app = express();
 const port = 3000;
 
@@ -40,6 +44,10 @@ app.use(express.json());
 
 //セッション管理
 app.use(session({
+    store: new PgSession({
+        pool: pool,  // ← 同じプールを使用
+        tableName: 'session'
+    }),
     secret: process.env.SESSION_SECRET as string, //sessionIDに電子署名を付与(HMAC_SHA256) sessionIDと電子署名をセットで授受し、改ざん検知
     resave: false,
     saveUninitialized: false,
@@ -48,7 +56,7 @@ app.use(session({
         maxAge: 1000 * 60 * 30,  //30分でタイムアウト→セッションデータ解放
         httpOnly: true,
         secure: isProduction, //HTTPS時のみ有効化（後で実装）
-        sameSite: 'none' //クロスオリジンなサイトからのリクエスト制限　CSRF対策
+        sameSite: isProduction ? 'none' : 'lax' //クロスオリジンなサイトからのリクエスト制限　CSRF対策
     },
     proxy: true,
     name: 'sessionID'

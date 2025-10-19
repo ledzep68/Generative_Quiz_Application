@@ -5,35 +5,10 @@ import * as domein from "./lquiz.domeinobject.js";
 import * as mapper from "./mappers/lquiz.dbmapper.js";
 import * as entity from "./lquiz.entity.js"
 import * as dberror from "./errors/lquiz.dberrors.js";
-import {config} from "dotenv";
-import { omit } from "zod/v4-mini";
+
 import {UUID} from "crypto";
 
-import path from 'path'; 
-import { fileURLToPath } from 'url'; 
-const __filename = fileURLToPath(import.meta.url); 
-const __dirname = path.dirname(__filename); 
-config({ path: path.join(__dirname, '../.env') });
-
-//データベース接続用インスタンス
-const isProduction = process.env.NODE_ENV === 'production';
-let pool: Pool;
-if(isProduction){
-    pool = new Pool({
-        connectionString: process.env.POSTGRES_URL,
-        ssl: {
-            rejectUnauthorized: false
-        }
-    });
-} else {
-    pool = new Pool({
-        database: process.env.POSTGRES_DB_NAME,
-        host: process.env.POSTGRES_HOST,
-        port: Number(process.env.POSTGRES_PORT),
-        user: process.env.POSTGRES_USER,
-        password: process.env.POSTGRES_PASSWORD
-    });
-};
+import { pool } from "../db.js";
 
 //DB接続
 export async function dbGetConnect(): Promise<PoolClient> {
