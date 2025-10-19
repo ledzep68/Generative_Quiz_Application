@@ -16,7 +16,10 @@ const isProduction = process.env.NODE_ENV === 'production';
 let pool: Pool;
 if(isProduction){
     pool = new Pool({
-        host: process.env.POSTGRES_HOST
+        connectionString: process.env.POSTGRES_URL,
+        ssl: {
+            rejectUnauthorized: false
+        }
     });
 } else {
     pool = new Pool({
