@@ -2052,15 +2052,15 @@ ${voiceSegments.join('\n')}
 //Google Cloud TTSで音声生成 音声を取得し、Bufferを返す
 export async function callGoogleCloudTTS(ssml: string, lQuestionID: string): Promise<Buffer<ArrayBuffer>> {
     try {
-        // 環境変数チェック
-        if (!process.env.GOOGLE_APPLICATION_CREDENTIALS) {
+        //環境変数チェック
+        /*if (!process.env.GOOGLE_APPLICATION_CREDENTIALS) {
             throw new apierror.EnvironmentConfigError('GOOGLE_APPLICATION_CREDENTIALS環境変数が設定されていません');
-        };
+        };*/
 
-        // 認証トークン取得
+        //認証トークン取得
         const accessToken = await getGoogleAccessToken();
 
-        // Google Cloud TTS APIへのリクエスト
+        //Google Cloud TTS APIへのリクエスト
         const response = await fetch('https://texttospeech.googleapis.com/v1beta1/text:synthesize', {
             method: 'POST',
             headers: {
