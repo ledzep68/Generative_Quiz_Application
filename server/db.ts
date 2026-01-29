@@ -9,6 +9,12 @@ config({ path: path.join(__dirname, '.env') });
 
 const isProduction = process.env.NODE_ENV === 'production';
 
+console.log("[DB CHECK]", {
+  NODE_ENV: process.env.NODE_ENV,
+  isProduction: process.env.NODE_ENV === "production",
+  has_POSTGRES_URL: Boolean(process.env.POSTGRES_URL),
+});
+
 export const pool = new Pool(
     isProduction
         ? {
