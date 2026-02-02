@@ -87,13 +87,10 @@ export async function initializeUserSession(userId: UUID, session: Express.Reque
             
             //userId設定
             session.userId = userId; 
-            //questionSetは初期化時点では未設定
+            //ログ出力　questionSetは初期化時点では未設定
             console.log("login時セッションobject: ", session);
             console.log("login時セッションID: ", session.id);
             console.log("login時セッションuserId: ", session.userId);
-            
-            //ログ出力
-            console.info(`User session initialized: userId=${userId}, sessionId=${session.id}`);
             
             //セッション保存
             session.save((err) => {
